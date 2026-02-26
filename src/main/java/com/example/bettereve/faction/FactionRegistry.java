@@ -1,6 +1,5 @@
 package com.example.bettereve.faction;
 
-import com.example.bettereve.Config;
 import com.example.bettereve.Bettereve;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -14,21 +13,28 @@ public class FactionRegistry {
     private static final Logger LOGGER = LoggerFactory.getLogger(FactionRegistry.class);
     private static final Map<String, Faction> factions = new HashMap<>();
 
+    // 默认阵营配置（用于地图首次加载时）
+    private static final String DEFAULT_FACTIONS = "red=红队,red,true;blue=蓝队,blue,true";
+    private static final String DEFAULT_RELATIONS = "red:blue=hostile";
+    private static final boolean DEFAULT_HOSTILE = true;
+
     static {
         MinecraftForge.EVENT_BUS.register(FactionRegistry.class);
-        loadFromConfig();
+        loadDefaultFactions();
     }
 
     @SubscribeEvent
     public static void onConfigChanged(ModConfigEvent.Reloading event) {
-        loadFromConfig();
+        // 配置变更时不再重新加载阵营配置，因为现在是每个地图单独存储
+        LOGGER.debug("配置已变更，但阵营系统配置现在是每个地图单独存储，不受全局配置影响");
     }
 
-    private static void loadFromConfig() {
+    // 加载默认阵营配置
+    private static void loadDefaultFactions() {
         factions.clear();
 
-        // 加载阵营列表
-        for (String factionStr : Config.factionList) {
+        // 加载默认阵营列表
+        for (String factionStr : DEFAULT_FACTIONS.split(";")) {
             try {
                 String[] parts = factionStr.split("=");
                 if (parts.length != 2) {
@@ -58,13 +64,13 @@ public class FactionRegistry {
                 }
 
                 factions.put(id, new Faction(id, name, color, enabled));
-                LOGGER.debug("加载阵营: {} ({})", name, id);
+                LOGGER.debug("加载默认阵营: {} ({})", name, id);
             } catch (Exception e) {
-                LOGGER.warn("解析阵营配置失败: {}", factionStr, e);
+                LOGGER.warn("解析默认阵营配置失败: {}", factionStr, e);
             }
         }
 
-        LOGGER.debug("阵营系统加载完成: {} 个阵营", factions.size());
+        LOGGER.debug("默认阵营系统加载完成: {} 个阵营", factions.size());
     }
 
     // 获取所有阵营
@@ -92,8 +98,8 @@ public class FactionRegistry {
             return false;
         }
 
-        // 使用全局默认规则
-        return Config.factionDefaultHostile;
+        // 使用默认规则
+        return DEFAULT_HOSTILE;
     }
 
     // 创建新阵营

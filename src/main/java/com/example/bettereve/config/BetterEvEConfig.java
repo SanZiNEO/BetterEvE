@@ -10,22 +10,16 @@ public class BetterEvEConfig {
     public static final ForgeConfigSpec COMMON_SPEC;
     public static final BetterEvEConfig INSTANCE;
 
-    // ===================== 1. 阵营系统配置 =====================
-    public final ForgeConfigSpec.ConfigValue<Boolean> faction_defaultHostile;
-    public final ForgeConfigSpec.ConfigValue<String> faction_factions;
-    public final ForgeConfigSpec.ConfigValue<String> faction_relations;
-
-    // ===================== 2. 渲染系统配置 =====================
-    public final ForgeConfigSpec.DoubleValue render_outlineWidth;
+    // ===================== 1. 渲染系统配置 =====================
     public final ForgeConfigSpec.ConfigValue<Boolean> render_showHealthPercent;
     public final ForgeConfigSpec.DoubleValue render_healthTextOffsetY;
 
-    // ===================== 3. 寻敌系统配置 =====================
+    // ===================== 2. 寻敌系统配置 =====================
     public final ForgeConfigSpec.DoubleValue targeting_defaultFollowRange;
     public final ForgeConfigSpec.ConfigValue<String> targeting_entityFollowRange;
     public final ForgeConfigSpec.ConfigValue<String> targeting_factionFollowRange;
 
-    // ===================== 4. 计数器系统配置 =====================
+    // ===================== 3. 计数器系统配置 =====================
     public final ForgeConfigSpec.ConfigValue<Boolean> counter_hudEnabled;
     public final ForgeConfigSpec.DoubleValue counter_hudPosX;
     public final ForgeConfigSpec.DoubleValue counter_hudPosY;
@@ -33,45 +27,26 @@ public class BetterEvEConfig {
     public final ForgeConfigSpec.ConfigValue<String> counter_tabPanelKey;
     public final ForgeConfigSpec.ConfigValue<Boolean> counter_countEntityType;
 
-    // ===================== 5. 基地系统配置 =====================
+    // ===================== 4. 基地系统配置 =====================
     public final ForgeConfigSpec.IntValue base_defaultHealth;
-    public final ForgeConfigSpec.DoubleValue base_outlineWidth;
     public final ForgeConfigSpec.IntValue base_victoryAnnounceTime;
     public final ForgeConfigSpec.IntValue base_clearRadius;
     public final ForgeConfigSpec.ConfigValue<Boolean> base_onlyHostileAttack;
 
-    // ===================== 6. 等级系统配置 =====================
+    // ===================== 5. 等级系统配置 =====================
     public final ForgeConfigSpec.DoubleValue level_healthBonus;
     public final ForgeConfigSpec.DoubleValue level_attackBonus;
     public final ForgeConfigSpec.DoubleValue level_speedBonus;
     public final ForgeConfigSpec.IntValue level_maxLevel;
 
-    // ===================== 7. 全局开关配置 =====================
+    // ===================== 6. 全局开关配置 =====================
     public final ForgeConfigSpec.ConfigValue<Boolean> global_hudEnabled;
-    public final ForgeConfigSpec.ConfigValue<Boolean> global_outlineEnabled;
-    public final ForgeConfigSpec.ConfigValue<Boolean> global_forceOutline;
     public final ForgeConfigSpec.ConfigValue<Boolean> global_levelEnabled;
 
     // 构造方法：初始化所有配置项（带默认值+范围限制）
     private BetterEvEConfig(Builder builder) {
-        // ---------- 1. 阵营系统配置 ----------
-        builder.push("faction"); // 配置分组（页面显示为Faction）
-        faction_defaultHostile = builder
-                .comment("全局默认规则：不同阵营是否敌对（true=敌对，false=和平）")
-                .define("defaultHostile", true);
-        faction_factions = builder
-                .comment("自定义阵营列表（格式：ID=名称,颜色,是否启用，多个用;分隔，例：red=红队,red,true;blue=蓝队,blue,true）")
-                .define("factions", "red=红队,red,true;blue=蓝队,blue,true");
-        faction_relations = builder
-                .comment("自定义阵营关系（格式：阵营ID1:阵营ID2=关系，关系：hostile/friendly，多个用;分隔，例：red:blue=hostile;red:green=friendly）")
-                .define("relations", "red:blue=hostile");
-        builder.pop(); // 结束分组
-
-        // ---------- 2. 渲染系统配置 ----------
+        // ---------- 1. 渲染系统配置 ----------
         builder.push("render");
-        render_outlineWidth = builder
-                .comment("高亮描边线宽（满血状态，残血按比例缩小）")
-                .defineInRange("outlineWidth", 2.0D, 0.1D, 10.0D); // 范围0.1~10.0
         render_showHealthPercent = builder
                 .comment("是否显示实体百分比血量（true=显示，false=隐藏）")
                 .define("showHealthPercent", true);
@@ -80,7 +55,7 @@ public class BetterEvEConfig {
                 .defineInRange("healthTextOffsetY", 0.0D, -5.0D, 5.0D);
         builder.pop();
 
-        // ---------- 3. 寻敌系统配置 ----------
+        // ---------- 2. 寻敌系统配置 ----------
         builder.push("targeting");
         targeting_defaultFollowRange = builder
                 .comment("全局默认寻敌范围（格），覆盖原版生物默认值")
@@ -93,7 +68,7 @@ public class BetterEvEConfig {
                 .define("factionFollowRange", "red=64;blue=64");
         builder.pop();
 
-        // ---------- 4. 计数器系统配置 ----------
+        // ---------- 3. 计数器系统配置 ----------
         builder.push("counter");
         counter_hudEnabled = builder
                 .comment("是否启用计数器HUD显示（true=启用，false=关闭）")
@@ -115,14 +90,11 @@ public class BetterEvEConfig {
                 .define("countEntityType", true);
         builder.pop();
 
-        // ---------- 5. 基地系统配置 ----------
+        // ---------- 4. 基地系统配置 ----------
         builder.push("base");
         base_defaultHealth = builder
                 .comment("基地默认血量")
                 .defineInRange("defaultHealth", 10000, 100, 100000); // 范围100~10万
-        base_outlineWidth = builder
-                .comment("基地描边线宽（普通实体的2倍为默认）")
-                .defineInRange("outlineWidth", 4.0D, 0.1D, 20.0D);
         base_victoryAnnounceTime = builder
                 .comment("胜利播报时长（秒）")
                 .defineInRange("victoryAnnounceTime", 5, 1, 30); // 1~30秒
@@ -134,7 +106,7 @@ public class BetterEvEConfig {
                 .define("onlyHostileAttack", true);
         builder.pop();
 
-        // ---------- 6. 等级系统配置 ----------
+        // ---------- 5. 等级系统配置 ----------
         builder.push("level");
         level_healthBonus = builder
                 .comment("每级生命值加成比例（%）")
@@ -150,17 +122,11 @@ public class BetterEvEConfig {
                 .defineInRange("maxLevel", 10, 1, 100); // 1~100级
         builder.pop();
 
-        // ---------- 7. 全局开关配置 ----------
+        // ---------- 6. 全局开关配置 ----------
         builder.push("global");
         global_hudEnabled = builder
                 .comment("全局HUD显示总开关（覆盖counter.hudEnabled）")
                 .define("hudEnabled", true);
-        global_outlineEnabled = builder
-                .comment("全局高亮描边总开关（覆盖render.outlineWidth）")
-                .define("outlineEnabled", true);
-        global_forceOutline = builder
-                .comment("是否强制开启实体轮廓（无视游戏内实体轮廓开关）")
-                .define("forceOutline", true);
         global_levelEnabled = builder
                 .comment("全局等级系统总开关（覆盖level所有配置）")
                 .define("levelEnabled", true);

@@ -75,21 +75,13 @@ public class BetterEvEConfigScreen extends Screen {
         }
 
         private void loadConfigEntries() {
-            // 阵营系统配置
-            entries.add(new ConfigEntry("全局默认规则：不同阵营是否敌对",
-                    String.valueOf(BetterEvEConfig.INSTANCE.faction_defaultHostile.get()),
-                    "boolean", this.parent));
-            entries.add(new ConfigEntry("自定义阵营列表",
-                    String.valueOf(BetterEvEConfig.INSTANCE.faction_factions.get()),
-                    "list", this.parent));
-
             // 渲染系统配置
-            entries.add(new ConfigEntry("高亮描边线宽（满血状态）",
-                    String.valueOf(BetterEvEConfig.INSTANCE.render_outlineWidth.get()),
-                    "double", this.parent));
             entries.add(new ConfigEntry("是否显示实体百分比血量",
                     String.valueOf(BetterEvEConfig.INSTANCE.render_showHealthPercent.get()),
                     "boolean", this.parent));
+            entries.add(new ConfigEntry("血量文本相对名称标签的Y轴偏移",
+                    String.valueOf(BetterEvEConfig.INSTANCE.render_healthTextOffsetY.get()),
+                    "double", this.parent));
 
             // 寻敌系统配置
             entries.add(new ConfigEntry("全局默认寻敌范围（格）",
@@ -121,12 +113,6 @@ public class BetterEvEConfigScreen extends Screen {
             // 全局开关配置
             entries.add(new ConfigEntry("全局HUD显示总开关",
                     String.valueOf(BetterEvEConfig.INSTANCE.global_hudEnabled.get()),
-                    "boolean", this.parent));
-            entries.add(new ConfigEntry("全局高亮描边总开关",
-                    String.valueOf(BetterEvEConfig.INSTANCE.global_outlineEnabled.get()),
-                    "boolean", this.parent));
-            entries.add(new ConfigEntry("是否强制开启实体轮廓",
-                    String.valueOf(BetterEvEConfig.INSTANCE.global_forceOutline.get()),
                     "boolean", this.parent));
             entries.add(new ConfigEntry("全局等级系统总开关",
                     String.valueOf(BetterEvEConfig.INSTANCE.global_levelEnabled.get()),
@@ -165,6 +151,8 @@ public class BetterEvEConfigScreen extends Screen {
                         this.toggleBooleanValue();
                     }).pos(left + width / 2, top + 5).size(100, 18).build();
                 }
+                // 每次渲染时更新按钮位置
+                booleanButton.setPosition(left + width / 2, top + 5);
                 booleanButton.setMessage(Component.literal(getBooleanButtonText()));
                 booleanButton.render(guiGraphics, mouseX, mouseY, partialTicks);
             } else {
@@ -178,6 +166,8 @@ public class BetterEvEConfigScreen extends Screen {
                         this.parent.setMadeChanges();
                     });
                 }
+                // 每次渲染时更新文本框位置
+                editBox.setPosition(left + width / 2, top + 5);
                 editBox.render(guiGraphics, mouseX, mouseY, partialTicks);
             }
         }
@@ -196,26 +186,17 @@ public class BetterEvEConfigScreen extends Screen {
             // 根据配置项类型更新实际配置
             // 这里需要根据 key 来确定要更新哪个配置项
             switch (key) {
-                case "全局默认规则：不同阵营是否敌对":
-                    BetterEvEConfig.INSTANCE.faction_defaultHostile.set(Boolean.parseBoolean(value));
-                    break;
                 case "是否显示实体百分比血量":
                     BetterEvEConfig.INSTANCE.render_showHealthPercent.set(Boolean.parseBoolean(value));
                     break;
                 case "全局HUD显示总开关":
                     BetterEvEConfig.INSTANCE.global_hudEnabled.set(Boolean.parseBoolean(value));
                     break;
-                case "全局高亮描边总开关":
-                    BetterEvEConfig.INSTANCE.global_outlineEnabled.set(Boolean.parseBoolean(value));
-                    break;
-                case "是否强制开启实体轮廓":
-                    BetterEvEConfig.INSTANCE.global_forceOutline.set(Boolean.parseBoolean(value));
-                    break;
                 case "全局等级系统总开关":
                     BetterEvEConfig.INSTANCE.global_levelEnabled.set(Boolean.parseBoolean(value));
                     break;
-                case "高亮描边线宽（满血状态）":
-                    BetterEvEConfig.INSTANCE.render_outlineWidth.set(Double.parseDouble(value));
+                case "血量文本相对名称标签的Y轴偏移":
+                    BetterEvEConfig.INSTANCE.render_healthTextOffsetY.set(Double.parseDouble(value));
                     break;
                 case "全局默认寻敌范围（格）":
                     BetterEvEConfig.INSTANCE.targeting_defaultFollowRange.set(Double.parseDouble(value));

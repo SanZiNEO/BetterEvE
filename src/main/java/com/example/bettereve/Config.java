@@ -7,15 +7,10 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
     // 向后兼容的字段
-    public static boolean factionDefaultHostile;
-    public static List<String> factionList;
-    public static double renderOutlineWidth;
+    // 注意：阵营系统配置已从全局配置中移除，现在每个地图单独存储
     public static boolean renderShowHealthPercent;
     public static double targetingDefaultFollowRange;
     public static int baseDefaultHealth;
@@ -34,20 +29,6 @@ public class Config {
         
         try {
             // 从 BetterEvEConfig 读取配置
-            factionDefaultHostile = BetterEvEConfig.INSTANCE.faction_defaultHostile.get();
-            // 解析阵营列表
-            factionList = new ArrayList<>();
-            String factionsStr = BetterEvEConfig.INSTANCE.faction_factions.get();
-            if (!factionsStr.isEmpty()) {
-                String[] factions = factionsStr.split(";");
-                for (String faction : factions) {
-                    if (!faction.trim().isEmpty()) {
-                        factionList.add(faction.trim());
-                    }
-                }
-            }
-            
-            renderOutlineWidth = BetterEvEConfig.INSTANCE.render_outlineWidth.get();
             renderShowHealthPercent = BetterEvEConfig.INSTANCE.render_showHealthPercent.get();
             targetingDefaultFollowRange = BetterEvEConfig.INSTANCE.targeting_defaultFollowRange.get();
             baseDefaultHealth = BetterEvEConfig.INSTANCE.base_defaultHealth.get();

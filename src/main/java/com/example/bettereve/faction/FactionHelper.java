@@ -39,6 +39,11 @@ public class FactionHelper {
     public static Faction getEntityFaction(Entity entity) {
         return FactionRegistry.getFaction(getEntityFactionId(entity));
     }
+    
+    // 通过阵营ID获取阵营对象
+    public static Faction getEntityFactionById(String factionId) {
+        return FactionRegistry.getFaction(factionId);
+    }
 
     // 检查两个实体是否敌对
     public static boolean isEntitiesHostile(Entity entity1, Entity entity2) {
