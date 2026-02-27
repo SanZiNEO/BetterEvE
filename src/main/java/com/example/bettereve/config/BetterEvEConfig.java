@@ -13,6 +13,10 @@ public class BetterEvEConfig {
     // ===================== 1. 渲染系统配置 =====================
     public final ForgeConfigSpec.ConfigValue<Boolean> render_showHealthPercent;
     public final ForgeConfigSpec.DoubleValue render_healthTextOffsetY;
+    public final ForgeConfigSpec.ConfigValue<Boolean> render_showHealthBar;
+    public final ForgeConfigSpec.DoubleValue render_healthBarWidth;
+    public final ForgeConfigSpec.DoubleValue render_healthBarHeight;
+    public final ForgeConfigSpec.DoubleValue render_healthBarOffsetY;
 
     // ===================== 2. 寻敌系统配置 =====================
     public final ForgeConfigSpec.DoubleValue targeting_defaultFollowRange;
@@ -53,6 +57,18 @@ public class BetterEvEConfig {
         render_healthTextOffsetY = builder
                 .comment("血量文本相对名称标签的Y轴偏移（正数向上，负数向下）")
                 .defineInRange("healthTextOffsetY", 0.0D, -5.0D, 5.0D);
+        render_showHealthBar = builder
+                .comment("是否显示血量条（true=显示，false=隐藏）")
+                .define("showHealthBar", true);
+        render_healthBarWidth = builder
+                .comment("血量条宽度（像素）")
+                .defineInRange("healthBarWidth", 80.0D, 20.0D, 200.0D);
+        render_healthBarHeight = builder
+                .comment("血量条高度（像素）")
+                .defineInRange("healthBarHeight", 6.0D, 2.0D, 20.0D);
+        render_healthBarOffsetY = builder
+                .comment("血量条相对实体顶部的Y轴偏移（正数向上，负数向下）")
+                .defineInRange("healthBarOffsetY", 0.55D, -2.0D, 2.0D);
         builder.pop();
 
         // ---------- 2. 寻敌系统配置 ----------
@@ -109,14 +125,14 @@ public class BetterEvEConfig {
         // ---------- 5. 等级系统配置 ----------
         builder.push("level");
         level_healthBonus = builder
-                .comment("每级生命值加成比例（%）")
-                .defineInRange("healthBonus", 20.0D, 0.0D, 100.0D); // 0~100%
+                .comment("每级生命值加成比例（%）默认10%")
+                .defineInRange("healthBonus", 10.0D, 0.0D, 100.0D); // 0~100%
         level_attackBonus = builder
-                .comment("每级攻击力加成比例（%）")
-                .defineInRange("attackBonus", 20.0D, 0.0D, 100.0D);
+                .comment("每级攻击力加成比例（%）默认10%")
+                .defineInRange("attackBonus", 10.0D, 0.0D, 100.0D);
         level_speedBonus = builder
-                .comment("每级移动速度加成比例（%）")
-                .defineInRange("speedBonus", 20.0D, 0.0D, 100.0D);
+                .comment("每级移动速度加成比例（%）默认0%（已禁用）")
+                .defineInRange("speedBonus", 0.0D, 0.0D, 100.0D);
         level_maxLevel = builder
                 .comment("等级上限")
                 .defineInRange("maxLevel", 10, 1, 100); // 1~100级

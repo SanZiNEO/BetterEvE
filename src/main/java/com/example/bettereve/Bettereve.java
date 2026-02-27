@@ -1,7 +1,6 @@
 package com.example.bettereve;
 
 import com.example.bettereve.config.BetterEvEConfig;
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -14,7 +13,6 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.slf4j.Logger;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(Bettereve.MODID)
@@ -22,8 +20,6 @@ public class Bettereve {
 
     // Define mod id in a common place for everything to reference
     public static final String MODID = "bettereve";
-    // Directly reference a slf4j logger
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     public Bettereve() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -36,22 +32,17 @@ public class Bettereve {
 
         // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, BetterEvEConfig.COMMON_SPEC);
-
-        LOGGER.debug("BetterEvE 模组已加载");
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         // 初始化配置
-        LOGGER.debug("BetterEvE 通用设置");
 
         // 检查核心配置是否已加载
-        LOGGER.debug("配置文件加载成功");
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
-        LOGGER.debug("BetterEvE 服务器启动完成");
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
@@ -61,7 +52,6 @@ public class Bettereve {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             // 客户端设置
-            LOGGER.debug("BetterEvE 客户端设置完成");
         }
 
         static {

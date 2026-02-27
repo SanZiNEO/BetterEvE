@@ -5,6 +5,7 @@ import com.example.bettereve.base.BaseSystem;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
+import com.example.bettereve.level.LevelSystem;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -26,12 +27,9 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class BetterEvECommands {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BetterEvECommands.class);
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -73,8 +71,16 @@ public class BetterEvECommands {
                     .suggests(ENTITY_TYPE_SUGGESTIONS)
                     .then(Commands.argument("factionId", StringArgumentType.word())
                         .suggests(FACTION_ID_SUGGESTIONS)
-                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
-                            .executes(BetterEvECommands::executeSpawnEntities)
+                        .then(Commands.argument("level", IntegerArgumentType.integer(0, 10))
+                            .then(Commands.argument("x", IntegerArgumentType.integer())
+                                .then(Commands.argument("y", IntegerArgumentType.integer())
+                                    .then(Commands.argument("z", IntegerArgumentType.integer())
+                                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
+                                            .executes(BetterEvECommands::executeSpawnEntitiesAtPosition)
+                                        )
+                                    )
+                                )
+                            )
                         )
                     )
                 )
@@ -207,6 +213,56 @@ public class BetterEvECommands {
         }
         
         context.getSource().sendSuccess(() -> Component.literal("成功生成 " + count + " 个 " + entityRL + " (阵营: " + factionId + ")"), true);
+        return 1;
+    }
+
+    private static int executeSpawnEntitiesAtPosition(CommandContext<CommandSourceStack> context) {
+        ResourceLocation entityRL = ResourceLocationArgument.getId(context, "entityType");
+        String factionId = StringArgumentType.getString(context, "factionId");
+        int level = IntegerArgumentType.getInteger(context, "level");
+        int x = IntegerArgumentType.getInteger(context, "x");
+        int y = IntegerArgumentType.getInteger(context, "y");
+        int z = IntegerArgumentType.getInteger(context, "z");
+        int count = IntegerArgumentType.getInteger(context, "count");
+        
+        ServerLevel serverLevel = context.getSource().getLevel();
+        BlockPos spawnPos = new BlockPos(x, y, z);
+        
+        // 验证实体ID是否合法
+        if (!ForgeRegistries.ENTITY_TYPES.containsKey(entityRL)) {
+            context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL));
+            return 0;
+        }
+        
+        EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(entityRL);
+        
+        for (int i = 0; i < count; i++) {
+            try {
+                if (entityType.create(serverLevel) instanceof Mob mob) {
+                    mob.setPos(spawnPos.getX() + i, spawnPos.getY(), spawnPos.getZ());
+                    FactionHelper.setEntityFactionId(mob, factionId);
+                    
+                    // 应用等级属性
+                    if (level > 0) {
+                        LevelSystem.setEntityLevel(mob, level);
+                    }
+                    
+                    serverLevel.addFreshEntity(mob);
+                } else {
+                    context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL + " (必须是可生成的生物)"));
+                    return 0;
+                }
+            } catch (Exception e) {
+                context.getSource().sendFailure(Component.literal("生成生物失败: " + e.getMessage()));
+                return 0;
+            }
+        }
+        
+        context.getSource().sendSuccess(() -> 
+            Component.literal("成功在 (" + x + ", " + y + ", " + z + ") 生成 " + 
+                             count + " 个 " + entityRL + " (阵营: " + factionId + ", 等级: " + level + ")"), 
+            true
+        );
         return 1;
     }
 }

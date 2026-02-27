@@ -1,109 +1,113 @@
 package com.example.bettereve.level;
 
 import com.example.bettereve.Config;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.Monster;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class LevelSystem {
-    private static final Logger LOGGER = LoggerFactory.getLogger(LevelSystem.class);
-    private static final String LEVEL_NBT_KEY = "BetterEvE:Level";
+    private static final Map<UUID, Integer> entityLevels = new HashMap<>();
 
-    @SubscribeEvent
-    public static void onEntityJoin(EntityJoinLevelEvent event) {
-        Entity entity = event.getEntity();
-        if (entity instanceof LivingEntity livingEntity) {
-            // 为新加入的实体设置默认等级
-            int level = getEntityLevel(livingEntity);
-            if (level == 0) {
-                setEntityLevel(livingEntity, 1);
-            }
-
-            // 应用等级加成
-            applyLevelBonuses(livingEntity);
-        }
-    }
-
-    @SubscribeEvent
-    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
-        LivingEntity entity = event.getEntity();
-        // 每50个刻重新应用一次等级加成，以防属性被重置
-        if (entity.tickCount % 50 == 0) {
-            applyLevelBonuses(entity);
-        }
-    }
-
+    /**
+     * 获取生物等级
+     */
     public static int getEntityLevel(LivingEntity entity) {
-        CompoundTag nbt = entity.getPersistentData();
-        return nbt.getInt(LEVEL_NBT_KEY);
+        return entityLevels.getOrDefault(entity.getUUID(), 0);
     }
 
+    /**
+     * 设置生物等级（仅用于召唤时设置）
+     */
     public static void setEntityLevel(LivingEntity entity, int level) {
-        if (level < 1) {
-            level = 1;
-        }
-        if (level > Config.levelMax) {
-            level = Config.levelMax;
-        }
-
-        CompoundTag nbt = entity.getPersistentData();
-        nbt.putInt(LEVEL_NBT_KEY, level);
-
-        // 立即应用等级加成
-        applyLevelBonuses(entity);
+        if (level < 0) level = 0;
+        if (level > Config.levelMax) level = Config.levelMax;
+        
+        entityLevels.put(entity.getUUID(), level);
+        applySpawnLevel(entity, level);
     }
 
-    public static void applyLevelBonuses(LivingEntity entity) {
-        int level = getEntityLevel(entity);
-        if (level <= 1) {
-            return;
+    /**
+     * 应用召唤等级属性
+     * 每级增长10%生命值和攻击力，不增加移动速度
+     * 护甲值每级+2，击退抗性每级+10%
+     */
+    public static void applySpawnLevel(LivingEntity entity, int level) {
+        if (level <= 0) return;
+        
+        // 生命值增强：每级+10%，最大200%
+        if (entity.getAttribute(Attributes.MAX_HEALTH) != null) {
+            double baseHealth = entity.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
+            double healthMultiplier = 1 + (level * Config.levelHealthBonus / 100);
+            double maxMultiplier = 2.0; // 最大200%
+            double finalMultiplier = Math.min(healthMultiplier, maxMultiplier);
+            double newHealth = baseHealth * finalMultiplier;
+            entity.getAttribute(Attributes.MAX_HEALTH).setBaseValue(newHealth);
+            entity.setHealth((float)newHealth);
         }
-
-        // 计算加成倍数
-        double bonusMultiplier = 1 + ((level - 1) * Config.levelHealthBonus / 100);
-
-        // 应用血量加成
-        double baseHealth = entity.getAttribute(Attributes.MAX_HEALTH).getBaseValue() / bonusMultiplier;
-        entity.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseHealth * bonusMultiplier);
-        if (entity.getHealth() > entity.getMaxHealth()) {
-            entity.setHealth(entity.getMaxHealth());
+        
+        // 攻击力增强：每级+10%
+        if (entity.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
+            double baseDamage = entity.getAttribute(Attributes.ATTACK_DAMAGE).getBaseValue();
+            double damageMultiplier = 1 + (level * Config.levelAttackBonus / 100);
+            double newDamage = baseDamage * damageMultiplier;
+            entity.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(newDamage);
         }
-
-        // 应用攻击力加成
-        if (entity instanceof Monster) {
-            double attackBonusMultiplier = 1 + ((level - 1) * Config.levelAttackBonus / 100);
-            double baseAttack = entity.getAttribute(Attributes.ATTACK_DAMAGE).getBaseValue() / attackBonusMultiplier;
-            entity.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(baseAttack * attackBonusMultiplier);
+        
+        // 护甲值增强：每级+2，最大30
+        if (entity.getAttribute(Attributes.ARMOR) != null) {
+            double baseArmor = entity.getAttribute(Attributes.ARMOR).getBaseValue();
+            double armorBonus = level * 2.0; // 每级+2护甲
+            double maxArmor = 30.0; // 最大30护甲
+            double newArmor = Math.min(baseArmor + armorBonus, maxArmor);
+            entity.getAttribute(Attributes.ARMOR).setBaseValue(newArmor);
         }
-
-        // 应用移动速度加成
-        double speedBonusMultiplier = 1 + ((level - 1) * Config.levelSpeedBonus / 100);
-        double baseSpeed = entity.getAttribute(Attributes.MOVEMENT_SPEED).getBaseValue() / speedBonusMultiplier;
-        entity.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(baseSpeed * speedBonusMultiplier);
+        
+        // 击退抗性增强：每级+10%，最大100%
+        if (entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE) != null) {
+            double baseKnockback = entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE).getBaseValue();
+            double knockbackBonus = level * 0.10; // 每级+10%
+            double maxKnockback = 1.0; // 最大100%
+            double newKnockback = Math.min(baseKnockback + knockbackBonus, maxKnockback);
+            entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(newKnockback);
+        }
+        
+        // 移除速度增强（解决瞬移问题）
+        // 不修改MOVEMENT_SPEED属性
     }
 
-    public static int getMaxLevel() {
-        return Config.levelMax;
-    }
-
-    public static double getHealthBonusPerLevel() {
-        return Config.levelHealthBonus;
-    }
-
-    public static double getAttackBonusPerLevel() {
-        return Config.levelAttackBonus;
-    }
-
-    public static double getSpeedBonusPerLevel() {
-        return Config.levelSpeedBonus;
+    /**
+     * 获取等级数值表（用于显示）
+     */
+    public static String getLevelTable() {
+        StringBuilder sb = new StringBuilder("等级属性表 (0-10级):\n");
+        sb.append("等级 | 生命加成 | 攻击加成 | 护甲 | 击退抗性\n");
+        sb.append("-----|----------|----------|------|----------\n");
+        
+        for (int level = 0; level <= 10; level++) {
+            double healthMultiplier = 1 + (level * Config.levelHealthBonus / 100);
+            double attackMultiplier = 1 + (level * Config.levelAttackBonus / 100);
+            double armor = level * 2.0;
+            double knockbackResistance = level * 0.10;
+            
+            // 应用上限
+            healthMultiplier = Math.min(healthMultiplier, 2.0);
+            armor = Math.min(armor, 30.0);
+            knockbackResistance = Math.min(knockbackResistance, 1.0);
+            
+            sb.append(String.format("%2d  | %5.0f%%   | %5.0f%%   | %4.0f | %5.0f%%\n", 
+                level, 
+                (healthMultiplier - 1) * 100,
+                (attackMultiplier - 1) * 100,
+                armor,
+                knockbackResistance * 100));
+        }
+        
+        return sb.toString();
     }
 }

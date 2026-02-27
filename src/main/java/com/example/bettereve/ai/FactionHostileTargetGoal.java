@@ -5,6 +5,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.List;
 
@@ -27,11 +28,11 @@ public class FactionHostileTargetGoal extends TargetGoal {
     // 判断是否应该开始执行该目标
     @Override
     public boolean canUse() {
-        // 在周围找到符合条件的目标
+        // 在周围找到符合条件的目标，完全排除玩家
         List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                 LivingEntity.class,
                 mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
-                this::isValidTarget
+                entity -> !(entity instanceof Player) && isValidTarget(entity)
         );
 
         if (nearbyEntities.isEmpty()) {
@@ -65,7 +66,7 @@ public class FactionHostileTargetGoal extends TargetGoal {
         List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                 LivingEntity.class,
                 mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
-                this::isValidTarget
+                entity -> !(entity instanceof Player) && isValidTarget(entity)
         );
 
         if (!nearbyEntities.isEmpty()) {
@@ -111,6 +112,11 @@ public class FactionHostileTargetGoal extends TargetGoal {
     private boolean isValidTarget(LivingEntity target) {
         // 不能攻击自己
         if (target == mob) {
+            return false;
+        }
+        
+        // 排除玩家，玩家永远不会成为攻击目标
+        if (target instanceof Player) {
             return false;
         }
 

@@ -20,14 +20,11 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class BaseSystem {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BaseSystem.class);
     private static final String BASE_NBT_KEY = "BetterEvE:BaseFaction";
     private static final String BASE_HEALTH_NBT_KEY = "BetterEvE:BaseHealth";
 
@@ -61,8 +58,6 @@ public class BaseSystem {
             String factionId = getBaseFactionId(entity);
             Faction faction = FactionRegistry.getFaction(factionId);
 
-            LOGGER.debug("基地被摧毁！阵营: {} ({})", faction.getName(), factionId);
-
             // 播放爆炸特效
             if (!entity.level().isClientSide()) {
                 ServerLevel level = (ServerLevel) entity.level();
@@ -89,7 +84,6 @@ public class BaseSystem {
 
         if (winningFactionId != null) {
             Faction winningFaction = FactionRegistry.getFaction(winningFactionId);
-            LOGGER.debug("阵营胜利！胜利阵营: {} ({})", winningFaction.getName(), winningFactionId);
 
             // 显示胜利公告
             showVictoryAnnouncement(level, winningFaction);
@@ -119,14 +113,12 @@ public class BaseSystem {
                 .move(0, -10, 0)
                 .expandTowards(0, 20, 0);
 
-        List<Entity> entities = level.getEntitiesOfClass(Entity.class, area);
-        entities.forEach(entity -> {
+        List<? extends Entity> entities = level.getEntitiesOfClass(Entity.class, area);
+        for (Entity entity : entities) {
             if (!(entity instanceof Player) && !isBaseEntity(entity)) {
-                entity.remove(Entity.RemovalReason.KILLED);
+                entity.remove(net.minecraft.world.entity.Entity.RemovalReason.KILLED);
             }
-        });
-
-        LOGGER.debug("已清除基地周围 {} 格内的 {} 个实体", Config.baseClearRadius, entities.size());
+        }
     }
 
     public static boolean isBaseEntity(Entity entity) {
@@ -171,8 +163,6 @@ public class BaseSystem {
 
             // 生成水晶
             serverLevel.addFreshEntity(crystal);
-
-            LOGGER.debug("基地创建成功！位置: {}, 阵营: {}, 血量: {}", pos, factionId, health);
         }
     }
 }

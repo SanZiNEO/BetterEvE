@@ -82,6 +82,18 @@ public class BetterEvEConfigScreen extends Screen {
             entries.add(new ConfigEntry("血量文本相对名称标签的Y轴偏移",
                     String.valueOf(BetterEvEConfig.INSTANCE.render_healthTextOffsetY.get()),
                     "double", this.parent));
+            entries.add(new ConfigEntry("是否显示血量条",
+                    String.valueOf(BetterEvEConfig.INSTANCE.render_showHealthBar.get()),
+                    "boolean", this.parent));
+            entries.add(new ConfigEntry("血量条宽度（像素）",
+                    String.valueOf(BetterEvEConfig.INSTANCE.render_healthBarWidth.get()),
+                    "double", this.parent));
+            entries.add(new ConfigEntry("血量条高度（像素）",
+                    String.valueOf(BetterEvEConfig.INSTANCE.render_healthBarHeight.get()),
+                    "double", this.parent));
+            entries.add(new ConfigEntry("血量条相对实体顶部的Y轴偏移",
+                    String.valueOf(BetterEvEConfig.INSTANCE.render_healthBarOffsetY.get()),
+                    "double", this.parent));
 
             // 寻敌系统配置
             entries.add(new ConfigEntry("全局默认寻敌范围（格）",
@@ -197,6 +209,18 @@ public class BetterEvEConfigScreen extends Screen {
                     break;
                 case "血量文本相对名称标签的Y轴偏移":
                     BetterEvEConfig.INSTANCE.render_healthTextOffsetY.set(Double.parseDouble(value));
+                    break;
+                case "是否显示血量条":
+                    BetterEvEConfig.INSTANCE.render_showHealthBar.set(Boolean.parseBoolean(value));
+                    break;
+                case "血量条宽度（像素）":
+                    BetterEvEConfig.INSTANCE.render_healthBarWidth.set(Double.parseDouble(value));
+                    break;
+                case "血量条高度（像素）":
+                    BetterEvEConfig.INSTANCE.render_healthBarHeight.set(Double.parseDouble(value));
+                    break;
+                case "血量条相对实体顶部的Y轴偏移":
+                    BetterEvEConfig.INSTANCE.render_healthBarOffsetY.set(Double.parseDouble(value));
                     break;
                 case "全局默认寻敌范围（格）":
                     BetterEvEConfig.INSTANCE.targeting_defaultFollowRange.set(Double.parseDouble(value));

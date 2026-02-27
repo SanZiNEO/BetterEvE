@@ -26,7 +26,6 @@ public class FactionRegistry {
     @SubscribeEvent
     public static void onConfigChanged(ModConfigEvent.Reloading event) {
         // 配置变更时不再重新加载阵营配置，因为现在是每个地图单独存储
-        LOGGER.debug("配置已变更，但阵营系统配置现在是每个地图单独存储，不受全局配置影响");
     }
 
     // 加载默认阵营配置
@@ -38,7 +37,6 @@ public class FactionRegistry {
             try {
                 String[] parts = factionStr.split("=");
                 if (parts.length != 2) {
-                    LOGGER.warn("无效的阵营配置格式: {}", factionStr);
                     continue;
                 }
 
@@ -59,18 +57,13 @@ public class FactionRegistry {
                     try {
                         enabled = Boolean.parseBoolean(details[2].trim());
                     } catch (Exception e) {
-                        LOGGER.warn("无效的启用状态: {}", details[2]);
                     }
                 }
 
                 factions.put(id, new Faction(id, name, color, enabled));
-                LOGGER.debug("加载默认阵营: {} ({})", name, id);
             } catch (Exception e) {
-                LOGGER.warn("解析默认阵营配置失败: {}", factionStr, e);
             }
         }
-
-        LOGGER.debug("默认阵营系统加载完成: {} 个阵营", factions.size());
     }
 
     // 获取所有阵营
@@ -105,37 +98,31 @@ public class FactionRegistry {
     // 创建新阵营
     public static Faction createFaction(String id, String name, String color, boolean enabled) {
         if (factions.containsKey(id)) {
-            LOGGER.warn("阵营已存在: {}", id);
             return null;
         }
 
         Faction faction = new Faction(id, name, color, enabled);
         factions.put(id, faction);
-        LOGGER.debug("创建新阵营: {} ({})", name, id);
         return faction;
     }
 
     // 删除阵营
     public static void deleteFaction(String id) {
         if (!factions.containsKey(id)) {
-            LOGGER.warn("阵营不存在: {}", id);
             return;
         }
 
         factions.remove(id);
-        LOGGER.debug("删除阵营: {}", id);
     }
 
     // 修改阵营
     public static Faction modifyFaction(String id, String name, String color, boolean enabled) {
         if (!factions.containsKey(id)) {
-            LOGGER.warn("阵营不存在: {}", id);
             return null;
         }
 
         Faction faction = new Faction(id, name, color, enabled);
         factions.put(id, faction);
-        LOGGER.debug("修改阵营: {} ({})", name, id);
         return faction;
     }
 }

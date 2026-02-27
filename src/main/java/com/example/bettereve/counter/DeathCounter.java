@@ -12,8 +12,6 @@ import net.minecraft.world.level.storage.DimensionDataStorage;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,7 +19,6 @@ import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class DeathCounter extends SavedData {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DeathCounter.class);
     private static final String DATA_NAME = "BetterEvE_DeathCounter";
 
     // 存储格式: worldId -> factionId -> entityType -> count
@@ -55,8 +52,6 @@ public class DeathCounter extends SavedData {
 
             deathCounts.put(worldId, factionCounts);
         }
-
-        LOGGER.debug("死亡计数器数据加载完成");
     }
 
     @SubscribeEvent
@@ -179,7 +174,6 @@ public class DeathCounter extends SavedData {
         }
 
         tag.put("Worlds", worldsTag);
-        LOGGER.debug("死亡计数器数据保存完成");
         return tag;
     }
 }

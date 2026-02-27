@@ -33,7 +33,7 @@ public class TargetingHandler {
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         if (event.getEntity() instanceof Mob mob && !mob.level().isClientSide) {
             // 每2Tick刷新一次目标，强化寻敌积极性
-            if (mob.tickCount % 2 == 0) {
+            if (mob.tickCount % 20 == 0) {
                 // 遍历目标选择器中的所有目标选择器，找到我们的自定义目标选择器
                 mob.targetSelector.getAvailableGoals().stream()
                         .filter(goal -> goal.getGoal() instanceof FactionHostileTargetGoal)
@@ -52,8 +52,6 @@ public class TargetingHandler {
         // 使用属性系统设置寻敌范围，这是更稳定的方法
         if (mob.getAttribute(Attributes.FOLLOW_RANGE) != null) {
             mob.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(followRange);
-        } else {
-            LOGGER.warn("生物 {} 没有 FOLLOW_RANGE 属性", mob.getType().getDescriptionId());
         }
     }
 
@@ -70,7 +68,6 @@ public class TargetingHandler {
             java.lang.reflect.Method clearMethod = goals.getClass().getMethod("clear");
             clearMethod.invoke(goals);
         } catch (Exception e) {
-            LOGGER.error("无法清除生物的目标选择器: {}", e.getMessage());
         }
         
         // 为生物添加自定义的阵营敌对目标选择器
@@ -80,12 +77,9 @@ public class TargetingHandler {
                 true,               // 检查视线（原版逻辑）
                 true                // 更新目标（原版逻辑）
         ));
-
-        LOGGER.debug("为生物 {} 添加阵营敌对目标选择器", mob.getType().getDescriptionId());
     }
 
     public static void loadFromConfig() {
         // 简化配置加载，只需要确保配置已加载
-        LOGGER.debug("寻敌系统配置加载完成，默认寻敌范围: {} 格", Config.targetingDefaultFollowRange);
     }
 }

@@ -41,8 +41,7 @@ public class Config {
             // 通知 TargetingHandler 重新加载配置
             com.example.bettereve.targeting.TargetingHandler.loadFromConfig();
         } catch (Exception e) {
-            // 记录配置加载失败的日志
-            System.err.println("配置加载失败: " + e.getMessage());
+            // 配置加载失败，不输出任何日志
         }
     }
 }

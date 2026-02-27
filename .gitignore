@@ -28,3 +28,9 @@ replay_pid*
 /.gradle
 /.idea
 /build
+/run
+/cankao
+/cankao
+/build
+/run
+*.txt
