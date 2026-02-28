@@ -1,62 +1,198 @@
-# Compiled class file
-*.class
+# ============================================
+# BetterEvE Minecraft Mod - .gitignore
+# ============================================
 
-# Log file
-*.log
+# ========== 构建系统文件 ==========
 
-# BlueJ files
-*.ctxt
+# Gradle 构建系统
+.gradle/
+build/
+out/
+bin/
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
+# 构建产物
 *.jar
 *.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+*.class
+
+# Gradle 包装器（已提交，不需要忽略）
+# gradle/wrapper/gradle-wrapper.jar
+
+# ========== IDE 和编辑器文件 ==========
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Eclipse
+.settings/
+.classpath
+.project
+bin/
+
+# NetBeans
+nbproject/
+nbactions.xml
+
+# ========== 操作系统文件 ==========
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ========== 游戏和开发文件 ==========
+
+# Minecraft 运行目录
+run/
+
+# 游戏日志
+logs/
+*.log
+
+# 开发配置和临时文件
+forge_dir.txt
+forge_jars.txt
+gradle_forge_path.txt
+ingamehud.txt
+
+# 编译错误日志
+compile_errors.txt
+
+# 临时文件
+temp.txt
+*.tmp
+*.temp
+
+# ========== 项目特定文件 ==========
+
+# 开发日志
+DEVELOPMENT_LOG.md
+
+# 测试文档
+test_level_system.md
+
+# 计划目录
+plans/
+
+# 示例目录
+example/
+
+# 错误文件
+$null
+
+# 配置指南
+ITEM_ICON_GUIDE.md
+
+# ========== 其他常见忽略项 ==========
+
+# 虚拟机和崩溃日志
+hs_err_pid*
+replay_pid*
+
+# 包文件
 *.nar
 *.ear
 *.zip
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
-/cankao
-/run
-/run
-/build
-
-# Gradle 缓存与编译产物
-.gradle/
-build/
-
-# 游戏运行数据与存档
-run/
-out/
-
-# IDEA 编辑器个人配置
-.idea/
-*.iws
-*.iml
-*.ipr
-
-# 本地记录文件
-forge_dir.txt
-forge_jars.txt
-gradle_forge_path.txt
-ingamehud.txt
-
-# --- 关键修复：只忽略根目录下的参考文件夹 ---
-/example/
-/main/test/
-# 系统与日志
-logs/
+# 日志文件
 *.log
+
+# BlueJ 文件
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# 系统文件
 .DS_Store
-temp.txt
-/DEVELOPMENT_LOG.md
-/plans
-ITEM_ICON_GUIDE.md
-/.vscode
-/log
+
+# ========== 本地记录文件 ==========
+
+# 本地开发记录
+
+/main/test/
+
+# ========== 生成的文件 ==========
+
+# 自动生成的文件
+src/generated/
+
+# ========== 测试相关 ==========
+
+# 测试输出
+test-output/
+test-results/
+
+# ========== 环境文件 ==========
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ========== 文档 ==========
+
+# 自动生成的文档
+docs/_build/
+docs/_site/
+
+# ========== 其他 ==========
+
+# 临时目录
+tmp/
+temp/
+
+# 缓存目录
+.cache/
+
+# 依赖目录（如果适用）
+node_modules/
+vendor/
+bower_components/
+
+# 打包输出
+dist/
+release/
+
+# ============================================
+# 注意：以下文件应该被提交到版本控制
+# ============================================
+# gradle/wrapper/gradle-wrapper.properties
+# gradlew
+# gradlew.bat
+# build.gradle
+# settings.gradle
+# gradle.properties
+# src/ 目录
+# LICENSE
+# README.md
+# ============================================
