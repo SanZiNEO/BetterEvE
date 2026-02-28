@@ -3,17 +3,21 @@ package com.example.bettereve.faction;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraftforge.common.util.LazyOptional;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class FactionHelper {
+    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/FactionHelper");
     private static final String FACTION_NBT_KEY = "BetterEvE:FactionID";
 
-    // 获取实体的阵营ID
+    // 获取实体的阵营ID（纯NBT实现，保持跨模组兼容性）
     public static String getEntityFactionId(Entity entity) {
         if (entity == null) {
             return "neutral";
         }
 
         CompoundTag nbt = entity.getPersistentData();
+        
         if (nbt.contains(FACTION_NBT_KEY)) {
             return nbt.getString(FACTION_NBT_KEY);
         }
@@ -21,7 +25,7 @@ public class FactionHelper {
         return "neutral"; // 默认中立阵营
     }
 
-    // 设置实体的阵营ID
+    // 设置实体的阵营ID（纯NBT实现）
     public static void setEntityFactionId(Entity entity, String factionId) {
         if (entity == null) {
             return;
@@ -33,6 +37,8 @@ public class FactionHelper {
 
         CompoundTag nbt = entity.getPersistentData();
         nbt.putString(FACTION_NBT_KEY, factionId);
+        
+        // NBT数据会自动保存，无需额外操作
     }
 
     // 获取实体所属的阵营

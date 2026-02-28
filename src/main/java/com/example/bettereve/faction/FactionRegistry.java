@@ -14,7 +14,7 @@ public class FactionRegistry {
     private static final Map<String, Faction> factions = new HashMap<>();
 
     // 默认阵营配置（用于地图首次加载时）
-    private static final String DEFAULT_FACTIONS = "red=红队,red,true;blue=蓝队,blue,true";
+    private static final String DEFAULT_FACTIONS = "neutral=中立,#FFFFFF,true;red=红队,#FF0000,true;blue=蓝队,#0000FF,true";
     private static final String DEFAULT_RELATIONS = "red:blue=hostile";
     private static final boolean DEFAULT_HOSTILE = true;
 

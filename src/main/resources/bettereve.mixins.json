@@ -5,12 +5,16 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "bettereve.refmap.json",
   "mixins": [
-    "LevelRendererMixin"
   ],
   "client": [
-    "LevelRendererMixin"
+    "LevelRendererMixin",
+    "EntityRendererMixin"
   ],
   "injectors": {
-    "defaultRequire": 1
+    "defaultRequire": 1,
+    "defaultPriority": 1000
+  },
+  "overwrites": {
+    "requireAnnotations": true
   }
 }

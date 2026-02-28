@@ -2,10 +2,13 @@ package com.example.bettereve.commands;
 
 import com.example.bettereve.Config;
 import com.example.bettereve.base.BaseSystem;
+import com.example.bettereve.counter.DeathCounter;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
 import com.example.bettereve.level.LevelSystem;
+import com.example.bettereve.network.FactionSyncHandler;
+import com.example.bettereve.scoreboard.ScoreboardManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -19,10 +22,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.Score;
+import net.minecraft.world.scores.Scoreboard;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -85,12 +92,28 @@ public class BetterEvECommands {
                     )
                 )
             )
+            .then(Commands.literal("scoreboard")
+                .then(Commands.literal("clear")
+                    .executes(BetterEvECommands::clearAllScoreboards)
+                    .then(Commands.argument("factionName", StringArgumentType.greedyString())
+                        .suggests(FACTION_NAME_SUGGESTIONS)
+                        .executes(BetterEvECommands::clearFactionScoreboard)
+                    )
+                )
+            )
         );
     }
 
     private static final SuggestionProvider<CommandSourceStack> FACTION_ID_SUGGESTIONS = (context, builder) -> {
         for (Faction faction : FactionRegistry.getAllFactions()) {
             builder.suggest(faction.getId());
+        }
+        return builder.buildFuture();
+    };
+
+    private static final SuggestionProvider<CommandSourceStack> FACTION_NAME_SUGGESTIONS = (context, builder) -> {
+        for (Faction faction : FactionRegistry.getAllFactions()) {
+            builder.suggest(faction.getName());
         }
         return builder.buildFuture();
     };
@@ -242,6 +265,9 @@ public class BetterEvECommands {
                     mob.setPos(spawnPos.getX() + i, spawnPos.getY(), spawnPos.getZ());
                     FactionHelper.setEntityFactionId(mob, factionId);
                     
+                    // 触发阵营同步到客户端
+                    FactionSyncHandler.syncEntityImmediately(mob);
+                    
                     // 应用等级属性
                     if (level > 0) {
                         LevelSystem.setEntityLevel(mob, level);
@@ -264,5 +290,91 @@ public class BetterEvECommands {
             true
         );
         return 1;
+    }
+
+    // === 记分板清除 ===
+    private static int clearAllScoreboards(CommandContext<CommandSourceStack> context) {
+        ServerLevel level = context.getSource().getLevel();
+        String worldId = level.dimension().location().toString();
+        
+        // 1. 清除死亡计数器数据
+        DeathCounter counter = DeathCounter.getInstance(level);
+        counter.resetDeathCounts(worldId, null);
+        
+        // 2. 强制刷新记分板显示（确保归零）
+        forceRefreshScoreboard(level);
+        
+        context.getSource().sendSuccess(() -> 
+            Component.literal("已清除所有阵营的记分板数据并刷新显示"), 
+            true
+        );
+        return 1;
+    }
+
+    private static int clearFactionScoreboard(CommandContext<CommandSourceStack> context) {
+        String factionName = StringArgumentType.getString(context, "factionName");
+        ServerLevel level = context.getSource().getLevel();
+        String worldId = level.dimension().location().toString();
+        
+        // 通过阵营名称查找阵营ID
+        Faction targetFaction = null;
+        for (Faction faction : FactionRegistry.getAllFactions()) {
+            if (faction.getName().equals(factionName)) {
+                targetFaction = faction;
+                break;
+            }
+        }
+        
+        if (targetFaction == null) {
+            context.getSource().sendFailure(Component.literal("未找到阵营: " + factionName));
+            return 0;
+        }
+        
+        // 1. 清除特定阵营的死亡计数器数据
+        DeathCounter counter = DeathCounter.getInstance(level);
+        counter.resetDeathCounts(worldId, targetFaction.getId());
+        
+        // 2. 强制刷新记分板显示（确保归零）
+        forceRefreshScoreboard(level);
+        
+        context.getSource().sendSuccess(() -> 
+            Component.literal("已清除阵营 " + factionName + " 的记分板数据并刷新显示"), 
+            true
+        );
+        return 1;
+    }
+
+    // 强制刷新记分板显示的方法
+    private static void forceRefreshScoreboard(ServerLevel level) {
+        Scoreboard scoreboard = level.getScoreboard();
+        Objective objective = scoreboard.getObjective("bettereve_deaths");
+        
+        if (objective != null) {
+            // 方法1：重新设置记分板显示目标（强制刷新）
+            scoreboard.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, null);
+            scoreboard.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, objective);
+            
+            // 方法2：为所有阵营设置分数为0（双重保障）
+            for (Faction faction : FactionRegistry.getAllFactions()) {
+                Score score = scoreboard.getOrCreatePlayerScore(faction.getName(), objective);
+                score.setScore(0);
+            }
+            
+            // 方法3：为所有在线玩家更新记分板
+            updateScoreboardForAllPlayers(level, scoreboard, objective);
+        }
+    }
+
+    // 为所有在线玩家更新记分板
+    private static void updateScoreboardForAllPlayers(ServerLevel level, Scoreboard scoreboard, Objective objective) {
+        for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+            if (player.level() == level) {
+                // 为每个玩家重新设置分数为0
+                for (Faction faction : FactionRegistry.getAllFactions()) {
+                    Score score = scoreboard.getOrCreatePlayerScore(faction.getName(), objective);
+                    score.setScore(0);
+                }
+            }
+        }
     }
 }

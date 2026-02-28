@@ -35,8 +35,12 @@ public class Bettereve {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+        // 初始化网络系统
+        event.enqueueWork(() -> {
+            com.example.bettereve.network.NetworkManager.init();
+        });
+        
         // 初始化配置
-
         // 检查核心配置是否已加载
     }
 

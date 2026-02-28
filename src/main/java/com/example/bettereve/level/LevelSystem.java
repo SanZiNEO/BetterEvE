@@ -1,9 +1,11 @@
 package com.example.bettereve.level;
 
-import com.example.bettereve.Config;
+import com.example.bettereve.config.BetterEvEConfig;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.HashMap;
@@ -13,11 +15,17 @@ import java.util.UUID;
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class LevelSystem {
     private static final Map<UUID, Integer> entityLevels = new HashMap<>();
+    private static final String NBT_LEVEL_KEY = "BetterEvE_Level";
 
     /**
      * 获取生物等级
      */
     public static int getEntityLevel(LivingEntity entity) {
+        // 首先尝试从 NBT 中获取等级（持久性存储）
+        if (entity.getPersistentData().contains(NBT_LEVEL_KEY)) {
+            return entity.getPersistentData().getInt(NBT_LEVEL_KEY);
+        }
+        // 如果 NBT 中没有，再从内存中获取
         return entityLevels.getOrDefault(entity.getUUID(), 0);
     }
 
@@ -26,10 +34,46 @@ public class LevelSystem {
      */
     public static void setEntityLevel(LivingEntity entity, int level) {
         if (level < 0) level = 0;
-        if (level > Config.levelMax) level = Config.levelMax;
+        int maxLevel = BetterEvEConfig.INSTANCE.level_maxLevel.get();
+        if (level > maxLevel) level = maxLevel;
         
+        // 同时存储到内存和 NBT 中，确保持久性
         entityLevels.put(entity.getUUID(), level);
+        entity.getPersistentData().putInt(NBT_LEVEL_KEY, level);
         applySpawnLevel(entity, level);
+        
+        // 同步到客户端
+        // 由于无法直接访问level字段，我们可以通过是否是客户端线程来判断
+        if (!net.minecraft.client.Minecraft.getInstance().isSameThread()) {
+            com.example.bettereve.network.NetworkManager.syncEntityLevelToAll(entity, level);
+        }
+    }
+
+    /**
+     * 从 NBT 中读取等级信息（实体加载时调用）
+     */
+    public static void loadLevelFromNBT(LivingEntity entity) {
+        if (entity.getPersistentData().contains(NBT_LEVEL_KEY)) {
+            int level = entity.getPersistentData().getInt(NBT_LEVEL_KEY);
+            entityLevels.put(entity.getUUID(), level);
+        }
+    }
+
+    /**
+     * 保存等级信息到 NBT（实体保存时调用）
+     */
+    public static void saveLevelToNBT(LivingEntity entity) {
+        if (entityLevels.containsKey(entity.getUUID())) {
+            entity.getPersistentData().putInt(NBT_LEVEL_KEY, entityLevels.get(entity.getUUID()));
+        }
+    }
+
+    /**
+     * 清理实体等级数据（实体离开世界时调用）
+     */
+    public static void removeEntityLevel(LivingEntity entity) {
+        entityLevels.remove(entity.getUUID());
+        entity.getPersistentData().remove(NBT_LEVEL_KEY);
     }
 
     /**
@@ -40,10 +84,14 @@ public class LevelSystem {
     public static void applySpawnLevel(LivingEntity entity, int level) {
         if (level <= 0) return;
         
-        // 生命值增强：每级+10%，最大200%
+        // 从配置获取加成值
+        double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get();
+        double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get();
+        
+        // 生命值增强：每级+配置百分比，最大200%
         if (entity.getAttribute(Attributes.MAX_HEALTH) != null) {
             double baseHealth = entity.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
-            double healthMultiplier = 1 + (level * Config.levelHealthBonus / 100);
+            double healthMultiplier = 1 + (level * healthBonus / 100);
             double maxMultiplier = 2.0; // 最大200%
             double finalMultiplier = Math.min(healthMultiplier, maxMultiplier);
             double newHealth = baseHealth * finalMultiplier;
@@ -51,10 +99,10 @@ public class LevelSystem {
             entity.setHealth((float)newHealth);
         }
         
-        // 攻击力增强：每级+10%
+        // 攻击力增强：每级+配置百分比
         if (entity.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
             double baseDamage = entity.getAttribute(Attributes.ATTACK_DAMAGE).getBaseValue();
-            double damageMultiplier = 1 + (level * Config.levelAttackBonus / 100);
+            double damageMultiplier = 1 + (level * attackBonus / 100);
             double newDamage = baseDamage * damageMultiplier;
             entity.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(newDamage);
         }
@@ -89,9 +137,13 @@ public class LevelSystem {
         sb.append("等级 | 生命加成 | 攻击加成 | 护甲 | 击退抗性\n");
         sb.append("-----|----------|----------|------|----------\n");
         
+        // 从配置获取加成值
+        double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get();
+        double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get();
+        
         for (int level = 0; level <= 10; level++) {
-            double healthMultiplier = 1 + (level * Config.levelHealthBonus / 100);
-            double attackMultiplier = 1 + (level * Config.levelAttackBonus / 100);
+            double healthMultiplier = 1 + (level * healthBonus / 100);
+            double attackMultiplier = 1 + (level * attackBonus / 100);
             double armor = level * 2.0;
             double knockbackResistance = level * 0.10;
             
