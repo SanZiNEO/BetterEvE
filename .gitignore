@@ -196,3 +196,7 @@ release/
 # LICENSE
 # README.md
 # ============================================
+/.gradle
+/build
+/cankao
+/run
