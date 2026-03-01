@@ -3,3 +3,6 @@
 /cankao
 /run
 /log
+*.log
+/.idea
+*.txt
