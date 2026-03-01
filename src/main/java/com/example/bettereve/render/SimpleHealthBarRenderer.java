@@ -30,7 +30,7 @@ public class SimpleHealthBarRenderer {
     private static final float BAR_WIDTH = 60.0f;      // 血条宽度
     private static final float BAR_HEIGHT = 6.0f;      // 血条高度
     private static final float BAR_Y_OFFSET = 0.2f;    // 实体头顶偏移（格）
-    private static final float LEVEL_X_OFFSET = -15.0f; // 等级文字X偏移
+    private static final float LEVEL_X_OFFSET = -20.0f; // 等级文字X偏移（调整以支持3位数等级）
     
     // 颜色定义（ARGB格式）
     private static final int BACKGROUND_COLOR = 0xB4000000; // 半透明黑色背景
@@ -131,7 +131,14 @@ public class SimpleHealthBarRenderer {
         poseStack.translate(0, (entity.getBbHeight() + BAR_Y_OFFSET) * 2, 0);
         poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
         
-        float scale = 0.02666667f; // Minecraft标准名称标签缩放
+        // 计算实体到相机的距离
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        
+        // 锁定距离为x个方块，让所有血条大小一致
+        double lockedDistance = 5.0;
+        
+        // 计算补偿缩放因子，确保血条大小一致
+        float scale = (float)(0.02666667 * distance / lockedDistance);
         poseStack.scale(-scale, -scale, scale);
     }
     
@@ -305,12 +312,12 @@ public class SimpleHealthBarRenderer {
         String levelText = "Lv." + level;
         
         float textWidth = font.width(levelText);
-        float x = LEVEL_X_OFFSET - textWidth / 2.0f + 2.5f;
-        float y = -BAR_HEIGHT / 7.5f;
+        float x = -BAR_WIDTH / 2.0f + 0.5f; // 左对齐，距离血条左边缘3像素
+        float y = -BAR_HEIGHT / 3.0f;
         
         poseStack.pushPose();
         try {
-            float textScale = 0.5f;
+            float textScale = 0.7f;
             poseStack.scale(textScale, textScale, textScale);
             
             font.drawInBatch(levelText, 
@@ -337,8 +344,8 @@ public class SimpleHealthBarRenderer {
         String healthText = currentHealth + "/" + maxHealth;
         
         float textWidth = font.width(healthText);
-        float x = BAR_WIDTH / 2.0f - 21.5f;
-        float y = -BAR_HEIGHT / 15.0f;
+        float x = BAR_WIDTH / - textWidth -2.0f ; // 右对齐，距离血条右边缘3像素
+        float y = -BAR_HEIGHT / 10.0f;
         
         poseStack.pushPose();
         try {

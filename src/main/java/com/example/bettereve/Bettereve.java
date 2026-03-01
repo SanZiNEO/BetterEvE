@@ -1,8 +1,11 @@
 package com.example.bettereve;
 
 import com.example.bettereve.config.BetterEvEConfig;
+import com.example.bettereve.mixin.AccessorRangedAttribute;
 import com.example.bettereve.network.NetworkManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -38,6 +41,21 @@ public class Bettereve {
     private void commonSetup(final FMLCommonSetupEvent event) {
         // 初始化网络系统
         event.enqueueWork(NetworkManager::init);
+        
+        // 修改生物属性上限
+        event.enqueueWork(() -> {
+            // 修改最大生命值上限
+            if (Attributes.MAX_HEALTH instanceof RangedAttribute) {
+                AccessorRangedAttribute healthAccessor = (AccessorRangedAttribute) (Object) Attributes.MAX_HEALTH;
+                healthAccessor.setMaxValue(20000.0); // 设置为 20000，允许 200 倍
+            }
+            
+            // 修改攻击力上限
+            if (Attributes.ATTACK_DAMAGE instanceof RangedAttribute) {
+                AccessorRangedAttribute attackAccessor = (AccessorRangedAttribute) (Object) Attributes.ATTACK_DAMAGE;
+                attackAccessor.setMaxValue(2000.0); // 设置为 2000，允许 200 倍
+            }
+        });
         
         // 初始化配置
         // 检查核心配置是否已加载

@@ -115,9 +115,6 @@ public class BetterEvEConfigScreen extends Screen {
             entries.add(new ConfigEntry("每级攻击力加成比例（%）",
                     String.valueOf(BetterEvEConfig.INSTANCE.level_attackBonus.get()),
                     "double", this.parent));
-            entries.add(new ConfigEntry("每级移动速度加成比例（%）",
-                    String.valueOf(BetterEvEConfig.INSTANCE.level_speedBonus.get()),
-                    "double", this.parent));
             entries.add(new ConfigEntry("等级上限",
                     String.valueOf(BetterEvEConfig.INSTANCE.level_maxLevel.get()),
                     "int", this.parent));
@@ -236,9 +233,6 @@ public class BetterEvEConfigScreen extends Screen {
                     break;
                 case "每级攻击力加成比例（%）":
                     BetterEvEConfig.INSTANCE.level_attackBonus.set(Double.parseDouble(value));
-                    break;
-                case "每级移动速度加成比例（%）":
-                    BetterEvEConfig.INSTANCE.level_speedBonus.set(Double.parseDouble(value));
                     break;
                 case "等级上限":
                     BetterEvEConfig.INSTANCE.level_maxLevel.set(Integer.parseInt(value));

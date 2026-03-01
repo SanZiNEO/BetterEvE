@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "bettereve.refmap.json",
   "mixins": [
+    "AccessorRangedAttribute"
   ],
   "client": [
     "LevelRendererMixin",

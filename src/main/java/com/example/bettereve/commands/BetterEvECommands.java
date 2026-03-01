@@ -10,6 +10,7 @@ import com.example.bettereve.level.LevelSystem;
 import com.example.bettereve.network.FactionSyncHandler;
 import com.example.bettereve.scoreboard.ScoreboardManager;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -17,8 +18,10 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.CompoundTagArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -78,12 +81,15 @@ public class BetterEvECommands {
                     .suggests(ENTITY_TYPE_SUGGESTIONS)
                     .then(Commands.argument("factionId", StringArgumentType.word())
                         .suggests(FACTION_ID_SUGGESTIONS)
-                        .then(Commands.argument("level", IntegerArgumentType.integer(0, 10))
-                            .then(Commands.argument("x", IntegerArgumentType.integer())
-                                .then(Commands.argument("y", IntegerArgumentType.integer())
-                                    .then(Commands.argument("z", IntegerArgumentType.integer())
+                        .then(Commands.argument("level", IntegerArgumentType.integer(0, 500))
+                            .then(Commands.argument("x", DoubleArgumentType.doubleArg())
+                                .then(Commands.argument("y", DoubleArgumentType.doubleArg())
+                                    .then(Commands.argument("z", DoubleArgumentType.doubleArg())
                                         .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
                                             .executes(BetterEvECommands::executeSpawnEntitiesAtPosition)
+                                            .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                                .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithNBT)
+                                            )
                                         )
                                     )
                                 )
@@ -125,7 +131,6 @@ public class BetterEvECommands {
         );
 
     private static final SuggestionProvider<CommandSourceStack> COLOR_SUGGESTIONS = (context, builder) -> {
-        // 为常见的颜色提供建议（16进制格式）
         String[] commonColors = {
             "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF", "FFFFFF", "000000",
             "FF8800", "88FF00", "00FF88", "0088FF", "8800FF", "FF0088", "888888", "CCCCCC"
@@ -138,7 +143,6 @@ public class BetterEvECommands {
         return builder.buildFuture();
     };
 
-    // === 阵营管理 ===
     private static int executeCreateFaction(CommandContext<CommandSourceStack> context) {
         String id = StringArgumentType.getString(context, "id");
         String name = StringArgumentType.getString(context, "name");
@@ -168,7 +172,6 @@ public class BetterEvECommands {
         return 1;
     }
 
-    // === 基地管理 ===
     private static int executeCreateBase(CommandContext<CommandSourceStack> context) {
         String factionId = StringArgumentType.getString(context, "factionId");
         int x = IntegerArgumentType.getInteger(context, "x");
@@ -196,62 +199,26 @@ public class BetterEvECommands {
         return 1;
     }
 
-    // === 生物生成 ===
-    private static int executeSpawnEntities(CommandContext<CommandSourceStack> context) {
-        ResourceLocation entityRL = ResourceLocationArgument.getId(context, "entityType");
-        String factionId = StringArgumentType.getString(context, "factionId");
-        int count = IntegerArgumentType.getInteger(context, "count");
-        
-        Player player = context.getSource().getPlayer();
-        if (player == null) {
-            context.getSource().sendFailure(Component.literal("该命令必须由玩家执行"));
-            return 0;
-        }
-        
-        Level level = player.level();
-        BlockPos spawnPos = player.blockPosition().offset(0, 1, 0);
-        
-        // 验证实体ID是否合法
-        if (!ForgeRegistries.ENTITY_TYPES.containsKey(entityRL)) {
-            context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL));
-            return 0;
-        }
-        
-        EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(entityRL);
-        
-        for (int i = 0; i < count; i++) {
-            try {
-                if (entityType.create(level) instanceof Mob mob) {
-                    mob.setPos(spawnPos.getX() + i, spawnPos.getY(), spawnPos.getZ());
-                    FactionHelper.setEntityFactionId(mob, factionId);
-                    level.addFreshEntity(mob);
-                } else {
-                    context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL + " (必须是可生成的生物)"));
-                    return 0;
-                }
-            } catch (Exception e) {
-                context.getSource().sendFailure(Component.literal("生成生物失败: " + e.getMessage()));
-                return 0;
-            }
-        }
-        
-        context.getSource().sendSuccess(() -> Component.literal("成功生成 " + count + " 个 " + entityRL + " (阵营: " + factionId + ")"), true);
-        return 1;
+    private static int executeSpawnEntitiesAtPosition(CommandContext<CommandSourceStack> context) {
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, null);
     }
 
-    private static int executeSpawnEntitiesAtPosition(CommandContext<CommandSourceStack> context) {
+    private static int executeSpawnEntitiesAtPositionWithNBT(CommandContext<CommandSourceStack> context) {
+        CompoundTag nbt = CompoundTagArgument.getCompoundTag(context, "nbt");
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, nbt);
+    }
+
+    private static int executeSpawnEntitiesAtPositionWithNBTInternal(CommandContext<CommandSourceStack> context, CompoundTag nbt) {
         ResourceLocation entityRL = ResourceLocationArgument.getId(context, "entityType");
         String factionId = StringArgumentType.getString(context, "factionId");
         int level = IntegerArgumentType.getInteger(context, "level");
-        int x = IntegerArgumentType.getInteger(context, "x");
-        int y = IntegerArgumentType.getInteger(context, "y");
-        int z = IntegerArgumentType.getInteger(context, "z");
+        double x = DoubleArgumentType.getDouble(context, "x");
+        double y = DoubleArgumentType.getDouble(context, "y");
+        double z = DoubleArgumentType.getDouble(context, "z");
         int count = IntegerArgumentType.getInteger(context, "count");
         
         ServerLevel serverLevel = context.getSource().getLevel();
-        BlockPos spawnPos = new BlockPos(x, y, z);
         
-        // 验证实体ID是否合法
         if (!ForgeRegistries.ENTITY_TYPES.containsKey(entityRL)) {
             context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL));
             return 0;
@@ -262,13 +229,15 @@ public class BetterEvECommands {
         for (int i = 0; i < count; i++) {
             try {
                 if (entityType.create(serverLevel) instanceof Mob mob) {
-                    mob.setPos(spawnPos.getX() + i, spawnPos.getY(), spawnPos.getZ());
+                    mob.setPos(x + i, y, z);
                     FactionHelper.setEntityFactionId(mob, factionId);
                     
-                    // 触发阵营同步到客户端
                     FactionSyncHandler.syncEntityImmediately(mob);
                     
-                    // 应用等级属性
+                    if (nbt != null) {
+                        mob.load(nbt);
+                    }
+                    
                     if (level > 0) {
                         LevelSystem.setEntityLevel(mob, level);
                     }
@@ -284,24 +253,22 @@ public class BetterEvECommands {
             }
         }
         
+        String posString = String.format("%.1f, %.1f, %.1f", x, y, z);
         context.getSource().sendSuccess(() -> 
-            Component.literal("成功在 (" + x + ", " + y + ", " + z + ") 生成 " + 
+            Component.literal("成功在 (" + posString + ") 生成 " + 
                              count + " 个 " + entityRL + " (阵营: " + factionId + ", 等级: " + level + ")"), 
             true
         );
         return 1;
     }
 
-    // === 记分板清除 ===
     private static int clearAllScoreboards(CommandContext<CommandSourceStack> context) {
         ServerLevel level = context.getSource().getLevel();
         String worldId = level.dimension().location().toString();
         
-        // 1. 清除死亡计数器数据
         DeathCounter counter = DeathCounter.getInstance(level);
         counter.resetDeathCounts(worldId, null);
         
-        // 2. 强制刷新记分板显示（确保归零）
         forceRefreshScoreboard(level);
         
         context.getSource().sendSuccess(() -> 
@@ -316,7 +283,6 @@ public class BetterEvECommands {
         ServerLevel level = context.getSource().getLevel();
         String worldId = level.dimension().location().toString();
         
-        // 通过阵营名称查找阵营ID
         Faction targetFaction = null;
         for (Faction faction : FactionRegistry.getAllFactions()) {
             if (faction.getName().equals(factionName)) {
@@ -330,11 +296,9 @@ public class BetterEvECommands {
             return 0;
         }
         
-        // 1. 清除特定阵营的死亡计数器数据
         DeathCounter counter = DeathCounter.getInstance(level);
         counter.resetDeathCounts(worldId, targetFaction.getId());
         
-        // 2. 强制刷新记分板显示（确保归零）
         forceRefreshScoreboard(level);
         
         context.getSource().sendSuccess(() -> 
@@ -344,32 +308,26 @@ public class BetterEvECommands {
         return 1;
     }
 
-    // 强制刷新记分板显示的方法
     private static void forceRefreshScoreboard(ServerLevel level) {
         Scoreboard scoreboard = level.getScoreboard();
         Objective objective = scoreboard.getObjective("bettereve_deaths");
         
         if (objective != null) {
-            // 方法1：重新设置记分板显示目标（强制刷新）
             scoreboard.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, null);
             scoreboard.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, objective);
             
-            // 方法2：为所有阵营设置分数为0（双重保障）
             for (Faction faction : FactionRegistry.getAllFactions()) {
                 Score score = scoreboard.getOrCreatePlayerScore(faction.getName(), objective);
                 score.setScore(0);
             }
             
-            // 方法3：为所有在线玩家更新记分板
             updateScoreboardForAllPlayers(level, scoreboard, objective);
         }
     }
 
-    // 为所有在线玩家更新记分板
     private static void updateScoreboardForAllPlayers(ServerLevel level, Scoreboard scoreboard, Objective objective) {
         for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
             if (player.level() == level) {
-                // 为每个玩家重新设置分数为0
                 for (Faction faction : FactionRegistry.getAllFactions()) {
                     Score score = scoreboard.getOrCreatePlayerScore(faction.getName(), objective);
                     score.setScore(0);

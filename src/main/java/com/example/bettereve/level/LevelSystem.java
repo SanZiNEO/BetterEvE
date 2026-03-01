@@ -43,7 +43,6 @@ public class LevelSystem {
         applySpawnLevel(entity, level);
         
         // 同步到客户端
-        // 由于无法直接访问level字段，我们可以通过是否是客户端线程来判断
         if (!net.minecraft.client.Minecraft.getInstance().isSameThread()) {
             com.example.bettereve.network.NetworkManager.syncEntityLevelToAll(entity, level);
         }
@@ -77,88 +76,142 @@ public class LevelSystem {
     }
 
     /**
-     * 应用召唤等级属性
-     * 每级增长10%生命值和攻击力，不增加移动速度
-     * 护甲值每级+2，击退抗性每级+10%
+     * 应用召唤等级属性（非线性增长，支持NBT属性突破上限）
      */
     public static void applySpawnLevel(LivingEntity entity, int level) {
         if (level <= 0) return;
-        
-        // 从配置获取加成值
-        double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get();
-        double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get();
-        
-        // 生命值增强：每级+配置百分比，最大200%
+
+        // 检查实体是否有NBT属性（用于判断是否可以突破上限）
+        boolean hasNbtAttributes = hasCustomNbtAttributes(entity);
+
+        // 获取配置的属性加成百分比
+        double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get() / 100;
+        double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get() / 100;
+        int maxLevel = BetterEvEConfig.INSTANCE.level_maxLevel.get();
+
+        // 生命值
         if (entity.getAttribute(Attributes.MAX_HEALTH) != null) {
+            double healthMultiplier = 1 + healthBonus * Math.pow(level, 1.4);
+            double maxHealth = hasNbtAttributes ? Double.MAX_VALUE : 200.0; // NBT属性突破上限
+            double finalHealth = Math.min(healthMultiplier, maxHealth);
             double baseHealth = entity.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
-            double healthMultiplier = 1 + (level * healthBonus / 100);
-            double maxMultiplier = 2.0; // 最大200%
-            double finalMultiplier = Math.min(healthMultiplier, maxMultiplier);
-            double newHealth = baseHealth * finalMultiplier;
+            double newHealth = baseHealth * finalHealth;
             entity.getAttribute(Attributes.MAX_HEALTH).setBaseValue(newHealth);
-            entity.setHealth((float)newHealth);
+            
+            if (entity.getHealth() == baseHealth) {
+                entity.setHealth((float)newHealth);
+            } else {
+                if (entity.getHealth() > newHealth) {
+                    entity.setHealth((float)newHealth);
+                }
+            }
         }
-        
-        // 攻击力增强：每级+配置百分比
+
+        // 攻击力
         if (entity.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
+            double attackMultiplier = 1 + attackBonus * Math.pow(level, 1.42);
+            double maxAttack = hasNbtAttributes ? Double.MAX_VALUE : 200.0; // NBT属性突破上限
+            double finalAttack = Math.min(attackMultiplier, maxAttack);
             double baseDamage = entity.getAttribute(Attributes.ATTACK_DAMAGE).getBaseValue();
-            double damageMultiplier = 1 + (level * attackBonus / 100);
-            double newDamage = baseDamage * damageMultiplier;
+            double newDamage = baseDamage * finalAttack;
             entity.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(newDamage);
         }
-        
-        // 护甲值增强：每级+2，最大30
+
+        // 护甲值
         if (entity.getAttribute(Attributes.ARMOR) != null) {
+            double armorMultiplier = 1 + 0.07 * Math.pow(level, 0.9);
+            double maxArmor = hasNbtAttributes ? Double.MAX_VALUE : 2.0; // NBT属性突破上限
+            double finalArmor = Math.min(armorMultiplier, maxArmor);
             double baseArmor = entity.getAttribute(Attributes.ARMOR).getBaseValue();
-            double armorBonus = level * 2.0; // 每级+2护甲
-            double maxArmor = 30.0; // 最大30护甲
-            double newArmor = Math.min(baseArmor + armorBonus, maxArmor);
+            double newArmor = baseArmor * finalArmor;
             entity.getAttribute(Attributes.ARMOR).setBaseValue(newArmor);
         }
-        
-        // 击退抗性增强：每级+10%，最大100%
+
+        // 击退抗性
         if (entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE) != null) {
-            double baseKnockback = entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE).getBaseValue();
-            double knockbackBonus = level * 0.10; // 每级+10%
-            double maxKnockback = 1.0; // 最大100%
-            double newKnockback = Math.min(baseKnockback + knockbackBonus, maxKnockback);
-            entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(newKnockback);
+            double knockbackResistance = 0.012 * Math.pow(level, 0.95);
+            double maxKnockback = hasNbtAttributes ? Double.MAX_VALUE : 1.0; // NBT属性突破上限
+            double finalKnockback = Math.min(knockbackResistance, maxKnockback);
+            entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(finalKnockback);
         }
-        
-        // 移除速度增强（解决瞬移问题）
-        // 不修改MOVEMENT_SPEED属性
     }
 
     /**
-     * 获取等级数值表（用于显示）
+     * 检查实体是否有自定义NBT属性
+     */
+    private static boolean hasCustomNbtAttributes(LivingEntity entity) {
+        // 对于通过 BetterEvE 命令召唤的实体，默认允许突破属性上限
+        // 因为我们需要支持高等级生物的超高属性
+        return true;
+    }
+
+    /**
+     * 获取等级数值表（用于显示，根据配置动态生成）
      */
     public static String getLevelTable() {
-        StringBuilder sb = new StringBuilder("等级属性表 (0-10级):\n");
-        sb.append("等级 | 生命加成 | 攻击加成 | 护甲 | 击退抗性\n");
-        sb.append("-----|----------|----------|------|----------\n");
+        int maxLevel = BetterEvEConfig.INSTANCE.level_maxLevel.get();
+        StringBuilder sb = new StringBuilder(String.format("等级属性表 (0-%d级):\n", maxLevel));
+        sb.append("等级 | 生命值 | 攻击力 | 护甲 | 击退抗性\n");
+        sb.append("-----|--------|--------|------|----------\n");
         
-        // 从配置获取加成值
-        double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get();
-        double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get();
+        // 计算显示的等级间隔
+        int step = 1;
+        if (maxLevel > 100) step = maxLevel / 10;
+        else if (maxLevel > 50) step = 10;
+        else if (maxLevel > 20) step = 5;
         
-        for (int level = 0; level <= 10; level++) {
-            double healthMultiplier = 1 + (level * healthBonus / 100);
-            double attackMultiplier = 1 + (level * attackBonus / 100);
-            double armor = level * 2.0;
-            double knockbackResistance = level * 0.10;
+        // 添加0级到最大级的属性表
+        for (int level = 0; level <= maxLevel; level += step) {
+            // 计算属性加成
+            double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get() / 100;
+            double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get() / 100;
             
-            // 应用上限
-            healthMultiplier = Math.min(healthMultiplier, 2.0);
-            armor = Math.min(armor, 30.0);
-            knockbackResistance = Math.min(knockbackResistance, 1.0);
+            double healthMultiplier = 1 + healthBonus * Math.pow(level, 1.4);
+            double finalHealth = Math.min(healthMultiplier, 200.0);
             
-            sb.append(String.format("%2d  | %5.0f%%   | %5.0f%%   | %4.0f | %5.0f%%\n", 
+            double attackMultiplier = 1 + attackBonus * Math.pow(level, 1.42);
+            double finalAttack = Math.min(attackMultiplier, 200.0);
+            
+            double armorMultiplier = 1 + 0.07 * Math.pow(level, 0.9);
+            double finalArmor = Math.min(armorMultiplier, 2.0);
+            
+            double knockbackResistance = 0.012 * Math.pow(level, 0.95);
+            double finalKnockback = Math.min(knockbackResistance, 1.0);
+            
+            sb.append(String.format("%3d  | %4.0f倍 | %4.0f倍 | %3.1f倍 | %3.0f%%\n", 
                 level, 
-                (healthMultiplier - 1) * 100,
-                (attackMultiplier - 1) * 100,
-                armor,
-                knockbackResistance * 100));
+                finalHealth,
+                finalAttack,
+                finalArmor,
+                finalKnockback * 100));
         }
+        
+        // 添加最大级的属性
+        if (maxLevel % step != 0) {
+            double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get() / 100;
+            double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get() / 100;
+            
+            double healthMultiplier = 1 + healthBonus * Math.pow(maxLevel, 1.4);
+            double finalHealth = Math.min(healthMultiplier, 200.0);
+            
+            double attackMultiplier = 1 + attackBonus * Math.pow(maxLevel, 1.42);
+            double finalAttack = Math.min(attackMultiplier, 200.0);
+            
+            double armorMultiplier = 1 + 0.07 * Math.pow(maxLevel, 0.9);
+            double finalArmor = Math.min(armorMultiplier, 2.0);
+            
+            double knockbackResistance = 0.012 * Math.pow(maxLevel, 0.95);
+            double finalKnockback = Math.min(knockbackResistance, 1.0);
+            
+            sb.append(String.format("%3d  | %4.0f倍 | %4.0f倍 | %3.1f倍 | %3.0f%%\n", 
+                maxLevel, 
+                finalHealth,
+                finalAttack,
+                finalArmor,
+                finalKnockback * 100));
+        }
+        
+        sb.append("\n注意：使用NBT属性的实体可以突破属性上限！");
         
         return sb.toString();
     }

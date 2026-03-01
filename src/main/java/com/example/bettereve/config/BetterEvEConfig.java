@@ -40,7 +40,6 @@ public class BetterEvEConfig {
     // ===================== 5. 等级系统配置 =====================
     public final ForgeConfigSpec.DoubleValue level_healthBonus;
     public final ForgeConfigSpec.DoubleValue level_attackBonus;
-    public final ForgeConfigSpec.DoubleValue level_speedBonus;
     public final ForgeConfigSpec.IntValue level_maxLevel;
 
     // ===================== 6. 全局开关配置 =====================
@@ -130,12 +129,9 @@ public class BetterEvEConfig {
         level_attackBonus = builder
                 .comment("每级攻击力加成比例（%）默认10%")
                 .defineInRange("attackBonus", 10.0D, 0.0D, 100.0D);
-        level_speedBonus = builder
-                .comment("每级移动速度加成比例（%）默认0%（已禁用）")
-                .defineInRange("speedBonus", 0.0D, 0.0D, 100.0D);
         level_maxLevel = builder
                 .comment("等级上限")
-                .defineInRange("maxLevel", 10, 1, 100); // 1~100级
+                .defineInRange("maxLevel", 500, 1, 1000); // 1~1000级
         builder.pop();
 
         // ---------- 6. 全局开关配置 ----------

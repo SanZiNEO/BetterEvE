@@ -17,7 +17,6 @@ public class Config {
     public static int baseClearRadius;
     public static double levelHealthBonus;
     public static double levelAttackBonus;
-    public static double levelSpeedBonus;
     public static int levelMax;
 
     @SubscribeEvent
@@ -35,7 +34,6 @@ public class Config {
             baseClearRadius = BetterEvEConfig.INSTANCE.base_clearRadius.get();
             levelHealthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get();
             levelAttackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get();
-            levelSpeedBonus = BetterEvEConfig.INSTANCE.level_speedBonus.get();
             levelMax = BetterEvEConfig.INSTANCE.level_maxLevel.get();
             
             // 通知 TargetingHandler 重新加载配置
