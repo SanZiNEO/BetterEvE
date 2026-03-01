@@ -1,6 +1,7 @@
 package com.example.bettereve;
 
 import com.example.bettereve.config.BetterEvEConfig;
+import com.example.bettereve.network.NetworkManager;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -36,9 +37,7 @@ public class Bettereve {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         // 初始化网络系统
-        event.enqueueWork(() -> {
-            com.example.bettereve.network.NetworkManager.init();
-        });
+        event.enqueueWork(NetworkManager::init);
         
         // 初始化配置
         // 检查核心配置是否已加载
