@@ -69,7 +69,7 @@ public class DeathCounter extends SavedData {
         // 获取世界ID、阵营ID和实体类型
         String worldId = level.dimension().location().toString();
         String factionId = FactionHelper.getEntityFactionId(entity);
-        String entityType = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecraft", entity.getType().getDescriptionId().split("\\.")[1]).toString();
+        String entityType = new net.minecraft.resources.ResourceLocation("minecraft", entity.getType().getDescriptionId().split("\\.")[1]).toString();
 
         // 统计死亡数
         counter.incrementDeathCount(worldId, factionId, entityType);

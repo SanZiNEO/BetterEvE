@@ -10,7 +10,7 @@ import static com.mojang.blaze3d.vertex.DefaultVertexFormat.*;
 
 public class HealthBarRenderType extends RenderStateShard {
     
-    public static final ResourceLocation HEALTH_BAR_TEXTURE = ResourceLocation.fromNamespaceAndPath("bettereve", "textures/ui/health_bar_texture.png");
+    public static final ResourceLocation HEALTH_BAR_TEXTURE = new ResourceLocation("bettereve", "textures/ui/health_bar_texture.png");
     
     // 背景渲染类型（半透明黑色背景）
     public static final RenderType BACKGROUND_TYPE = getBackgroundType();
