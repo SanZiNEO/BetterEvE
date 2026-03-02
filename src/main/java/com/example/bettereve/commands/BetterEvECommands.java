@@ -112,32 +112,51 @@ public class BetterEvECommands {
 
     private static final SuggestionProvider<CommandSourceStack> FACTION_ID_SUGGESTIONS = (context, builder) -> {
         for (Faction faction : FactionRegistry.getAllFactions()) {
-            builder.suggest(faction.getId());
+            builder.suggest(faction.getId(), Component.literal(faction.getName()));
         }
         return builder.buildFuture();
     };
 
     private static final SuggestionProvider<CommandSourceStack> FACTION_NAME_SUGGESTIONS = (context, builder) -> {
         for (Faction faction : FactionRegistry.getAllFactions()) {
-            builder.suggest(faction.getName());
+            builder.suggest(faction.getName(), Component.literal("ID: " + faction.getId()));
         }
         return builder.buildFuture();
     };
 
     private static final SuggestionProvider<CommandSourceStack> ENTITY_TYPE_SUGGESTIONS = 
-        (context, builder) -> SharedSuggestionProvider.suggestResource(
-            ForgeRegistries.ENTITY_TYPES.getKeys(), 
-            builder
-        );
+        (context, builder) -> {
+            for (ResourceLocation entityRL : ForgeRegistries.ENTITY_TYPES.getKeys()) {
+                EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(entityRL);
+                if (entityType != null) {
+                    builder.suggest(entityRL.toString(), Component.translatable(entityType.getDescriptionId()));
+                }
+            }
+            return builder.buildFuture();
+        };
 
     private static final SuggestionProvider<CommandSourceStack> COLOR_SUGGESTIONS = (context, builder) -> {
-        String[] commonColors = {
-            "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF", "FFFFFF", "000000",
-            "FF8800", "88FF00", "00FF88", "0088FF", "8800FF", "FF0088", "888888", "CCCCCC"
-        };
+        // 创建颜色名称映射，提供更好的用户体验
+        java.util.Map<String, String> colorNames = new java.util.HashMap<>();
+        colorNames.put("FF0000", "红色");
+        colorNames.put("00FF00", "绿色");
+        colorNames.put("0000FF", "蓝色");
+        colorNames.put("FFFF00", "黄色");
+        colorNames.put("FF00FF", "品红色");
+        colorNames.put("00FFFF", "青色");
+        colorNames.put("FFFFFF", "白色");
+        colorNames.put("000000", "黑色");
+        colorNames.put("FF8800", "橙色");
+        colorNames.put("88FF00", "黄绿色");
+        colorNames.put("00FF88", "青绿色");
+        colorNames.put("0088FF", "浅蓝色");
+        colorNames.put("8800FF", "紫色");
+        colorNames.put("FF0088", "粉红色");
+        colorNames.put("888888", "灰色");
+        colorNames.put("CCCCCC", "浅灰色");
         
-        for (String color : commonColors) {
-            builder.suggest(color);
+        for (java.util.Map.Entry<String, String> entry : colorNames.entrySet()) {
+            builder.suggest(entry.getKey(), Component.literal(entry.getValue()));
         }
         
         return builder.buildFuture();
