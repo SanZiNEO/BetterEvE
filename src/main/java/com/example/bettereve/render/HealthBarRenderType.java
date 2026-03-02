@@ -31,7 +31,7 @@ public class HealthBarRenderType extends RenderStateShard {
                 .setTextureState(new TextureStateShard(HEALTH_BAR_TEXTURE, false, false))
                 .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                 .setCullState(NO_CULL)
-                .setDepthTestState(NO_DEPTH_TEST) // 取消深度测试
+                .setDepthTestState(NO_DEPTH_TEST) // 禁用深度测试
                 .setLightmapState(LIGHTMAP)
                 .createCompositeState(false);
                 
@@ -53,7 +53,7 @@ public class HealthBarRenderType extends RenderStateShard {
                 .setTextureState(new TextureStateShard(HEALTH_BAR_TEXTURE, false, false))
                 .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                 .setCullState(NO_CULL)
-                .setDepthTestState(NO_DEPTH_TEST) // 取消深度测试
+                .setDepthTestState(NO_DEPTH_TEST) // 禁用深度测试
                 .setLightmapState(LIGHTMAP)
                 .createCompositeState(false);
                 

@@ -22,15 +22,25 @@ import java.util.UUID;
 /**
  * SimpleHealthBarRenderer - 简单血条渲染器
  * 实现包含等级、血量文字和血条的完整血条系统
- * 设计原则：简洁高效、单一入口、无冗余
+ * 设计原则：预渲染与正式渲染严格分离，预渲染阶段纯加减法计算
  */
 public class SimpleHealthBarRenderer {
     
-    // 血条尺寸参数（像素）
-    private static final float BAR_WIDTH = 60.0f;      // 血条宽度
-    private static final float BAR_HEIGHT = 6.0f;      // 血条高度
-    private static final float BAR_Y_OFFSET = 0.2f;    // 实体头顶偏移（格）
-    private static final float LEVEL_X_OFFSET = -20.0f; // 等级文字X偏移（调整以支持3位数等级）
+    // 血条核心尺寸参数（配置阶段计算，写死中心点为 (0,0)）
+    private static final float BAR_TOTAL_WIDTH = 60.0f;    // 血条总宽度（可配置）
+    private static final float BAR_TOTAL_HEIGHT = 6.0f;    // 血条总高度（可配置）
+    
+    // 配置阶段计算的中间常量（仅一次计算，写死为固定值）
+    private static final float HALF_WIDTH = BAR_TOTAL_WIDTH / 2.0f;  // 半宽（固定值）
+    private static final float HALF_HEIGHT = BAR_TOTAL_HEIGHT / 2.0f; // 半高（固定值）
+    
+    // 基于中心点 (0,0) 的边缘坐标（纯加减法计算）
+    private static final float PRE_BAR_LEFT = 0 - HALF_WIDTH;     // 血条左边缘X（0 - 半宽）
+    private static final float PRE_BAR_RIGHT = 0 + HALF_WIDTH;    // 血条右边缘X（0 + 半宽）
+    private static final float PRE_BAR_BOTTOM = 0 - HALF_HEIGHT;  // 血条下边缘Y（0 - 半高）
+    private static final float PRE_BAR_TOP = 0 + HALF_HEIGHT;     // 血条上边缘Y（0 + 半高）
+    
+    private static final float BAR_Y_OFFSET = 0.2f;       // 实体头顶偏移（格）
     
     // 颜色定义（ARGB格式）
     private static final int BACKGROUND_COLOR = 0xB4000000; // 半透明黑色背景
@@ -70,7 +80,7 @@ public class SimpleHealthBarRenderer {
     }
     
     /**
-     * 渲染血条
+     * 渲染血条 - 主入口方法
      * @param entity 要渲染的实体
      * @param poseStack 姿势堆栈
      * @param bufferSource 缓冲区源
@@ -99,6 +109,7 @@ public class SimpleHealthBarRenderer {
         poseStack.pushPose();
         
         try {
+            // 正式渲染阶段：应用实体变换和整体缩放
             applyEntityTransform(entity, poseStack, partialTick, dx, dy, dz);
             
             float healthPercent = getHealthPercent(livingEntity);
@@ -106,6 +117,7 @@ public class SimpleHealthBarRenderer {
             int level = getEntityLevel(entity);
             boolean shouldShowLevel = shouldShowLevel(level);
             
+            // 预渲染阶段：纯加减法计算血条和文字
             renderBarBackground(poseStack, bufferSource);
             renderHealthFill(poseStack, bufferSource, healthPercent, factionColor);
             
@@ -123,7 +135,8 @@ public class SimpleHealthBarRenderer {
     }
     
     /**
-     * 应用实体变换，将血条定位到实体头顶
+     * 应用实体变换，将血条定位到实体头顶 - 正式渲染阶段
+     * 仅处理整体缩放和位置平移，不修改预渲染的顶点/文字坐标
      */
     private static void applyEntityTransform(Entity entity, PoseStack poseStack, float partialTick,
                                              double dx, double dy, double dz) {
@@ -137,7 +150,7 @@ public class SimpleHealthBarRenderer {
         // 锁定距离为x个方块，让所有血条大小一致
         double lockedDistance = 5.0;
         
-        // 计算补偿缩放因子，确保血条大小一致
+        // 计算补偿缩放因子，确保血条大小一致（仅作用于整体）
         float scale = (float)(0.02666667 * distance / lockedDistance);
         poseStack.scale(-scale, -scale, scale);
     }
@@ -217,14 +230,11 @@ public class SimpleHealthBarRenderer {
     }
     
     /**
-     * 渲染血条背景（半透明黑色）
+     * 渲染血条背景（半透明黑色）- 预渲染阶段，纯加减法计算
      */
     private static void renderBarBackground(PoseStack poseStack, MultiBufferSource bufferSource) {
         VertexConsumer vertexConsumer = bufferSource.getBuffer(HealthBarRenderType.BACKGROUND_TYPE);
         Matrix4f matrix = poseStack.last().pose();
-        
-        float halfWidth = BAR_WIDTH / 2.0f;
-        float halfHeight = BAR_HEIGHT / 2.0f;
         
         int r = (BACKGROUND_COLOR >> 16) & 0xFF;
         int g = (BACKGROUND_COLOR >> 8) & 0xFF;
@@ -233,22 +243,22 @@ public class SimpleHealthBarRenderer {
         
         float backgroundZ = 0.1f;
         
-        vertexConsumer.vertex(matrix, -halfWidth, -halfHeight, backgroundZ)
+        vertexConsumer.vertex(matrix, PRE_BAR_LEFT, PRE_BAR_BOTTOM, backgroundZ)
             .color(r, g, b, a)
             .uv(0, 0)
             .uv2(0xF000F0)
             .endVertex();
-        vertexConsumer.vertex(matrix, halfWidth, -halfHeight, backgroundZ)
+        vertexConsumer.vertex(matrix, PRE_BAR_RIGHT, PRE_BAR_BOTTOM, backgroundZ)
             .color(r, g, b, a)
             .uv(1, 0)
             .uv2(0xF000F0)
             .endVertex();
-        vertexConsumer.vertex(matrix, halfWidth, halfHeight, backgroundZ)
+        vertexConsumer.vertex(matrix, PRE_BAR_RIGHT, PRE_BAR_TOP, backgroundZ)
             .color(r, g, b, a)
             .uv(1, 1)
             .uv2(0xF000F0)
             .endVertex();
-        vertexConsumer.vertex(matrix, -halfWidth, halfHeight, backgroundZ)
+        vertexConsumer.vertex(matrix, PRE_BAR_LEFT, PRE_BAR_TOP, backgroundZ)
             .color(r, g, b, a)
             .uv(0, 1)
             .uv2(0xF000F0)
@@ -256,7 +266,7 @@ public class SimpleHealthBarRenderer {
     }
     
     /**
-     * 渲染血量填充（阵营颜色）
+     * 渲染血量填充（阵营颜色）- 预渲染阶段，纯加减法计算
      */
     private static void renderHealthFill(PoseStack poseStack, MultiBufferSource bufferSource, 
                                          float healthPercent, int factionColor) {
@@ -267,11 +277,8 @@ public class SimpleHealthBarRenderer {
         VertexConsumer vertexConsumer = bufferSource.getBuffer(HealthBarRenderType.FILL_TYPE);
         Matrix4f matrix = poseStack.last().pose();
         
-        float halfBarWidth = BAR_WIDTH / 2.0f;
-        float halfHeight = BAR_HEIGHT / 2.0f;
-        
-        float leftX = -halfBarWidth;
-        float rightX = -halfBarWidth + (BAR_WIDTH * healthPercent);
+        // 纯加减法计算填充右边缘（基于总宽度）
+        float fillRight = PRE_BAR_LEFT + (BAR_TOTAL_WIDTH * healthPercent);
         
         int r = (factionColor >> 16) & 0xFF;
         int g = (factionColor >> 8) & 0xFF;
@@ -280,22 +287,22 @@ public class SimpleHealthBarRenderer {
         
         float fillZ = -0.1f;
         
-        vertexConsumer.vertex(matrix, leftX, -halfHeight, fillZ)
+        vertexConsumer.vertex(matrix, PRE_BAR_LEFT, PRE_BAR_BOTTOM, fillZ)
             .color(r, g, b, a)
             .uv(0, 0)
             .uv2(0xF000F0)
             .endVertex();
-        vertexConsumer.vertex(matrix, rightX, -halfHeight, fillZ)
+        vertexConsumer.vertex(matrix, fillRight, PRE_BAR_BOTTOM, fillZ)
             .color(r, g, b, a)
             .uv(1, 0)
             .uv2(0xF000F0)
             .endVertex();
-        vertexConsumer.vertex(matrix, rightX, halfHeight, fillZ)
+        vertexConsumer.vertex(matrix, fillRight, PRE_BAR_TOP, fillZ)
             .color(r, g, b, a)
             .uv(1, 1)
             .uv2(0xF000F0)
             .endVertex();
-        vertexConsumer.vertex(matrix, leftX, halfHeight, fillZ)
+        vertexConsumer.vertex(matrix, PRE_BAR_LEFT, PRE_BAR_TOP, fillZ)
             .color(r, g, b, a)
             .uv(0, 1)
             .uv2(0xF000F0)
@@ -303,7 +310,7 @@ public class SimpleHealthBarRenderer {
     }
 
     /**
-     * 渲染等级文字
+     * 渲染等级文字 - 预渲染阶段，纯加减法计算文字定位
      */
     private static void renderLevelText(PoseStack poseStack, MultiBufferSource bufferSource, int level) {
         Minecraft mc = Minecraft.getInstance();
@@ -311,20 +318,22 @@ public class SimpleHealthBarRenderer {
         
         String levelText = "Lv." + level;
         
-        float textWidth = font.width(levelText);
-        float x = -BAR_WIDTH / 2.0f + 0.5f; // 左对齐，距离血条左边缘3像素
-        float y = -BAR_HEIGHT / 3.0f;
+        float textScale = 0.7f;
+        float levelTextRawWidth = font.width(levelText);
+        float levelTextScaledWidth = levelTextRawWidth * textScale;
+        
+        float x = 0 - HALF_WIDTH ; // 注释掉位置，查看定位点- (levelTextScaledWidth / 2.0f);
+        float y = PRE_BAR_BOTTOM;// 注释掉位置，查看定位点PRE_BAR_BOTTOM;
         
         poseStack.pushPose();
         try {
-            float textScale = 0.7f;
             poseStack.scale(textScale, textScale, textScale);
             
             font.drawInBatch(levelText, 
                 x / textScale, y / textScale, 
                 TEXT_COLOR, false, 
                 poseStack.last().pose(), bufferSource, 
-                Font.DisplayMode.NORMAL, 0, 0xF000F0); // 使用不同的渲染参数
+                Font.DisplayMode.NORMAL, 0, 0xF000F0);
                 
         } finally {
             poseStack.popPose();
@@ -332,7 +341,7 @@ public class SimpleHealthBarRenderer {
     }
     
     /**
-     * 渲染血量数值文字
+     * 渲染血量数值文字 - 预渲染阶段，纯加减法计算文字定位
      */
     private static void renderHealthText(PoseStack poseStack, MultiBufferSource bufferSource, 
                                          LivingEntity entity) {
@@ -343,20 +352,22 @@ public class SimpleHealthBarRenderer {
         int maxHealth = (int) Math.ceil(entity.getMaxHealth());
         String healthText = currentHealth + "/" + maxHealth;
         
-        float textWidth = font.width(healthText);
-        float x = BAR_WIDTH / - textWidth -2.0f ; // 右对齐，距离血条右边缘3像素
-        float y = -BAR_HEIGHT / 10.0f;
+        float textScale = 0.5f;
+        float healthTextRawWidth = font.width(healthText);
+        float healthTextScaledWidth = healthTextRawWidth * textScale;
+        
+        float x = 0 + HALF_WIDTH - healthTextScaledWidth;
+        float y = PRE_BAR_BOTTOM;
         
         poseStack.pushPose();
         try {
-            float textScale = 0.5f;
             poseStack.scale(textScale, textScale, textScale);
             
             font.drawInBatch(healthText, 
                 x / textScale, y / textScale, 
                 TEXT_COLOR, false, 
                 poseStack.last().pose(), bufferSource, 
-                Font.DisplayMode.NORMAL, 0, 0xF000F0); // 使用不同的渲染参数
+                Font.DisplayMode.NORMAL, 0, 0xF000F0);
                 
         } finally {
             poseStack.popPose();
