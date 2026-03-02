@@ -47,13 +47,13 @@ public class Bettereve {
             // 修改最大生命值上限
             if (Attributes.MAX_HEALTH instanceof RangedAttribute) {
                 AccessorRangedAttribute healthAccessor = (AccessorRangedAttribute) (Object) Attributes.MAX_HEALTH;
-                healthAccessor.setMaxValue(20000.0); // 设置为 20000，允许 200 倍
+                healthAccessor.setMaxValue(50000000.0); // 设置为 50000000
             }
             
             // 修改攻击力上限
             if (Attributes.ATTACK_DAMAGE instanceof RangedAttribute) {
                 AccessorRangedAttribute attackAccessor = (AccessorRangedAttribute) (Object) Attributes.ATTACK_DAMAGE;
-                attackAccessor.setMaxValue(2000.0); // 设置为 2000，允许 200 倍
+                attackAccessor.setMaxValue(50000000.0); // 设置为 50000000
             }
         });
         
