@@ -10,28 +10,58 @@ import static com.mojang.blaze3d.vertex.DefaultVertexFormat.*;
 
 public class HealthBarRenderType extends RenderStateShard {
     
-    public static final ResourceLocation HEALTH_BAR_TEXTURE = new ResourceLocation("bettereve", "textures/ui/health_bar_texture.png");
+    // 血量填充纹理
+    public static final ResourceLocation BAR_TEXTURE = new ResourceLocation("bettereve", "textures/ui/bar_texture.png");
+    // 血量背景纹理（透明通道）
+    public static final ResourceLocation HEALTH_BAR_BACKGROUND_TEXTURE = new ResourceLocation("bettereve", "textures/ui/health_bar_background_texture.png");
+    // 血条顶部遮罩纹理（亮度掩码）
+    public static final ResourceLocation BAR_TOP_TEXTURE = new ResourceLocation("bettereve", "textures/ui/bar_top_texture.png");
     
-    // 背景渲染类型（半透明黑色背景）
+    // 血量填充渲染类型
+    public static final RenderType FILL_TYPE = getFillType();
+    
+    // 血量背景渲染类型（透明通道）
     public static final RenderType BACKGROUND_TYPE = getBackgroundType();
     
-    // 血量填充渲染类型（阵营颜色）
-    public static final RenderType FILL_TYPE = getFillType();
+    // 血条顶部遮罩渲染类型（亮度掩码）
+    public static final RenderType TOP_TYPE = getTopType();
     
     private HealthBarRenderType(String string, Runnable r, Runnable r1) {
         super(string, r, r1);
     }
     
     /**
-     * 获取背景渲染类型
+     * 获取血量填充渲染类型
+     */
+    private static RenderType getFillType() {
+        RenderType.CompositeState renderTypeState = RenderType.CompositeState.builder()
+                .setShaderState(POSITION_COLOR_TEX_LIGHTMAP_SHADER)
+                .setTextureState(new TextureStateShard(BAR_TEXTURE, false, false))
+                .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                .setCullState(NO_CULL)
+                .setDepthTestState(NO_DEPTH_TEST)
+                .setLightmapState(LIGHTMAP)
+                .createCompositeState(false);
+                
+        return RenderType.create("bettereve_health_bar_fill", 
+                DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP, 
+                VertexFormat.Mode.QUADS, 
+                256, 
+                true, 
+                false, 
+                renderTypeState);
+    }
+    
+    /**
+     * 获取血量背景渲染类型
      */
     private static RenderType getBackgroundType() {
         RenderType.CompositeState renderTypeState = RenderType.CompositeState.builder()
                 .setShaderState(POSITION_COLOR_TEX_LIGHTMAP_SHADER)
-                .setTextureState(new TextureStateShard(HEALTH_BAR_TEXTURE, false, false))
+                .setTextureState(new TextureStateShard(HEALTH_BAR_BACKGROUND_TEXTURE, false, false))
                 .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                 .setCullState(NO_CULL)
-                .setDepthTestState(NO_DEPTH_TEST) // 禁用深度测试
+                .setDepthTestState(NO_DEPTH_TEST)
                 .setLightmapState(LIGHTMAP)
                 .createCompositeState(false);
                 
@@ -45,19 +75,19 @@ public class HealthBarRenderType extends RenderStateShard {
     }
     
     /**
-     * 获取血量填充渲染类型
+     * 获取血条顶部遮罩渲染类型
      */
-    private static RenderType getFillType() {
+    private static RenderType getTopType() {
         RenderType.CompositeState renderTypeState = RenderType.CompositeState.builder()
                 .setShaderState(POSITION_COLOR_TEX_LIGHTMAP_SHADER)
-                .setTextureState(new TextureStateShard(HEALTH_BAR_TEXTURE, false, false))
+                .setTextureState(new TextureStateShard(BAR_TOP_TEXTURE, false, false))
                 .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                 .setCullState(NO_CULL)
-                .setDepthTestState(NO_DEPTH_TEST) // 禁用深度测试
+                .setDepthTestState(NO_DEPTH_TEST)
                 .setLightmapState(LIGHTMAP)
                 .createCompositeState(false);
                 
-        return RenderType.create("bettereve_health_bar_fill", 
+        return RenderType.create("bettereve_health_bar_top", 
                 DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP, 
                 VertexFormat.Mode.QUADS, 
                 256, 
