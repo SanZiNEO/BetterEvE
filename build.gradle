@@ -5,6 +5,7 @@ buildscript {
     }
     dependencies {
         classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
+        classpath 'com.guardsquare:proguard-gradle:7.4.2'
     }
 }
 
@@ -20,7 +21,7 @@ apply plugin: 'org.spongepowered.mixin'
 group = mod_group_id
 version = mod_version
 
-base {
+base { 
     archivesName = mod_id
 }
 
@@ -198,6 +199,86 @@ tasks.named('jar', Jar).configure {
 
     // This is the preferred method to reobfuscate your jar file
     finalizedBy 'reobfJar'
+}
+
+// ProGuard 混淆任务
+task obfuscateJar(type: proguard.gradle.ProGuardTask) {
+    group 'build'
+    description '使用 ProGuard 混淆 JAR 文件'
+    
+    // 延迟配置以避免在配置阶段访问依赖
+    doFirst {
+        injars "${project.jar.archiveFile.get()}"
+        outjars "${project.buildDir}/libs/${mod_id}-${mod_version}-release.jar"
+        
+        configuration files('proguard-rules.pro')
+        
+        // 配置库 JAR 文件，确保只有唯一的文件
+        def libraryJars = [] as Set
+        
+        // 添加 rt.jar
+        libraryJars << "${System.getProperty('java.home')}/lib/rt.jar"
+        
+        // 添加 compile 和 runtime 依赖，但只保留唯一的 JAR 文件
+        configurations.compileClasspath.files.each { file ->
+            if (file.name.endsWith('.jar')) {
+                libraryJars << file
+            }
+        }
+        
+        configurations.runtimeClasspath.files.each { file ->
+            if (file.name.endsWith('.jar')) {
+                libraryJars << file
+            }
+        }
+        
+        libraryjars libraryJars as List
+        
+        // 避免某些优化导致的类层次结构问题
+        dontoptimize()
+        dontshrink()
+    }
+}
+
+// 发布构建任务
+task releaseJar(type: Task) {
+    group 'build'
+    description '构建并混淆发布版本的 JAR 文件'
+    
+    dependsOn tasks.jar
+    // ForgeGradle 的 reobfuscate 任务通常是 reobfJar，但需要根据实际任务名调整
+    // 如果 reobfJar 不存在，可以直接依赖 reobf 任务
+    if (tasks.findByName('reobfJar')) {
+        dependsOn tasks.reobfJar
+    } else if (tasks.findByName('reobf')) {
+        dependsOn tasks.reobf
+    }
+    
+    finalizedBy tasks.obfuscateJar
+    
+    doFirst {
+        project.ext.set('release', true)
+    }
+}
+
+// 优化发布构建的资源处理
+tasks.named('processResources', ProcessResources).configure {
+    // 在发布构建时删除不必要的资源
+    if (project.hasProperty('release')) {
+        // 删除开发阶段的资源
+        exclude '**/*.md'
+        exclude '**/*.txt'
+        exclude '**/test/**'
+    }
+}
+
+// 配置编译任务删除调试信息
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    if (project.hasProperty('release')) {
+        options.compilerArgs.add('-g:none')
+        options.compilerArgs.add('-Xlint:none')
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
