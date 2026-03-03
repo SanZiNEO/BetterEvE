@@ -8,8 +8,7 @@
     "AccessorRangedAttribute"
   ],
   "client": [
-    "LevelRendererMixin",
-    "EntityRendererMixin"
+    "LevelRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1,

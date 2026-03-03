@@ -73,6 +73,11 @@ public class Bettereve {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             // 客户端设置
+            // 注册血条 HUD 渲染覆盖层
+            event.enqueueWork(() -> {
+                // 使用事件订阅方式渲染 HUD，兼容性更好
+                MinecraftForge.EVENT_BUS.register(com.example.bettereve.render.HudRenderHandler.class);
+            });
         }
 
         static {

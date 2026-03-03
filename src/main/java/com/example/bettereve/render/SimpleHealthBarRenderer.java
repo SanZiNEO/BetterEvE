@@ -8,10 +8,15 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.Camera;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Vector4f;
+import org.joml.Matrix4f;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import org.joml.Matrix4f;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -80,18 +85,14 @@ public class SimpleHealthBarRenderer {
     }
     
     /**
-     * 渲染血条 - 主入口方法
+     * 渲染血条 - HUD渲染主入口方法
      * @param entity 要渲染的实体
      * @param poseStack 姿势堆栈
      * @param bufferSource 缓冲区源
      * @param partialTick 部分tick时间
-     * @param dx 实体相对于相机的X坐标
-     * @param dy 实体相对于相机的Y坐标
-     * @param dz 实体相对于相机的Z坐标
      */
     public static void renderHealthBar(Entity entity, PoseStack poseStack, 
-                                       MultiBufferSource bufferSource, float partialTick,
-                                       double dx, double dy, double dz) {
+                                       MultiBufferSource bufferSource, float partialTick) {
         if (!shouldShowHealthBar(entity)) {
             return;
         }
@@ -105,13 +106,27 @@ public class SimpleHealthBarRenderer {
         
         LivingEntity livingEntity = (LivingEntity) entity;
         
-        // 保存当前矩阵状态
-        poseStack.pushPose();
+        // 计算实体插值位置（保持平滑动画）
+        double x = Mth.lerp(partialTick, entity.xOld, entity.getX());
+        double y = Mth.lerp(partialTick, entity.yOld, entity.getY());
+        double z = Mth.lerp(partialTick, entity.zOld, entity.getZ());
+        
+        // 将实体坐标转换为屏幕坐标
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.gameRenderer == null || mc.getCameraEntity() == null) {
+            return;
+        }
+        
+        // 添加实体高度补偿
+        double entityY = y + entity.getEyeHeight() + 0.8;
+        
+        // 转换为屏幕坐标
+        boolean isOnScreen = toScreenCoordinates(x, entityY, z, poseStack, mc, partialTick);
+        if (!isOnScreen) {
+            return;
+        }
         
         try {
-            // 正式渲染阶段：应用实体变换和整体缩放
-            applyEntityTransform(entity, poseStack, partialTick, dx, dy, dz);
-            
             float healthPercent = getHealthPercent(livingEntity);
             int factionColor = getFactionColor(entity);
             int level = getEntityLevel(entity);
@@ -127,32 +142,96 @@ public class SimpleHealthBarRenderer {
             
             renderHealthText(poseStack, bufferSource, livingEntity);
             
-        } catch (Exception e) {
-            e.printStackTrace();
         } finally {
+            // 确保无论渲染是否成功，都恢复姿势堆栈
             poseStack.popPose();
         }
     }
     
     /**
-     * 应用实体变换，将血条定位到实体头顶 - 正式渲染阶段
-     * 仅处理整体缩放和位置平移，不修改预渲染的顶点/文字坐标
+     * 将实体世界坐标转换为屏幕坐标
+     * @param x 实体X坐标
+     * @param y 实体Y坐标
+     * @param z 实体Z坐标
+     * @param poseStack 姿势堆栈
+     * @param mc Minecraft实例
+     * @param partialTick 部分tick时间
+     * @return 是否在屏幕可见范围内
      */
-    private static void applyEntityTransform(Entity entity, PoseStack poseStack, float partialTick,
-                                             double dx, double dy, double dz) {
-        poseStack.translate(dx, dy, dz);
-        poseStack.translate(0, (entity.getBbHeight() + BAR_Y_OFFSET) * 2, 0);
-        poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
+    private static boolean toScreenCoordinates(double x, double y, double z, PoseStack poseStack, Minecraft mc, float partialTick) {
+        GameRenderer gameRenderer = mc.gameRenderer;
+        Camera camera = gameRenderer.getMainCamera();
         
-        // 计算实体到相机的距离
-        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        
-        // 锁定距离为x个方块，让所有血条大小一致
-        double lockedDistance = 5.0;
-        
-        // 计算补偿缩放因子，确保血条大小一致（仅作用于整体）
-        float scale = (float)(0.02666667 * distance / lockedDistance);
-        poseStack.scale(-scale, -scale, scale);
+        try {
+            Vec3 entityPos = new Vec3(x, y, z);
+            Vec3 cameraPos = camera.getPosition();
+            
+            // 计算相对于相机的位置
+            Vec3 relPos = entityPos.subtract(cameraPos);
+            
+            // 计算视图矩阵
+            Matrix4f viewMatrix = new Matrix4f();
+            viewMatrix.setLookAt(0, 0, 0, 
+                               (float)camera.getLookVector().x, 
+                               (float)camera.getLookVector().y, 
+                               (float)camera.getLookVector().z, 
+                               0, 1, 0);
+            
+            // 计算投影矩阵（使用默认 FOV 值）
+            float fov = 70.0f; // Minecraft 默认 FOV
+            float aspectRatio = (float)mc.getWindow().getScreenWidth() / (float)mc.getWindow().getScreenHeight();
+            float near = 0.05f;
+            float far = 1000.0f;
+            
+            Matrix4f projectionMatrix = new Matrix4f();
+            projectionMatrix.setPerspective((float)Math.toRadians(fov), aspectRatio, near, far);
+            
+            // 转换到齐次坐标
+            Matrix4f modelMatrix = new Matrix4f().translate((float)relPos.x, (float)relPos.y, (float)relPos.z);
+            Matrix4f mvpMatrix = new Matrix4f(projectionMatrix);
+            mvpMatrix.mul(viewMatrix).mul(modelMatrix);
+            
+            Vector4f clipPos = new Vector4f(0, 0, 0, 1);
+            clipPos.mul(mvpMatrix);
+            
+            if (clipPos.w <= 0) {
+                return false; // 在相机后面
+            }
+            
+            // 透视除法
+            float ndcX = clipPos.x / clipPos.w;
+            float ndcY = clipPos.y / clipPos.w;
+            float ndcZ = clipPos.z / clipPos.w;
+            
+            // 检查可见性
+            if (ndcX < -1 || ndcX > 1 || ndcY < -1 || ndcY > 1 || ndcZ < -1 || ndcZ > 1) {
+                return false;
+            }
+            
+            // 转换到屏幕坐标
+            int guiScaledWidth = mc.getWindow().getGuiScaledWidth();
+            int guiScaledHeight = mc.getWindow().getGuiScaledHeight();
+            
+            float screenX = (ndcX + 1) * 0.5f * guiScaledWidth;
+            float screenY = (1 - ndcY) * 0.5f * guiScaledHeight;
+            
+            // 计算距离和缩放
+            double distance = relPos.length();
+            double lockedDistance = 5.0;
+            
+            float finalScale = (float)(0.02666667 * lockedDistance / distance);
+            finalScale = Math.max(finalScale, 0.5f);
+            
+            poseStack.pushPose();
+            poseStack.translate(screenX, screenY, 0);
+            poseStack.scale(finalScale, finalScale, finalScale);
+            
+            return true;
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
     
     /**
