@@ -7,10 +7,14 @@ import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.player.Player;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 
-// 自定义目标选择器：在原版逻辑基础上，新增阵营敌对判定
+// 自定义目标选择器：完全控制攻击目标选择，确保阵营敌对判定完全生效
 public class FactionHostileTargetGoal extends TargetGoal {
+    private static final Logger LOGGER = LoggerFactory.getLogger(FactionHostileTargetGoal.class);
     private final Mob mob; // 当前生物
     private LivingEntity target; // 目标生物
     private final TargetingConditions targetingConditions; // 目标条件
@@ -36,6 +40,10 @@ public class FactionHostileTargetGoal extends TargetGoal {
         );
 
         if (nearbyEntities.isEmpty()) {
+            // 如果没有找到敌对目标，确保清除当前目标
+            if (mob.getTarget() != null) {
+                mob.setTarget(null);
+            }
             return false;
         }
 
@@ -52,28 +60,41 @@ public class FactionHostileTargetGoal extends TargetGoal {
         }
 
         // 检查目标是否仍然在范围内且有效
-        return mob.distanceToSqr(target) <= mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE) *
-                mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE) &&
+        double followRange = mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
+        boolean isValid = mob.distanceToSqr(target) <= followRange * followRange &&
                 isValidTarget(target);
+                
+        // 如果目标不再有效，清除目标
+        if (!isValid) {
+            mob.setTarget(null);
+        }
+        
+        return isValid;
     }
 
-    // 每2Tick刷新一次目标，不丢失仇恨，强化寻敌积极性
+    // 优化强制刷新机制，避免频繁中断攻击行为
     public void forceRefreshTarget() {
         if (mob.level().isClientSide) {
             return;
         }
         
-        List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
-                LivingEntity.class,
-                mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
-                entity -> !(entity instanceof Player) && isValidTarget(entity)
-        );
+        // 只有在当前没有有效目标时才会刷新目标选择，避免频繁刷新导致的攻击行为中断
+        if (target == null || !target.isAlive() || !isValidTarget(target)) {
+            List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
+                    LivingEntity.class,
+                    mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
+                    entity -> !(entity instanceof Player) && isValidTarget(entity)
+            );
 
-        if (!nearbyEntities.isEmpty()) {
-            LivingEntity nearestTarget = findNearestTarget(nearbyEntities);
-            if (nearestTarget != null && nearestTarget != target) {
-                target = nearestTarget;
-                mob.setTarget(target);
+            if (!nearbyEntities.isEmpty()) {
+                LivingEntity nearestTarget = findNearestTarget(nearbyEntities);
+                if (nearestTarget != null && nearestTarget != target) {
+                    target = nearestTarget;
+                    mob.setTarget(target);
+                }
+            } else {
+                // 如果没有找到敌对目标，确保清除当前目标
+                mob.setTarget(null);
             }
         }
     }
@@ -108,7 +129,7 @@ public class FactionHostileTargetGoal extends TargetGoal {
         return nearest;
     }
 
-    // 检查目标是否有效
+    // 检查目标是否有效 - 增强版友军判定
     private boolean isValidTarget(LivingEntity target) {
         // 不能攻击自己
         if (target == mob) {
@@ -121,6 +142,23 @@ public class FactionHostileTargetGoal extends TargetGoal {
         }
 
         // 完全基于阵营判定：只攻击不同阵营的生物
-        return FactionHelper.isEntitiesHostile(this.mob, target);
+        boolean isHostile = FactionHelper.isEntitiesHostile(this.mob, target);
+        
+        // 如果是友军，我们需要额外处理：取消敌对目标
+        if (!isHostile) {
+            // 如果当前目标是友军，直接清除目标
+            if (mob.getTarget() == target) {
+                mob.setTarget(null);
+            }
+            LOGGER.debug("Ignoring friendly target: " + target.getName().getString() + 
+                    " (Faction: " + FactionHelper.getEntityFactionId(target) + ") " +
+                    "Current mob faction: " + FactionHelper.getEntityFactionId(mob));
+            return false;
+        }
+        
+        LOGGER.debug("Found hostile target: " + target.getName().getString() + 
+                " (Faction: " + FactionHelper.getEntityFactionId(target) + ") " +
+                "Current mob faction: " + FactionHelper.getEntityFactionId(mob));
+        return true;
     }
 }

@@ -397,8 +397,8 @@ public class SimpleHealthBarRenderer {
         float levelTextRawWidth = font.width(levelText);
         float levelTextScaledWidth = levelTextRawWidth * textScale;
         
-        float x = 0 - HALF_WIDTH * 0.5f ;
-        float y = 0 - PRE_BAR_BOTTOM + levelTextScaledHeight * 0.5f ;
+        float x = 0 - HALF_WIDTH * 0.98f ;
+        float y = 0 - levelTextScaledHeight * 0.5f ;
         
         poseStack.pushPose();
         try {
@@ -424,14 +424,14 @@ public class SimpleHealthBarRenderer {
         int maxHealth = (int) Math.ceil(entity.getMaxHealth());
         String healthText = currentHealth + "/" + maxHealth;
         
-        float textScale = 0.8f;
+        float textScale = 0.60f;
         float healthTextRawHeight = font.lineHeight;  // 原始高度
         float healthTextScaledHeight = healthTextRawHeight * textScale;  // 缩放后的高度
         float healthTextRawWidth = font.width(healthText);
         float healthTextScaledWidth = healthTextRawWidth * textScale;
         
-        float x = 0  - healthTextScaledWidth * 0.5f;
-        float y = 0 + PRE_BAR_BOTTOM - healthTextScaledHeight ;
+        float x = 0 + HALF_WIDTH * 0.98f - healthTextScaledWidth * 0.98f ;
+        float y = 0 - healthTextScaledHeight*0.5f ;
         
         poseStack.pushPose();
         try {
