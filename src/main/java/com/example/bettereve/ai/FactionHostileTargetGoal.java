@@ -77,7 +77,7 @@ public class FactionHostileTargetGoal extends TargetGoal {
         return isValid;
     }
 
-    // 优化强制刷新机制，降低刷新频率，避免频繁中断攻击行为
+    // 强制刷新目标选择机制，确保完全控制目标选择过程
     public void forceRefreshTarget() {
         if (mob.level().isClientSide) {
             return;
@@ -91,23 +91,43 @@ public class FactionHostileTargetGoal extends TargetGoal {
         
         lastRefreshTime = currentTime;
         
-        // 只有在当前没有有效目标时才会刷新，避免攻击行为中断
-        if (target == null || !target.isAlive() || !isValidTarget(target)) {
+        // 检查当前目标是否仍然符合条件
+        if (target != null) {
+            if (!target.isAlive() || !isValidTarget(target)) {
+                // 如果当前目标无效，清除目标
+                target = null;
+                mob.setTarget(null);
+                LOGGER.debug("Clearing invalid target for {}", mob.getName().getString());
+            } else {
+                // 当前目标仍然有效，检查是否有更合适的目标
+                List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
+                        LivingEntity.class,
+                        mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
+                        entity -> !(entity instanceof Player) && isValidTarget(entity)
+                );
+                
+                if (!nearbyEntities.isEmpty()) {
+                    LivingEntity nearestTarget = findNearestTarget(nearbyEntities);
+                    if (nearestTarget != null && nearestTarget != target) {
+                        target = nearestTarget;
+                        mob.setTarget(target);
+                        LOGGER.debug("Updating target for {} to {}", mob.getName().getString(), target.getName().getString());
+                    }
+                }
+            }
+        } else {
+            // 没有目标，寻找新目标
             List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                     LivingEntity.class,
                     mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
                     entity -> !(entity instanceof Player) && isValidTarget(entity)
             );
-
+            
             if (!nearbyEntities.isEmpty()) {
-                LivingEntity nearestTarget = findNearestTarget(nearbyEntities);
-                if (nearestTarget != null && nearestTarget != target) {
-                    target = nearestTarget;
-                    mob.setTarget(target);
-                }
+                target = findNearestTarget(nearbyEntities);
+                mob.setTarget(target);
+                LOGGER.debug("Finding new target for {}: {}", mob.getName().getString(), target.getName().getString());
             }
-            // 如果没有找到敌对目标，保留当前目标（长期保留）
-            // 不清除目标，避免频繁设置/清除导致的开销
         }
     }
 

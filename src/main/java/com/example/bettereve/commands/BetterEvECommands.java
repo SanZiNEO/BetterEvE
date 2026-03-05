@@ -26,10 +26,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageSources;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Score;
 import net.minecraft.world.scores.Scoreboard;
@@ -38,6 +44,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import net.minecraft.world.DifficultyInstance;
+
+import com.example.bettereve.mixin.MobAccessor;
 import com.example.bettereve.network.HealthBarScalePacket;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
@@ -262,20 +271,39 @@ public class BetterEvECommands {
         
         for (int i = 0; i < count; i++) {
             try {
+                // 直接使用实体类型创建生物，而不是从 NBT 加载
                 if (entityType.create(serverLevel) instanceof Mob mob) {
+                    // 设置位置
                     mob.setPos(x + i, y, z);
-                    FactionHelper.setEntityFactionId(mob, factionId);
                     
+                    // 调用 finalizeSpawn 方法，确保实体初始化完全（特别是对于 Warden）
+                    // 这会设置 DIG_COOLDOWN 内存，防止 Warden 立即逃跑
+                    DifficultyInstance difficulty = serverLevel.getCurrentDifficultyAt(new BlockPos((int)x, (int)y, (int)z));
+                    mob.finalizeSpawn(serverLevel, difficulty, MobSpawnType.COMMAND, null, null);
+                    
+                    // 设置阵营
+                    FactionHelper.setEntityFactionId(mob, factionId);
                     FactionSyncHandler.syncEntityImmediately(mob);
                     
-                    if (nbt != null) {
-                        mob.load(nbt);
-                    }
-                    
+                    // 设置等级
                     if (level > 0) {
                         LevelSystem.setEntityLevel(mob, level);
                     }
                     
+                    // 手动调用装备初始化（因为命令召唤时原版不会自动装备）
+                    // 使用 Mixin 接口访问 protected 方法
+                    MobAccessor mobAccessor = (MobAccessor) mob;
+                    mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
+                    mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
+                    
+                    // 加载用户提供的 NBT 数据（如果有）
+                    if (nbt != null) {
+                        mob.load(nbt);
+                        // 重新设置位置，确保用户输入的位置不会被 NBT 数据覆盖
+                        mob.setPos(x + i, y, z);
+                    }
+                    
+                    // 添加到世界
                     serverLevel.addFreshEntity(mob);
                 } else {
                     context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL + " (必须是可生成的生物)"));

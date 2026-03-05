@@ -8,3 +8,4 @@
 *.txt
 search_nbt_args.java
 search_nbt_args.class
+/run-data
