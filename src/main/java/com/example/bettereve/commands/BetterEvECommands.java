@@ -160,7 +160,6 @@ public class BetterEvECommands {
         };
 
     private static final SuggestionProvider<CommandSourceStack> COLOR_SUGGESTIONS = (context, builder) -> {
-        // 创建颜色名称映射，提供更好的用户体验
         java.util.Map<String, String> colorNames = new java.util.HashMap<>();
         colorNames.put("FF0000", "红色");
         colorNames.put("00FF00", "绿色");
@@ -271,43 +270,103 @@ public class BetterEvECommands {
         
         for (int i = 0; i < count; i++) {
             try {
-                // 直接使用实体类型创建生物，而不是从 NBT 加载
-                if (entityType.create(serverLevel) instanceof Mob mob) {
-                    // 设置位置
-                    mob.setPos(x + i, y, z);
-                    
-                    // 调用 finalizeSpawn 方法，确保实体初始化完全（特别是对于 Warden）
-                    // 这会设置 DIG_COOLDOWN 内存，防止 Warden 立即逃跑
-                    DifficultyInstance difficulty = serverLevel.getCurrentDifficultyAt(new BlockPos((int)x, (int)y, (int)z));
-                    mob.finalizeSpawn(serverLevel, difficulty, MobSpawnType.COMMAND, null, null);
-                    
-                    // 设置阵营
-                    FactionHelper.setEntityFactionId(mob, factionId);
-                    FactionSyncHandler.syncEntityImmediately(mob);
-                    
-                    // 设置等级
-                    if (level > 0) {
-                        LevelSystem.setEntityLevel(mob, level);
-                    }
-                    
-                    // 手动调用装备初始化（因为命令召唤时原版不会自动装备）
-                    // 使用 Mixin 接口访问 protected 方法
-                    MobAccessor mobAccessor = (MobAccessor) mob;
-                    mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
-                    mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
-                    
-                    // 加载用户提供的 NBT 数据（如果有）
-                    if (nbt != null) {
-                        mob.load(nbt);
-                        // 重新设置位置，确保用户输入的位置不会被 NBT 数据覆盖
+                if (entityType != null) {
+                    Entity entityObj = entityType.create(serverLevel);
+                    if (entityObj instanceof Mob mob) {
                         mob.setPos(x + i, y, z);
-                    }
+                        
+                        DifficultyInstance difficulty = serverLevel.getCurrentDifficultyAt(new BlockPos((int)x, (int)y, (int)z));
+                        try {
+                            mob.finalizeSpawn(serverLevel, difficulty, MobSpawnType.COMMAND, null, null);
+                        } catch (Exception e) {
+                            context.getSource().sendFailure(Component.literal("初始化生物失败: " + e.getMessage()));
+                            continue;
+                        }
                     
-                    // 添加到世界
-                    serverLevel.addFreshEntity(mob);
-                } else {
-                    context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL + " (必须是可生成的生物)"));
-                    return 0;
+                        if (mob.getType() == EntityType.WARDEN) {
+                            net.minecraft.world.entity.monster.warden.Warden warden = (net.minecraft.world.entity.monster.warden.Warden) mob;
+                            
+                            // 设置最大愤怒值，确保 Warden 进入完全愤怒状态
+                            warden.increaseAngerAt(context.getSource().getEntity(), 150, true);
+                            
+                            // 查找敌对目标
+                            if (warden.getTarget() == null) {
+                                java.util.List<net.minecraft.world.entity.LivingEntity> nearbyEntities = serverLevel.getEntitiesOfClass(
+                                    net.minecraft.world.entity.LivingEntity.class, 
+                                    mob.getBoundingBox().inflate(50.0D),
+                                    targetEntity -> targetEntity != warden && 
+                                            targetEntity.isAlive() && 
+                                            !targetEntity.isInvulnerable() && 
+                                            !targetEntity.isDeadOrDying() && 
+                                            FactionHelper.isEntitiesHostile(mob, targetEntity)
+                                );
+                                
+                                if (!nearbyEntities.isEmpty()) {
+                                    net.minecraft.world.entity.LivingEntity nearestTarget = null;
+                                    double nearestDistance = Double.MAX_VALUE;
+                                    
+                                    for (net.minecraft.world.entity.LivingEntity targetEntity : nearbyEntities) {
+                                        double distance = mob.distanceToSqr(targetEntity);
+                                        if (distance < nearestDistance) {
+                                            nearestDistance = distance;
+                                            nearestTarget = targetEntity;
+                                        }
+                                    }
+                                    
+                                    if (nearestTarget != null) {
+                                        // 同时设置传统目标和 Brain 系统的 ATTACK_TARGET
+                                        warden.setAttackTarget(nearestTarget);
+                                        warden.getBrain().setMemory(
+                                            net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, 
+                                            nearestTarget
+                                        );
+                                        warden.increaseAngerAt(nearestTarget, 80, false);
+                                    }
+                                }
+                            }
+                            
+                            // 设置 Warden 的行为状态，确保它处于攻击状态
+                            warden.getBrain().setMemoryWithExpiry(
+                                net.minecraft.world.entity.ai.memory.MemoryModuleType.DIG_COOLDOWN, 
+                                net.minecraft.util.Unit.INSTANCE, 
+                                3000L
+                            );
+                            
+                            if (warden.getTarget() != null) {
+                                warden.getBrain().setMemory(
+                                    net.minecraft.world.entity.ai.memory.MemoryModuleType.ROAR_TARGET, 
+                                    warden.getTarget()
+                                );
+                                // 确保 Warden 对目标有足够的记忆
+                                warden.getBrain().setMemoryWithExpiry(
+                                    net.minecraft.world.entity.ai.memory.MemoryModuleType.NEAREST_ATTACKABLE, 
+                                    warden.getTarget(), 
+                                    6000L
+                                );
+                            }
+                        }
+                        
+                        FactionHelper.setEntityFactionId(mob, factionId);
+                        FactionSyncHandler.syncEntityImmediately(mob);
+                        
+                        if (level > 0) {
+                            LevelSystem.setEntityLevel(mob, level);
+                        }
+                        
+                        MobAccessor mobAccessor = (MobAccessor) mob;
+                        mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
+                        mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
+                        
+                        if (nbt != null) {
+                            mob.load(nbt);
+                            mob.setPos(x + i, y, z);
+                        }
+                        
+                        serverLevel.addFreshEntity(mob);
+                    } else {
+                        context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL + " (必须是可生成的生物)"));
+                        return 0;
+                    }
                 }
             } catch (Exception e) {
                 context.getSource().sendFailure(Component.literal("生成生物失败: " + e.getMessage()));
@@ -325,13 +384,13 @@ public class BetterEvECommands {
     }
 
     private static int clearAllScoreboards(CommandContext<CommandSourceStack> context) {
-        ServerLevel level = context.getSource().getLevel();
-        String worldId = level.dimension().location().toString();
+        ServerLevel serverLevel = context.getSource().getLevel();
+        String worldId = serverLevel.dimension().location().toString();
         
-        DeathCounter counter = DeathCounter.getInstance(level);
+        DeathCounter counter = DeathCounter.getInstance(serverLevel);
         counter.resetDeathCounts(worldId, null);
         
-        forceRefreshScoreboard(level);
+        forceRefreshScoreboard(serverLevel);
         
         context.getSource().sendSuccess(() -> 
             Component.literal("已清除所有阵营的记分板数据并刷新显示"), 
@@ -342,8 +401,8 @@ public class BetterEvECommands {
 
     private static int clearFactionScoreboard(CommandContext<CommandSourceStack> context) {
         String factionName = StringArgumentType.getString(context, "factionName");
-        ServerLevel level = context.getSource().getLevel();
-        String worldId = level.dimension().location().toString();
+        ServerLevel serverLevel = context.getSource().getLevel();
+        String worldId = serverLevel.dimension().location().toString();
         
         Faction targetFaction = null;
         for (Faction faction : FactionRegistry.getAllFactions()) {
@@ -358,10 +417,10 @@ public class BetterEvECommands {
             return 0;
         }
         
-        DeathCounter counter = DeathCounter.getInstance(level);
+        DeathCounter counter = DeathCounter.getInstance(serverLevel);
         counter.resetDeathCounts(worldId, targetFaction.getId());
         
-        forceRefreshScoreboard(level);
+        forceRefreshScoreboard(serverLevel);
         
         context.getSource().sendSuccess(() -> 
             Component.literal("已清除阵营 " + factionName + " 的记分板数据并刷新显示"), 
@@ -370,8 +429,8 @@ public class BetterEvECommands {
         return 1;
     }
 
-    private static void forceRefreshScoreboard(ServerLevel level) {
-        Scoreboard scoreboard = level.getScoreboard();
+    private static void forceRefreshScoreboard(ServerLevel serverLevel) {
+        Scoreboard scoreboard = serverLevel.getScoreboard();
         Objective objective = scoreboard.getObjective("bettereve_deaths");
         
         if (objective != null) {
@@ -383,13 +442,13 @@ public class BetterEvECommands {
                 score.setScore(0);
             }
             
-            updateScoreboardForAllPlayers(level, scoreboard, objective);
+            updateScoreboardForAllPlayers(serverLevel, scoreboard, objective);
         }
     }
 
-    private static void updateScoreboardForAllPlayers(ServerLevel level, Scoreboard scoreboard, Objective objective) {
-        for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-            if (player.level() == level) {
+    private static void updateScoreboardForAllPlayers(ServerLevel serverLevel, Scoreboard scoreboard, Objective objective) {
+        for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers()) {
+            if (player.level() == serverLevel) {
                 for (Faction faction : FactionRegistry.getAllFactions()) {
                     Score score = scoreboard.getOrCreatePlayerScore(faction.getName(), objective);
                     score.setScore(0);
@@ -398,9 +457,6 @@ public class BetterEvECommands {
         }
     }
     
-    /**
-     * 设置血条缩放比例
-     */
     private static int executeSetHealthBarScale(CommandContext<CommandSourceStack> context) {
         double scale = DoubleArgumentType.getDouble(context, "scale");
         HealthBarScalePacket.sendToAllClients((float) scale);
@@ -413,9 +469,6 @@ public class BetterEvECommands {
         return 1;
     }
     
-    /**
-     * 重置血条缩放比例到默认值
-     */
     private static int executeResetHealthBarScale(CommandContext<CommandSourceStack> context) {
         HealthBarScalePacket.sendResetToAllClients();
         
@@ -427,11 +480,7 @@ public class BetterEvECommands {
         return 1;
     }
     
-    /**
-     * 获取当前血条缩放比例
-     */
     private static int executeGetHealthBarScale(CommandContext<CommandSourceStack> context) {
-        // 服务器端无法直接获取客户端渲染状态，返回默认值
         context.getSource().sendSuccess(() -> 
             Component.literal("当前血条缩放: 1.0x (服务器端无法直接获取客户端渲染状态)"), 
             false

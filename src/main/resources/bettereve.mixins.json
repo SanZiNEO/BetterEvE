@@ -6,7 +6,8 @@
   "refmap": "bettereve.refmap.json",
   "mixins": [
     "AccessorRangedAttribute",
-    "MobAccessor"
+    "MobAccessor",
+    "WardenMixin"
   ],
   "client": [
     "LevelRendererMixin"
