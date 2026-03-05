@@ -18,6 +18,7 @@ public class FactionHostileTargetGoal extends TargetGoal {
     private final Mob mob; // 当前生物
     private LivingEntity target; // 目标生物
     private final TargetingConditions targetingConditions; // 目标条件
+    private long lastRefreshTime; // 上次刷新时间
 
     // 构造方法
     public FactionHostileTargetGoal(Mob mob, boolean mustSee, boolean mustReach) {
@@ -27,11 +28,17 @@ public class FactionHostileTargetGoal extends TargetGoal {
         this.targetingConditions = TargetingConditions.forCombat()
                 .range(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE))
                 .ignoreLineOfSight(); // 忽略视线阻挡
+        this.lastRefreshTime = 0;
     }
 
     // 判断是否应该开始执行该目标
     @Override
     public boolean canUse() {
+        // 如果有已有的目标，长期保留，不频繁清除
+        if (target != null && target.isAlive() && isValidTarget(target)) {
+            return true;
+        }
+
         // 在周围找到符合条件的目标，完全排除玩家
         List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                 LivingEntity.class,
@@ -40,11 +47,9 @@ public class FactionHostileTargetGoal extends TargetGoal {
         );
 
         if (nearbyEntities.isEmpty()) {
-            // 如果没有找到敌对目标，确保清除当前目标
-            if (mob.getTarget() != null) {
-                mob.setTarget(null);
-            }
-            return false;
+            // 如果没有找到敌对目标，保留当前目标（长期保留）
+            // 不清除目标，避免频繁设置/清除导致的开销
+            return target != null;
         }
 
         // 找到最近的目标
@@ -72,13 +77,21 @@ public class FactionHostileTargetGoal extends TargetGoal {
         return isValid;
     }
 
-    // 优化强制刷新机制，避免频繁中断攻击行为
+    // 优化强制刷新机制，降低刷新频率，避免频繁中断攻击行为
     public void forceRefreshTarget() {
         if (mob.level().isClientSide) {
             return;
         }
         
-        // 只有在当前没有有效目标时才会刷新目标选择，避免频繁刷新导致的攻击行为中断
+        long currentTime = mob.level().getGameTime();
+        // 限制刷新频率，避免过于频繁
+        if (currentTime - lastRefreshTime < 100) { // 至少100tick（5秒）才刷新一次
+            return;
+        }
+        
+        lastRefreshTime = currentTime;
+        
+        // 只有在当前没有有效目标时才会刷新，避免攻击行为中断
         if (target == null || !target.isAlive() || !isValidTarget(target)) {
             List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                     LivingEntity.class,
@@ -92,24 +105,25 @@ public class FactionHostileTargetGoal extends TargetGoal {
                     target = nearestTarget;
                     mob.setTarget(target);
                 }
-            } else {
-                // 如果没有找到敌对目标，确保清除当前目标
-                mob.setTarget(null);
             }
+            // 如果没有找到敌对目标，保留当前目标（长期保留）
+            // 不清除目标，避免频繁设置/清除导致的开销
         }
     }
 
     // 开始执行目标
     @Override
     public void start() {
-        mob.setTarget(target);
+        if (target != null) {
+            mob.setTarget(target);
+        }
         super.start();
     }
 
     // 停止执行目标
     @Override
     public void stop() {
-        mob.setTarget(null);
+        // 不清除目标，长期保留，避免频繁设置/清除导致的开销
         super.stop();
     }
 
@@ -150,15 +164,9 @@ public class FactionHostileTargetGoal extends TargetGoal {
             if (mob.getTarget() == target) {
                 mob.setTarget(null);
             }
-            LOGGER.debug("Ignoring friendly target: " + target.getName().getString() + 
-                    " (Faction: " + FactionHelper.getEntityFactionId(target) + ") " +
-                    "Current mob faction: " + FactionHelper.getEntityFactionId(mob));
             return false;
         }
         
-        LOGGER.debug("Found hostile target: " + target.getName().getString() + 
-                " (Faction: " + FactionHelper.getEntityFactionId(target) + ") " +
-                "Current mob faction: " + FactionHelper.getEntityFactionId(mob));
         return true;
     }
 }

@@ -75,6 +75,15 @@ public class NetworkManager {
             LevelSyncPacket::decode,
             LevelSyncPacket::handle
         );
+        
+        // 注册血条缩放同步数据包
+        CHANNEL.registerMessage(
+            packetId++,
+            HealthBarScalePacket.class,
+            HealthBarScalePacket::encode,
+            HealthBarScalePacket::decode,
+            HealthBarScalePacket::handle
+        );
     }
     
     /**

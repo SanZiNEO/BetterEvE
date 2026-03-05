@@ -111,7 +111,6 @@ public class SyncTimer {
             NetworkManager.syncEntityLevelToAll(entity, level);
         } catch (Exception e) {
             // 忽略同步过程中的异常，避免游戏崩溃
-            e.printStackTrace();
         }
     }
     
@@ -127,7 +126,6 @@ public class SyncTimer {
             NetworkManager.syncEntityFactionToAll(entity);
         } catch (Exception e) {
             // 忽略同步过程中的异常，避免游戏崩溃
-            e.printStackTrace();
         }
     }
     

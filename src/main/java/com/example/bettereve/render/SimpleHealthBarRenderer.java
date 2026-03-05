@@ -61,11 +61,29 @@ public class SimpleHealthBarRenderer {
     private static final int BLUE_BG_COLOR = 0xFF80A0FF;
     private static final int GREEN_BG_COLOR = 0xFF80E080;
     
+    // 统一缩放因子，可通过配置或命令修改
+    private static float GLOBAL_SCALE = 1.0f;
+    
+    // 渲染队列和缓存
     private static final Set<UUID> renderedThisFrame = new HashSet<>();
     private static final Map<UUID, Float> healthCache = new HashMap<>();
     
     public static void onFrameStart() {
         renderedThisFrame.clear();
+    }
+    
+    /**
+     * 设置统一缩放因子
+     */
+    public static void setGlobalScale(float scale) {
+        GLOBAL_SCALE = Math.max(0.1f, Math.min(3.0f, scale));  // 限制缩放范围 0.1-3.0
+    }
+    
+    /**
+     * 获取当前缩放因子
+     */
+    public static float getGlobalScale() {
+        return GLOBAL_SCALE;
     }
     
     public static boolean shouldShowHealthBar(Entity entity) {
@@ -76,15 +94,17 @@ public class SimpleHealthBarRenderer {
         return !(entity instanceof Player);
     }
     
-    public static void renderHealthBar(Entity entity, PoseStack poseStack, 
-                                       MultiBufferSource bufferSource, float partialTick) {
+    /**
+     * 预处理阶段：预计算实体的渲染数据
+     */
+    public static HealthBarRenderData preRenderHealthBar(Entity entity, float partialTick) {
         if (!shouldShowHealthBar(entity)) {
-            return;
+            return null;
         }
         
         UUID entityId = entity.getUUID();
         if (renderedThisFrame.contains(entityId)) {
-            return;
+            return null;
         }
         renderedThisFrame.add(entityId);
         
@@ -96,21 +116,58 @@ public class SimpleHealthBarRenderer {
         
         Minecraft mc = Minecraft.getInstance();
         if (mc.gameRenderer == null || mc.getCameraEntity() == null) {
-            return;
+            return null;
         }
         
         double entityY = y + entity.getEyeHeight() + 0.8;
         
-        boolean isOnScreen = toScreenCoordinates(x, entityY, z, poseStack, mc, partialTick);
+        float healthPercent = getHealthPercent(livingEntity);
+        int factionColor = getFactionColor(entity);
+        int level = getEntityLevel(entity);
+        boolean shouldShowLevel = shouldShowLevel(level);
+        
+        // 文字参数预计算
+        String levelText = shouldShowLevel ? "Lv." + level : "";
+        String healthText = (int) Math.ceil(livingEntity.getHealth()) + "/" + (int) Math.ceil(livingEntity.getMaxHealth());
+        
+        return new HealthBarRenderData(
+            entityId,
+            healthPercent,
+            factionColor,
+            (int) Math.ceil(livingEntity.getHealth()),
+            (int) Math.ceil(livingEntity.getMaxHealth()),
+            0,  // 插值进度
+            x, entityY, z,
+            GLOBAL_SCALE,  // 统一缩放因子
+            BAR_Y_OFFSET,
+            levelText,
+            healthText,
+            1.0f,  // 文字渲染缩放（与全局缩放合并）
+            mc.font.width(levelText),
+            mc.font.width(healthText),
+            0, 0,  // 预计算的文字位置将在渲染时基于全局缩放计算
+            0, 0
+        );
+    }
+    
+    /**
+     * 正式渲染阶段：从预计算的渲染数据进行渲染
+     */
+    public static void renderFromPreRendered(HealthBarRenderData renderData, PoseStack poseStack, 
+                                            MultiBufferSource bufferSource) {
+        Minecraft mc = Minecraft.getInstance();
+        
+        // 转换到屏幕坐标（锁定距离缩放，使用统一缩放）
+        boolean isOnScreen = toScreenCoordinates(renderData.getRenderX(), renderData.getRenderY(), 
+                                               renderData.getRenderZ(), poseStack, mc, renderData.getScale());
         if (!isOnScreen) {
             return;
         }
         
         try {
-            float healthPercent = getHealthPercent(livingEntity);
-            int factionColor = getFactionColor(entity);
-            int level = getEntityLevel(entity);
-            boolean shouldShowLevel = shouldShowLevel(level);
+            float healthPercent = renderData.getHealthPercent();
+            int factionColor = renderData.getFactionColor();
+            boolean shouldShowLevel = !renderData.getLevelText().isEmpty();
             
             // 直接渲染三层，不使用模板测试
             renderBarBackground(poseStack, bufferSource, healthPercent, factionColor);
@@ -118,17 +175,31 @@ public class SimpleHealthBarRenderer {
             renderBarContainer(poseStack, bufferSource);
             
             if (shouldShowLevel) {
-                renderLevelText(poseStack, bufferSource, level);
+                renderLevelText(poseStack, bufferSource, renderData.getLevelText());
             }
             
-            renderHealthText(poseStack, bufferSource, livingEntity);
+            renderHealthText(poseStack, bufferSource, renderData.getHealthText());
             
         } finally {
             poseStack.popPose();
         }
     }
     
-    private static boolean toScreenCoordinates(double x, double y, double z, PoseStack poseStack, Minecraft mc, float partialTick) {
+    /**
+     * 兼容旧版直接渲染方法
+     */
+    public static void renderHealthBar(Entity entity, PoseStack poseStack, 
+                                       MultiBufferSource bufferSource, float partialTick) {
+        HealthBarRenderData renderData = preRenderHealthBar(entity, partialTick);
+        if (renderData != null) {
+            renderFromPreRendered(renderData, poseStack, bufferSource);
+        }
+    }
+    
+    /**
+     * 转换到屏幕坐标：锁定距离缩放，使用统一缩放因子
+     */
+    private static boolean toScreenCoordinates(double x, double y, double z, PoseStack poseStack, Minecraft mc, float scale) {
         GameRenderer gameRenderer = mc.gameRenderer;
         Camera camera = gameRenderer.getMainCamera();
         
@@ -178,11 +249,8 @@ public class SimpleHealthBarRenderer {
             float screenX = (ndcX + 1) * 0.5f * guiScaledWidth;
             float screenY = (1 - ndcY) * 0.5f * guiScaledHeight;
             
-            double distance = relPos.length();
-            double lockedDistance = 5.0;
-            
-            float finalScale = (float)(0.02666667 * lockedDistance / distance);
-            finalScale = Math.max(finalScale, 0.5f);
+            // 锁定距离缩放，使用统一缩放因子
+            float finalScale = GLOBAL_SCALE;
             
             poseStack.pushPose();
             poseStack.translate(screenX, screenY, 0);
@@ -191,7 +259,6 @@ public class SimpleHealthBarRenderer {
             return true;
             
         } catch (Exception e) {
-            e.printStackTrace();
             return false;
         }
     }
@@ -385,11 +452,9 @@ public class SimpleHealthBarRenderer {
             .endVertex();
     }
     
-    private static void renderLevelText(PoseStack poseStack, MultiBufferSource bufferSource, int level) {
+    private static void renderLevelText(PoseStack poseStack, MultiBufferSource bufferSource, String levelText) {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
-        
-        String levelText = "Lv." + level;
         
         float textScale = 1.0f;
         float levelTextRawHeight = font.lineHeight;  // 原始高度（正确写法）
@@ -416,13 +481,9 @@ public class SimpleHealthBarRenderer {
     }
     
     private static void renderHealthText(PoseStack poseStack, MultiBufferSource bufferSource, 
-                                         LivingEntity entity) {
+                                         String healthText) {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
-        
-        int currentHealth = (int) Math.ceil(entity.getHealth());
-        int maxHealth = (int) Math.ceil(entity.getMaxHealth());
-        String healthText = currentHealth + "/" + maxHealth;
         
         float textScale = 0.60f;
         float healthTextRawHeight = font.lineHeight;  // 原始高度

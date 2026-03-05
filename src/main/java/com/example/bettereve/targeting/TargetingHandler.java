@@ -28,12 +28,12 @@ public class TargetingHandler {
         }
     }
 
-    // 监听生物的 tick 事件，每2Tick刷新一次目标
+    // 监听生物的 tick 事件，每100tick（5秒）刷新一次目标
     @SubscribeEvent
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         if (event.getEntity() instanceof Mob mob && !mob.level().isClientSide) {
-            // 每2Tick刷新一次目标，强化寻敌积极性
-            if (mob.tickCount % 20 == 0) {
+            // 每100tick（5秒）刷新一次目标，降低CPU开销
+            if (mob.tickCount % 100 == 0) {
                 // 遍历目标选择器中的所有目标选择器，找到我们的自定义目标选择器
                 mob.targetSelector.getAvailableGoals().stream()
                         .filter(goal -> goal.getGoal() instanceof FactionHostileTargetGoal)
@@ -56,56 +56,33 @@ public class TargetingHandler {
     }
 
     private static void setupFactionHostileTargetGoal(Mob mob) {
-        // 优化方案：完全清除所有目标选择器，只保留我们的自定义目标选择器
-        // 这样可以确保我们的阵营判定完全生效，同时保留生物的基本AI行为
+        // 优化方案：保留非敌对目标选择器，只替换敌对目标选择器
+        // 这样可以确保我们的阵营判定逻辑生效，同时保留生物的基本AI行为
         
         // 检查是否已添加过我们的自定义目标选择器，如果是则返回，避免重复添加
         boolean hasCustomGoal = false;
         
-        // 首先检查是否已包含我们的自定义目标选择器
         try {
-            // 使用 Java Stream API 检查是否已存在自定义目标选择器
             hasCustomGoal = mob.targetSelector.getAvailableGoals().stream()
                     .anyMatch(goalEntry -> goalEntry.getGoal() instanceof FactionHostileTargetGoal);
         } catch (Exception e) {
-            LOGGER.debug("Failed to check for custom goal:", e);
         }
         
         if (hasCustomGoal) {
             return;
         }
         
-        // 暴力清除 targetSelector 中的所有目标选择器 - 这是确保完全控制的最有效方法
+        // 只替换敌对目标选择器，保留其他目标选择器
         try {
-            // 使用反射调用 removeAllGoals 方法，彻底清除所有目标选择器
+            // 移除原版的敌对目标选择器（如 NearestAttackableTargetGoal 等）
             java.lang.reflect.Method removeAllGoalsMethod = net.minecraft.world.entity.ai.goal.GoalSelector.class.getDeclaredMethod("removeAllGoals", java.util.function.Predicate.class);
             removeAllGoalsMethod.setAccessible(true);
-            removeAllGoalsMethod.invoke(mob.targetSelector, (java.util.function.Predicate<net.minecraft.world.entity.ai.goal.Goal>) goal -> true);
-            LOGGER.debug("Cleared all target goals from mob: " + mob.getName().getString());
+            removeAllGoalsMethod.invoke(mob.targetSelector, (java.util.function.Predicate<net.minecraft.world.entity.ai.goal.Goal>) goal -> 
+                    goal.getClass().getName().contains("Attackable") || 
+                    goal.getClass().getName().contains("Hostile") || 
+                    goal.getClass().getName().contains("Target") && !goal.getClass().getName().contains("Faction")
+            );
         } catch (Exception e) {
-            LOGGER.debug("Failed to clear target goals using removeAllGoals method:", e);
-            
-            // 如果 removeAllGoals 方法不可用（可能是旧版本），尝试使用反射直接清空
-            try {
-                java.lang.reflect.Field field = net.minecraft.world.entity.ai.goal.GoalSelector.class.getDeclaredField("availableGoals");
-                field.setAccessible(true);
-                
-                Object goals = field.get(mob.targetSelector);
-                if (goals != null) {
-                    // 如果 goals 是 Collection 类型，直接清空
-                    if (goals instanceof java.util.Collection) {
-                        ((java.util.Collection<?>) goals).clear();
-                        LOGGER.debug("Cleared all target goals from mob (Collection method): " + mob.getName().getString());
-                    } else if (goals instanceof Iterable) {
-                        // 如果是其他 Iterable 类型，尝试获取其所属类并查找清空方法
-                        java.lang.reflect.Method clearMethod = goals.getClass().getMethod("clear");
-                        clearMethod.invoke(goals);
-                        LOGGER.debug("Cleared all target goals from mob (clear method): " + mob.getName().getString());
-                    }
-                }
-            } catch (Exception e2) {
-                LOGGER.debug("Failed to clear target goals using reflection:", e2);
-            }
         }
         
         // 为生物添加自定义的阵营敌对目标选择器
@@ -115,9 +92,8 @@ public class TargetingHandler {
                 true,               // 检查视线（原版逻辑）
                 true                // 更新目标（原版逻辑）
         ));
-        
-        LOGGER.debug("Added custom faction hostile target goal to mob: " + mob.getName().getString());
     }
+    
     public static void loadFromConfig() {
         // 简化配置加载，只需要确保配置已加载
     }

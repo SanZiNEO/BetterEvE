@@ -38,6 +38,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import com.example.bettereve.network.HealthBarScalePacket;
+
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class BetterEvECommands {
 
@@ -105,6 +107,19 @@ public class BetterEvECommands {
                         .suggests(FACTION_NAME_SUGGESTIONS)
                         .executes(BetterEvECommands::clearFactionScoreboard)
                     )
+                )
+            )
+            .then(Commands.literal("healthbar")
+                .then(Commands.literal("scale")
+                    .then(Commands.argument("scale", DoubleArgumentType.doubleArg(0.1, 3.0))
+                        .executes(BetterEvECommands::executeSetHealthBarScale)
+                    )
+                )
+                .then(Commands.literal("reset")
+                    .executes(BetterEvECommands::executeResetHealthBarScale)
+                )
+                .then(Commands.literal("get")
+                    .executes(BetterEvECommands::executeGetHealthBarScale)
                 )
             )
         );
@@ -353,5 +368,47 @@ public class BetterEvECommands {
                 }
             }
         }
+    }
+    
+    /**
+     * 设置血条缩放比例
+     */
+    private static int executeSetHealthBarScale(CommandContext<CommandSourceStack> context) {
+        double scale = DoubleArgumentType.getDouble(context, "scale");
+        HealthBarScalePacket.sendToAllClients((float) scale);
+        
+        context.getSource().sendSuccess(() -> 
+            Component.literal("血条缩放已设置为: " + String.format("%.1f", scale) + "x"), 
+            true
+        );
+        
+        return 1;
+    }
+    
+    /**
+     * 重置血条缩放比例到默认值
+     */
+    private static int executeResetHealthBarScale(CommandContext<CommandSourceStack> context) {
+        HealthBarScalePacket.sendResetToAllClients();
+        
+        context.getSource().sendSuccess(() -> 
+            Component.literal("血条缩放已重置为默认值: 1.0x"), 
+            true
+        );
+        
+        return 1;
+    }
+    
+    /**
+     * 获取当前血条缩放比例
+     */
+    private static int executeGetHealthBarScale(CommandContext<CommandSourceStack> context) {
+        // 服务器端无法直接获取客户端渲染状态，返回默认值
+        context.getSource().sendSuccess(() -> 
+            Component.literal("当前血条缩放: 1.0x (服务器端无法直接获取客户端渲染状态)"), 
+            false
+        );
+        
+        return 1;
     }
 }
