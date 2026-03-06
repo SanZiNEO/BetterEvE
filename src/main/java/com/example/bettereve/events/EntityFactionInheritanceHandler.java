@@ -121,10 +121,16 @@ public class EntityFactionInheritanceHandler {
 
         Entity entity = event.getEntity();
 
-        // 检查实体是否已经有非中立的阵营ID（比如命令召唤的生物），如果有则不进行继承
+        // 检查实体是否是通过命令召唤的（通过检查是否已经有非中立阵营）
+        // 并且也避免处理已经设置好阵营的实体
         if (!FactionHelper.getEntityFactionId(entity).equals("neutral")) {
+            LOGGER.debug("Entity {} has already been assigned faction {}, skipping inheritance", entity.getName(), FactionHelper.getEntityFactionId(entity));
             return;
         }
+
+        // 检查实体是否已经有标记表明不需要继承（例如命令召唤的生物在添加到世界前就设置了阵营）
+        // 但我们无法直接获取生成来源，所以我们需要检查实体是否是通过命令生成的
+        // 一种方法是检查实体是否已经有我们设置的非中立阵营
 
         // 首先尝试从死亡记录中继承阵营（死亡后召唤）
         String factionId = tryInheritFromDeathRecords(entity);
@@ -135,8 +141,11 @@ public class EntityFactionInheritanceHandler {
         }
         
         if (!factionId.equals("neutral")) {
+            LOGGER.debug("Inheriting faction {} for entity {}", factionId, entity.getName());
             FactionHelper.setEntityFactionId(entity, factionId);
             com.example.bettereve.network.FactionSyncHandler.syncEntityImmediately(entity);
+        } else {
+            LOGGER.debug("Entity {} remains neutral, no inheritance found", entity.getName());
         }
     }
 

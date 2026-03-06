@@ -48,9 +48,12 @@ import net.minecraft.world.DifficultyInstance;
 
 import com.example.bettereve.mixin.MobAccessor;
 import com.example.bettereve.network.HealthBarScalePacket;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class BetterEvECommands {
+    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/Commands");
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -386,6 +389,11 @@ public class BetterEvECommands {
                                 FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
                             }
                         }
+                        
+                        // 重要：在将实体添加到世界之前，确保阵营设置正确
+                        // 这样 onEntityJoinLevel 事件会正确检测到我们已经设置了阵营
+                        // 并且不会尝试继承其他阵营
+                        LOGGER.debug("Entity {} will be spawned with faction {}, position {},{},{}", mob.getName(), factionId, x+i, y, z);
                         
                         serverLevel.addFreshEntity(mob);
                         
