@@ -5,19 +5,21 @@ import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.level.LevelSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.Camera;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.util.Mth;
-import net.minecraft.world.phys.Vec3;
-import org.joml.Vector4f;
-import org.joml.Matrix4f;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -222,7 +224,8 @@ public class SimpleHealthBarRenderer {
                                (float)camera.getLookVector().z, 
                                0, 1, 0);
             
-            float fov = 70.0f;
+            // 获取真实 FOV，使用与原版相同的方法
+            double fov = getCurrentFov(gameRenderer, camera);
             float aspectRatio = (float)mc.getWindow().getScreenWidth() / (float)mc.getWindow().getScreenHeight();
             float near = 0.05f;
             float far = 1000.0f;
@@ -266,6 +269,56 @@ public class SimpleHealthBarRenderer {
             
         } catch (Exception e) {
             return false;
+        }
+    }
+    
+    /**
+     * 获取当前 FOV，模拟原版 GameRenderer.getFov() 方法
+     */
+    private static double getCurrentFov(GameRenderer gameRenderer, Camera camera) {
+        Minecraft mc = Minecraft.getInstance();
+        
+        // 尝试通过反射获取 GameRenderer 中的 fov 和 oldFov 字段
+        try {
+            java.lang.reflect.Field fovField = GameRenderer.class.getDeclaredField("fov");
+            java.lang.reflect.Field oldFovField = GameRenderer.class.getDeclaredField("oldFov");
+            
+            fovField.setAccessible(true);
+            oldFovField.setAccessible(true);
+            
+            float fov = fovField.getFloat(gameRenderer);
+            float oldFov = oldFovField.getFloat(gameRenderer);
+            
+            // 获取当前部分 Tick（用于插值）
+            float partialTick = mc.getDeltaFrameTime();
+            
+            // 计算最终 FOV
+            double baseFov = mc.options.fov().get().intValue();
+            double dynamicFov = Mth.lerp(partialTick, oldFov, fov);
+            double finalFov = baseFov * dynamicFov;
+            
+            // 应用流体视角修正（暂时注释掉，避免依赖未正确导入的 FogType）
+            /*
+            FogType fogType = camera.getFluidInCamera();
+            if (fogType == FogType.LAVA || fogType == FogType.WATER) {
+                finalFov *= Mth.lerp(mc.options.fovEffectScale().get(), 1.0D, 0.85714287D);
+            }
+            */
+            
+            // 应用 Forge 钩子（如果有）
+            try {
+                Class<?> forgeHooksClientClass = Class.forName("net.minecraftforge.client.ForgeHooksClient");
+                java.lang.reflect.Method getFieldOfViewMethod = forgeHooksClientClass.getMethod("getFieldOfView", GameRenderer.class, Camera.class, float.class, double.class, boolean.class);
+                finalFov = (double)getFieldOfViewMethod.invoke(null, gameRenderer, camera, partialTick, finalFov, true);
+            } catch (Exception e) {
+                // 如果 Forge 钩子不可用（如在纯净版中），直接返回计算值
+            }
+            
+            return finalFov;
+            
+        } catch (Exception e) {
+            // 如果反射失败，返回默认 FOV（70.0）
+            return 70.0D;
         }
     }
     
