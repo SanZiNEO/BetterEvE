@@ -98,6 +98,12 @@ public class BetterEvECommands {
                                     .then(Commands.argument("z", DoubleArgumentType.doubleArg())
                                         .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
                                             .executes(BetterEvECommands::executeSpawnEntitiesAtPosition)
+                                            .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                                .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithHealthBar)
+                                                .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                                    .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithHealthBarAndNBT)
+                                                )
+                                            )
                                             .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
                                                 .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithNBT)
                                             )
@@ -242,15 +248,26 @@ public class BetterEvECommands {
     }
 
     private static int executeSpawnEntitiesAtPosition(CommandContext<CommandSourceStack> context) {
-        return executeSpawnEntitiesAtPositionWithNBTInternal(context, null);
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, null, true);
+    }
+
+    private static int executeSpawnEntitiesAtPositionWithHealthBar(CommandContext<CommandSourceStack> context) {
+        boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, null, showHealthBar);
+    }
+
+    private static int executeSpawnEntitiesAtPositionWithHealthBarAndNBT(CommandContext<CommandSourceStack> context) {
+        boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
+        CompoundTag nbt = CompoundTagArgument.getCompoundTag(context, "nbt");
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, nbt, showHealthBar);
     }
 
     private static int executeSpawnEntitiesAtPositionWithNBT(CommandContext<CommandSourceStack> context) {
         CompoundTag nbt = CompoundTagArgument.getCompoundTag(context, "nbt");
-        return executeSpawnEntitiesAtPositionWithNBTInternal(context, nbt);
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, nbt, true);
     }
 
-    private static int executeSpawnEntitiesAtPositionWithNBTInternal(CommandContext<CommandSourceStack> context, CompoundTag nbt) {
+    private static int executeSpawnEntitiesAtPositionWithNBTInternal(CommandContext<CommandSourceStack> context, CompoundTag nbt, boolean showHealthBar) {
         ResourceLocation entityRL = ResourceLocationArgument.getId(context, "entityType");
         String factionId = StringArgumentType.getString(context, "factionId");
         int level = IntegerArgumentType.getInteger(context, "level");
@@ -353,6 +370,9 @@ public class BetterEvECommands {
                             LevelSystem.setEntityLevel(mob, level);
                         }
                         
+                        // 设置血条可见性
+                        FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
+                        
                         MobAccessor mobAccessor = (MobAccessor) mob;
                         mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
                         mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
@@ -360,9 +380,17 @@ public class BetterEvECommands {
                         if (nbt != null) {
                             mob.load(nbt);
                             mob.setPos(x + i, y, z);
+                            // 如果NBT数据中有血条可见性设置，覆盖之前的值
+                            if (nbt.contains("BetterEvE:ShowHealthBar")) {
+                                showHealthBar = nbt.getBoolean("BetterEvE:ShowHealthBar");
+                                FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
+                            }
                         }
                         
                         serverLevel.addFreshEntity(mob);
+                        
+                        // 同步血条可见性到所有客户端
+                        com.example.bettereve.network.NetworkManager.syncEntityHealthBarVisibilityToAll(mob, showHealthBar);
                     } else {
                         context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL + " (必须是可生成的生物)"));
                         return 0;
@@ -375,11 +403,8 @@ public class BetterEvECommands {
         }
         
         String posString = String.format("%.1f, %.1f, %.1f", x, y, z);
-        context.getSource().sendSuccess(() -> 
-            Component.literal("成功在 (" + posString + ") 生成 " + 
-                             count + " 个 " + entityRL + " (阵营: " + factionId + ", 等级: " + level + ")"), 
-            true
-        );
+        String message = "Successfully spawned " + count + " " + entityRL + " (Faction: " + factionId + ", Level: " + level + ", Health Bar: " + (showHealthBar ? "Visible" : "Hidden") + ") at (" + posString + ")";
+        context.getSource().sendSuccess(() -> Component.literal(message), true);
         return 1;
     }
 

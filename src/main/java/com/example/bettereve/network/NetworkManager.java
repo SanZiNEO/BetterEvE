@@ -15,6 +15,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
 
 /**
  * 网络管理器
@@ -84,6 +85,73 @@ public class NetworkManager {
             HealthBarScalePacket::decode,
             HealthBarScalePacket::handle
         );
+        
+        // 注册血条可见性同步数据包
+        CHANNEL.registerMessage(
+            packetId++,
+            HealthBarVisibilityPacket.class,
+            HealthBarVisibilityPacket::encode,
+            HealthBarVisibilityPacket::decode,
+            HealthBarVisibilityPacket::handle
+        );
+    }
+    
+    /**
+     * 同步单个实体的血条可见性到客户端
+     * @param entity 要同步的实体
+     * @param showHealthBar 是否显示血条
+     * @param player 目标玩家（null表示所有玩家）
+     */
+    public static void syncEntityHealthBarVisibility(Entity entity, boolean showHealthBar, ServerPlayer player) {
+        if (entity == null) {
+            return;
+        }
+        
+        // 创建数据包
+        HealthBarVisibilityPacket packet = new HealthBarVisibilityPacket(entity.getUUID(), showHealthBar);
+        
+        // 发送数据包
+        if (player != null) {
+            // 发送给特定玩家
+            CHANNEL.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+        } else {
+            // 发送给所有玩家
+            CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+        }
+    }
+    
+    /**
+     * 同步单个实体的血条可见性到所有客户端
+     */
+    public static void syncEntityHealthBarVisibilityToAll(Entity entity, boolean showHealthBar) {
+        syncEntityHealthBarVisibility(entity, showHealthBar, null);
+    }
+    
+    /**
+     * 批量同步实体的血条可见性
+     * @param entityVisibilityMap 实体UUID到可见性的映射
+     */
+    public static void syncBatchHealthBarVisibility(java.util.Map<java.util.UUID, java.lang.Boolean> entityVisibilityMap) {
+        if (entityVisibilityMap == null || entityVisibilityMap.isEmpty()) {
+            return;
+        }
+        
+        // 创建数据包
+        HealthBarVisibilityPacket packet = new HealthBarVisibilityPacket(entityVisibilityMap);
+        
+        // 发送给所有玩家
+        CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+    }
+    
+    /**
+     * 清除客户端血条可见性缓存
+     */
+    public static void clearClientHealthBarVisibilityCache() {
+        // 创建数据包
+        HealthBarVisibilityPacket packet = new HealthBarVisibilityPacket();
+        
+        // 发送给所有玩家
+        CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
     }
     
     /**

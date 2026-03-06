@@ -91,7 +91,13 @@ public class SimpleHealthBarRenderer {
             return false;
         }
         
-        return !(entity instanceof Player);
+        if (entity instanceof Player) {
+            return false;
+        }
+        
+        // 检查是否应该显示血条（从网络同步的客户端缓存获取）
+        return com.example.bettereve.network.HealthBarVisibilityPacket.ClientHealthBarVisibilityCache
+                .getEntityHealthBarVisibility(entity.getUUID());
     }
     
     /**

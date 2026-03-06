@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 public class FactionHelper {
     private static final Logger LOGGER = LogManager.getLogger("BetterEvE/FactionHelper");
     private static final String FACTION_NBT_KEY = "BetterEvE:FactionID";
+    private static final String SHOW_HEALTH_BAR_NBT_KEY = "BetterEvE:ShowHealthBar";
 
     // 获取实体的阵营ID（纯NBT实现，保持跨模组兼容性）
     public static String getEntityFactionId(Entity entity) {
@@ -37,6 +38,33 @@ public class FactionHelper {
 
         CompoundTag nbt = entity.getPersistentData();
         nbt.putString(FACTION_NBT_KEY, factionId);
+        
+        // NBT数据会自动保存，无需额外操作
+    }
+
+    // 获取实体是否显示血条（纯NBT实现）
+    public static boolean getEntityShowHealthBar(Entity entity) {
+        if (entity == null) {
+            return true; // 默认显示血条
+        }
+
+        CompoundTag nbt = entity.getPersistentData();
+        
+        if (nbt.contains(SHOW_HEALTH_BAR_NBT_KEY)) {
+            return nbt.getBoolean(SHOW_HEALTH_BAR_NBT_KEY);
+        }
+
+        return true; // 默认显示血条
+    }
+
+    // 设置实体是否显示血条（纯NBT实现）
+    public static void setEntityShowHealthBar(Entity entity, boolean showHealthBar) {
+        if (entity == null) {
+            return;
+        }
+
+        CompoundTag nbt = entity.getPersistentData();
+        nbt.putBoolean(SHOW_HEALTH_BAR_NBT_KEY, showHealthBar);
         
         // NBT数据会自动保存，无需额外操作
     }

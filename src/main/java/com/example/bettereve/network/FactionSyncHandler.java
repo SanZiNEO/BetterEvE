@@ -39,11 +39,15 @@ public class FactionSyncHandler {
             return;
         }
         
-        // 只同步有阵营的实体（非中立）
+        // 同步阵营信息
         String factionId = FactionHelper.getEntityFactionId(entity);
         if (!"neutral".equals(factionId)) {
             NetworkManager.queueEntityForSync(entity);
         }
+        
+        // 同步血条可见性信息
+        boolean showHealthBar = FactionHelper.getEntityShowHealthBar(entity);
+        NetworkManager.syncEntityHealthBarVisibilityToAll(entity, showHealthBar);
     }
     
     /**
