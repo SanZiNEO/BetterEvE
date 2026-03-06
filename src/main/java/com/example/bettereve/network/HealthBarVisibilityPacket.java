@@ -126,8 +126,6 @@ public class HealthBarVisibilityPacket {
                     case MODE_SINGLE_ENTITY:
                         ClientHealthBarVisibilityCache.setEntityHealthBarVisibility(
                                 packet.entityUUID, packet.showHealthBar);
-                        LOGGER.debug("Synced health bar visibility for entity {}: {}", 
-                                packet.entityUUID, packet.showHealthBar);
                         break;
                         
                     case MODE_BATCH_SYNC:
@@ -135,13 +133,10 @@ public class HealthBarVisibilityPacket {
                             ClientHealthBarVisibilityCache.setEntityHealthBarVisibility(
                                     entry.getKey(), entry.getValue());
                         }
-                        LOGGER.debug("Batch synced health bar visibility for {} entities", 
-                                packet.entityVisibilityMap.size());
                         break;
                         
                     case MODE_CLEAR_CACHE:
                         ClientHealthBarVisibilityCache.clearCache();
-                        LOGGER.debug("Cleared health bar visibility client cache");
                         break;
                 }
             } catch (Exception e) {

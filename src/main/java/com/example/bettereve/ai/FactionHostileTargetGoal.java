@@ -97,7 +97,6 @@ public class FactionHostileTargetGoal extends TargetGoal {
                 // 如果当前目标无效，清除目标
                 target = null;
                 mob.setTarget(null);
-                LOGGER.debug("Clearing invalid target for {}", mob.getName().getString());
             } else {
                 // 当前目标仍然有效，检查是否有更合适的目标
                 List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
@@ -111,7 +110,6 @@ public class FactionHostileTargetGoal extends TargetGoal {
                     if (nearestTarget != null && nearestTarget != target) {
                         target = nearestTarget;
                         mob.setTarget(target);
-                        LOGGER.debug("Updating target for {} to {}", mob.getName().getString(), target.getName().getString());
                     }
                 }
             }
@@ -126,7 +124,6 @@ public class FactionHostileTargetGoal extends TargetGoal {
             if (!nearbyEntities.isEmpty()) {
                 target = findNearestTarget(nearbyEntities);
                 mob.setTarget(target);
-                LOGGER.debug("Finding new target for {}: {}", mob.getName().getString(), target.getName().getString());
             }
         }
     }

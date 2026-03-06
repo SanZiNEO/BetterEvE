@@ -51,8 +51,6 @@ public class NetworkManager {
         
         // 注册数据包
         registerPackets();
-        
-        LOGGER.info("NetworkManager: initialized network channel for mod {}", Bettereve.MODID);
     }
     
     /**

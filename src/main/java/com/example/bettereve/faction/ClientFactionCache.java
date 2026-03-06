@@ -117,7 +117,6 @@ public class ClientFactionCache {
         entityFactionCache.clear();
         cacheTimestamps.clear();
         
-        LOGGER.info("ClientFactionCache: cleared all cache entries ({} entities)", size);
     }
     
     /**

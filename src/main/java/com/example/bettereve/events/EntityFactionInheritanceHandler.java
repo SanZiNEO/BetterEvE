@@ -85,7 +85,6 @@ public class EntityFactionInheritanceHandler {
         );
         
         deathRecords.put(entityId, record);
-        LOGGER.debug("记录死亡信息: {} - 阵营: {}", entityId, record.factionId);
     }
 
     // 监听子生物生成事件（专门用于繁殖产生的子生物）
@@ -95,10 +94,6 @@ public class EntityFactionInheritanceHandler {
         Mob parentB = event.getParentB();
         Mob child = event.getChild();
 
-        LOGGER.debug("子生物生成事件触发: 父生物A: {}, 父生物B: {}, 子生物: {}", 
-                     parentA.getName().getString(), 
-                     parentB.getName().getString(), 
-                     child.getName().getString());
 
         // 获取父生物的阵营ID（优先使用第一个父生物的阵营）
         String factionId = FactionHelper.getEntityFactionId(parentA);
@@ -111,9 +106,6 @@ public class EntityFactionInheritanceHandler {
         // 设置子生物的阵营与父生物相同
         FactionHelper.setEntityFactionId(child, factionId);
         
-        LOGGER.debug("子生物阵营设置成功: 子生物: {}, 阵营: {}", 
-                     child.getName().getString(), 
-                     factionId);
         
         // 同步阵营信息到客户端
         com.example.bettereve.network.FactionSyncHandler.syncEntityImmediately(child);
@@ -131,7 +123,6 @@ public class EntityFactionInheritanceHandler {
 
         // 检查实体是否已经有非中立的阵营ID（比如命令召唤的生物），如果有则不进行继承
         if (!FactionHelper.getEntityFactionId(entity).equals("neutral")) {
-            LOGGER.debug("实体已设置阵营，跳过继承逻辑: {}, 阵营: {}", entity.getName().getString(), FactionHelper.getEntityFactionId(entity));
             return;
         }
 
@@ -145,7 +136,6 @@ public class EntityFactionInheritanceHandler {
         
         if (!factionId.equals("neutral")) {
             FactionHelper.setEntityFactionId(entity, factionId);
-            LOGGER.debug("实体阵营继承成功: {}, 阵营: {}", entity.getName().getString(), factionId);
             com.example.bettereve.network.FactionSyncHandler.syncEntityImmediately(entity);
         }
     }
@@ -167,7 +157,6 @@ public class EntityFactionInheritanceHandler {
 
             // 如果在搜索范围内，并且不是中立阵营
             if (distance <= searchRadius && !record.factionId.equals("neutral")) {
-                LOGGER.debug("在死亡记录中找到匹配: 距离: {}米, 阵营: {}", distance, record.factionId);
                 
                 // 选择最近的匹配
                 if (distance < closestDistance) {
@@ -213,8 +202,6 @@ public class EntityFactionInheritanceHandler {
         }
 
         if (!bestFactionId.equals("neutral")) {
-            LOGGER.debug("从附近实体继承阵营: {}, 距离: {}米", 
-                         bestFactionId, Math.sqrt(closestDistance));
         }
 
         return bestFactionId;
