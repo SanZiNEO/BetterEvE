@@ -2,9 +2,12 @@ package com.example.bettereve.level;
 
 import com.example.bettereve.config.BetterEvEConfig;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.fml.common.Mod;
 
@@ -18,9 +21,9 @@ public class LevelSystem {
     private static final String NBT_LEVEL_KEY = "BetterEvE_Level";
 
     /**
-     * 获取生物等级
+     * 获取实体等级（支持所有实体类型，包括投掷物）
      */
-    public static int getEntityLevel(LivingEntity entity) {
+    public static int getEntityLevel(Entity entity) {
         // 首先尝试从 NBT 中获取等级（持久性存储）
         if (entity.getPersistentData().contains(NBT_LEVEL_KEY)) {
             return entity.getPersistentData().getInt(NBT_LEVEL_KEY);
@@ -30,9 +33,16 @@ public class LevelSystem {
     }
 
     /**
-     * 设置生物等级（仅用于召唤时设置）
+     * 获取生物等级（保持兼容性）
      */
-    public static void setEntityLevel(LivingEntity entity, int level) {
+    public static int getEntityLevel(LivingEntity entity) {
+        return getEntityLevel((Entity) entity);
+    }
+
+    /**
+     * 设置实体等级（支持所有实体类型，包括投掷物）
+     */
+    public static void setEntityLevel(Entity entity, int level) {
         if (level < 0) level = 0;
         int maxLevel = BetterEvEConfig.INSTANCE.level_maxLevel.get();
         if (level > maxLevel) level = maxLevel;
@@ -40,7 +50,14 @@ public class LevelSystem {
         // 同时存储到内存和 NBT 中，确保持久性
         entityLevels.put(entity.getUUID(), level);
         entity.getPersistentData().putInt(NBT_LEVEL_KEY, level);
-        applySpawnLevel(entity, level);
+        
+        // 如果是生物，应用属性加成
+        if (entity instanceof LivingEntity) {
+            applySpawnLevel((LivingEntity) entity, level);
+        } else if (entity instanceof AbstractArrow) {
+            // 为投掷物应用属性加成
+            applyProjectileLevel((AbstractArrow) entity, level);
+        }
         
         // 同步到客户端
         if (!net.minecraft.client.Minecraft.getInstance().isSameThread()) {
@@ -49,30 +66,63 @@ public class LevelSystem {
     }
 
     /**
+     * 设置生物等级（保持兼容性）
+     */
+    public static void setEntityLevel(LivingEntity entity, int level) {
+        setEntityLevel((Entity) entity, level);
+    }
+
+    /**
      * 从 NBT 中读取等级信息（实体加载时调用）
      */
-    public static void loadLevelFromNBT(LivingEntity entity) {
+    public static void loadLevelFromNBT(Entity entity) {
         if (entity.getPersistentData().contains(NBT_LEVEL_KEY)) {
             int level = entity.getPersistentData().getInt(NBT_LEVEL_KEY);
             entityLevels.put(entity.getUUID(), level);
+            
+            // 如果是投掷物，加载时应用属性
+            if (entity instanceof AbstractArrow) {
+                applyProjectileLevel((AbstractArrow) entity, level);
+            }
         }
+    }
+
+    /**
+     * 从 NBT 中读取等级信息（保持兼容性）
+     */
+    public static void loadLevelFromNBT(LivingEntity entity) {
+        loadLevelFromNBT((Entity) entity);
     }
 
     /**
      * 保存等级信息到 NBT（实体保存时调用）
      */
-    public static void saveLevelToNBT(LivingEntity entity) {
+    public static void saveLevelToNBT(Entity entity) {
         if (entityLevels.containsKey(entity.getUUID())) {
             entity.getPersistentData().putInt(NBT_LEVEL_KEY, entityLevels.get(entity.getUUID()));
         }
     }
 
     /**
+     * 保存等级信息到 NBT（保持兼容性）
+     */
+    public static void saveLevelToNBT(LivingEntity entity) {
+        saveLevelToNBT((Entity) entity);
+    }
+
+    /**
      * 清理实体等级数据（实体离开世界时调用）
      */
-    public static void removeEntityLevel(LivingEntity entity) {
+    public static void removeEntityLevel(Entity entity) {
         entityLevels.remove(entity.getUUID());
         entity.getPersistentData().remove(NBT_LEVEL_KEY);
+    }
+
+    /**
+     * 清理实体等级数据（保持兼容性）
+     */
+    public static void removeEntityLevel(LivingEntity entity) {
+        removeEntityLevel((Entity) entity);
     }
 
     /**
@@ -134,6 +184,36 @@ public class LevelSystem {
             double finalKnockback = Math.min(knockbackResistance, maxKnockback);
             entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(finalKnockback);
         }
+    }
+
+    /**
+     * 应用投掷物等级属性
+     */
+    public static void applyProjectileLevel(AbstractArrow projectile, int level) {
+        if (level <= 0) return;
+
+        // 获取配置的属性加成百分比
+        double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get() / 100;
+        
+        // 伤害加成（与 LevelSystem 相同的非线性增长公式）
+        double damageMultiplier = 1 + attackBonus * Math.pow(level, 1.42);
+        double maxDamage = 200.0; // 限制最大伤害倍数为 200 倍
+        double finalDamage = Math.min(damageMultiplier, maxDamage);
+        
+        // 设置新的基础伤害
+        double currentDamage = projectile.getBaseDamage();
+        double newDamage = currentDamage * finalDamage;
+        projectile.setBaseDamage(newDamage);
+        
+        // 穿透加成（非线性增长，限制最大值为 20 倍穿透）
+        double pierceBonus = 0.05 * Math.pow(level, 1.2);
+        double maxPierce = 20.0; // 限制最大穿透倍数为 20 倍
+        double finalPierce = Math.min(pierceBonus, maxPierce);
+        
+        // 设置新的穿透等级（确保至少为 0）
+        byte currentPierce = projectile.getPierceLevel();
+        byte newPierce = (byte) Math.max((int) finalPierce, currentPierce);
+        projectile.setPierceLevel(newPierce);
     }
 
     /**
