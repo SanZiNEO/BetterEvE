@@ -5,6 +5,7 @@ import com.example.bettereve.level.LevelSystem;
 import com.example.bettereve.Bettereve;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -25,8 +26,8 @@ public class ProjectileFactionInheritanceHandler {
 
         Entity entity = event.getEntity();
 
-        // 严格检查是否是有效的投掷物类型，确保只处理真正的投掷物
-        if (entity instanceof Projectile && isStrictlyValidProjectileType(entity)) {
+        // 检查是否是有效的投掷物类型（避免将非投掷物实体误设置阵营）
+        if (entity instanceof Projectile && isValidProjectileType(entity)) {
             Projectile projectile = (Projectile) entity;
             
             // 获取发射者
@@ -41,8 +42,6 @@ public class ProjectileFactionInheritanceHandler {
             // 如果发射者不是中立阵营，则设置投掷物的阵营与发射者相同
             if (!factionId.equals("neutral")) {
                 FactionHelper.setEntityFactionId(projectile, factionId);
-                LOGGER.debug("投掷物继承阵营: 投掷物类型={}, 发射者UUID={}, 发射者阵营={}, 投掷物UUID={}", 
-                    entity.getType().toString(), owner.getUUID(), factionId, entity.getUUID());
             }
 
             // 继承发射者的等级
@@ -55,12 +54,22 @@ public class ProjectileFactionInheritanceHandler {
         }
     }
 
-    // 严格判断是否是有效的投掷物类型，避免对其他实体的误操作
-    private static boolean isStrictlyValidProjectileType(Entity entity) {
-        // 只接受 Minecraft 原版定义的投射物类型
+    // 判断是否是有效的投掷物类型
+    private static boolean isValidProjectileType(Entity entity) {
         String entityTypeName = entity.getType().toString().toLowerCase();
         
-        // 严格限制的有效投掷物类型：
+        // 有效的投掷物类型包括：
+        // - arrow (箭)
+        // - fireball (火球)
+        // - snowball (雪球)
+        // - egg (鸡蛋)
+        // - ender_pearl (末影珍珠)
+        // - trident (三叉戟)
+        // - experience_bottle (经验瓶)
+        // - potion (喷溅药水、滞留药水)
+        // - shulker_bullet (潜影贝子弹)
+        // - llama_spit ( llama 唾沫)
+        
         return entityTypeName.contains("arrow") ||
                entityTypeName.contains("fireball") ||
                entityTypeName.contains("snowball") ||
@@ -70,11 +79,6 @@ public class ProjectileFactionInheritanceHandler {
                entityTypeName.contains("experience_bottle") ||
                entityTypeName.contains("potion") ||
                entityTypeName.contains("shulker_bullet") ||
-               entityTypeName.contains("llama_spit") ||
-               entityTypeName.contains("spectral_arrow") ||
-               entityTypeName.contains("tipped_arrow") ||
-               entityTypeName.contains("dragon_fireball") ||
-               entityTypeName.contains("small_fireball") ||
-               entityTypeName.contains("wither_skull");
+               entityTypeName.contains("llama_spit");
     }
 }

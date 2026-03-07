@@ -366,21 +366,6 @@ public class BetterEvECommands {
                             }
                         }
                         
-                        MobAccessor mobAccessor = (MobAccessor) mob;
-                        mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
-                        mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
-                        
-                        if (nbt != null) {
-                            mob.load(nbt);
-                            mob.setPos(x + i, y, z);
-                            // 如果NBT数据中有血条可见性设置，覆盖之前的值
-                            if (nbt.contains("BetterEvE:ShowHealthBar")) {
-                                showHealthBar = nbt.getBoolean("BetterEvE:ShowHealthBar");
-                            }
-                        }
-                        
-                        // 重要：确保在加载NBT数据后再设置阵营
-                        // 这样可以避免NBT数据覆盖我们的阵营设置
                         FactionHelper.setEntityFactionId(mob, factionId);
                         FactionSyncHandler.syncEntityImmediately(mob);
                         
@@ -391,18 +376,26 @@ public class BetterEvECommands {
                         // 设置血条可见性
                         FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
                         
+                        MobAccessor mobAccessor = (MobAccessor) mob;
+                        mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
+                        mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
+                        
+                        if (nbt != null) {
+                            mob.load(nbt);
+                            mob.setPos(x + i, y, z);
+                            // 如果NBT数据中有血条可见性设置，覆盖之前的值
+                            if (nbt.contains("BetterEvE:ShowHealthBar")) {
+                                showHealthBar = nbt.getBoolean("BetterEvE:ShowHealthBar");
+                                FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
+                            }
+                        }
+                        
+                        // 重要：在将实体添加到世界之前，确保阵营设置正确
+                        // 这样 onEntityJoinLevel 事件会正确检测到我们已经设置了阵营
+                        // 并且不会尝试继承其他阵营
                         LOGGER.debug("Entity {} will be spawned with faction {}, position {},{},{}", mob.getName(), factionId, x+i, y, z);
                         
                         serverLevel.addFreshEntity(mob);
-                        
-                        // 验证阵营设置是否正确，并在需要时重新设置
-                        String actualFactionId = FactionHelper.getEntityFactionId(mob);
-                        if (!actualFactionId.equals(factionId)) {
-                            LOGGER.warn("Entity {} faction mismatch! Expected: {}, Actual: {}, re-setting...", 
-                                mob.getName(), factionId, actualFactionId);
-                            FactionHelper.setEntityFactionId(mob, factionId);
-                            FactionSyncHandler.syncEntityImmediately(mob);
-                        }
                         
                         // 同步血条可见性到所有客户端
                         com.example.bettereve.network.NetworkManager.syncEntityHealthBarVisibilityToAll(mob, showHealthBar);

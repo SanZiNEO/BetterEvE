@@ -125,12 +125,4 @@ public class FactionRegistry {
         factions.put(id, faction);
         return faction;
     }
-    
-    // 检查阵营是否存在
-    public static boolean factionExists(String id) {
-        if (id == null || id.isEmpty()) {
-            return false;
-        }
-        return factions.containsKey(id);
-    }
 }
