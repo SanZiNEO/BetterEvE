@@ -296,13 +296,32 @@ public class BetterEvECommands {
                         mob.setPos(x + i, y, z);
                         
                         DifficultyInstance difficulty = serverLevel.getCurrentDifficultyAt(new BlockPos((int)x, (int)y, (int)z));
-                        try {
-                            mob.finalizeSpawn(serverLevel, difficulty, MobSpawnType.COMMAND, null, null);
-                        } catch (Exception e) {
-                            context.getSource().sendFailure(Component.literal("初始化生物失败: " + e.getMessage()));
-                            continue;
+                        
+                        // 直接设置阵营，不调用 finalizeSpawn() 方法
+                        FactionHelper.setEntityFactionId(mob, factionId);
+                        FactionSyncHandler.syncEntityImmediately(mob);
+                        
+                        if (level > 0) {
+                            LevelSystem.setEntityLevel(mob, level);
                         }
-                    
+                        
+                        // 设置血条可见性
+                        FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
+                        
+                        MobAccessor mobAccessor = (MobAccessor) mob;
+                        mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
+                        mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
+                        
+                        if (nbt != null) {
+                            mob.load(nbt);
+                            mob.setPos(x + i, y, z);
+                            // 如果NBT数据中有血条可见性设置，覆盖之前的值
+                            if (nbt.contains("BetterEvE:ShowHealthBar")) {
+                                showHealthBar = nbt.getBoolean("BetterEvE:ShowHealthBar");
+                                FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
+                            }
+                        }
+                        
                         if (mob.getType() == EntityType.WARDEN) {
                             net.minecraft.world.entity.monster.warden.Warden warden = (net.minecraft.world.entity.monster.warden.Warden) mob;
                             
@@ -363,30 +382,6 @@ public class BetterEvECommands {
                                     warden.getTarget(), 
                                     6000L
                                 );
-                            }
-                        }
-                        
-                        FactionHelper.setEntityFactionId(mob, factionId);
-                        FactionSyncHandler.syncEntityImmediately(mob);
-                        
-                        if (level > 0) {
-                            LevelSystem.setEntityLevel(mob, level);
-                        }
-                        
-                        // 设置血条可见性
-                        FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
-                        
-                        MobAccessor mobAccessor = (MobAccessor) mob;
-                        mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
-                        mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
-                        
-                        if (nbt != null) {
-                            mob.load(nbt);
-                            mob.setPos(x + i, y, z);
-                            // 如果NBT数据中有血条可见性设置，覆盖之前的值
-                            if (nbt.contains("BetterEvE:ShowHealthBar")) {
-                                showHealthBar = nbt.getBoolean("BetterEvE:ShowHealthBar");
-                                FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
                             }
                         }
                         
