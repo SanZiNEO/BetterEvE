@@ -8,7 +8,8 @@
     "AccessorRangedAttribute",
     "MobAccessor",
     "WardenMixin",
-    "ProjectileCollisionMixin"
+    "ProjectileCollisionMixin",
+    "EnderDragonMixin"
   ],
   "client": [
     "LevelRendererMixin"
