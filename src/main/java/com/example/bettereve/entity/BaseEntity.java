@@ -253,7 +253,18 @@ public class BaseEntity extends Mob {
     // 设置尺寸
     @Override
     protected float getStandingEyeHeight(Pose pose, EntityDimensions size) {
-        return size.height;
+        // 我们的碰撞箱是从顶部向下延伸的，视线应该位于碰撞箱内部的 85% 位置（从底部向上）
+        // 计算方式：从实体原点（顶部）向下 15% 的碰撞箱高度
+        return (float) (this.getCollisionHeight() * -0.85);
+    }
+    
+    /**
+     * 获取远程攻击的出发点位置
+     * 设置在碰撞箱上方半个模型大小的中心，这样是动态调整的
+     */
+    public Vec3 getRangedAttackPosition() {
+        double offsetY = this.getCollisionHeight() + (this.getModelScale() / 2.0);
+        return new Vec3(this.getX(), this.getY() + offsetY, this.getZ());
     }
 
     // 重写 bounding box 计算，实现从顶部向下计算
@@ -265,6 +276,7 @@ public class BaseEntity extends Mob {
         // 碰撞箱计算方式：使用原版方法，但高为负值，实现从顶部向下
         // 原版 Minecraft 碰撞箱是从底部向上计算，使用负值表示高就会向下
         float halfWidth = collisionSize;
+
         double x = this.getX();
         double y = this.getY(); // 保持原版原点位置（底部）
         double z = this.getZ();
@@ -282,8 +294,24 @@ public class BaseEntity extends Mob {
     
     @Override
     public void refreshDimensions() {
-        // 直接重新计算 bounding box，不使用原版尺寸更新逻辑
+        // 调用父类方法来更新尺寸和视线高度缓存
+        // 父类方法会调用 getEyeHeight() 并更新 eyeHeight 字段
+        // 我们需要确保这个过程正常工作，以便实体尺寸变化时视线高度也会更新
+        super.refreshDimensions();
+        
+        // 然后重新计算我们的自定义 bounding box
         this.reapplyPosition();
+    }
+    
+    @Override
+    public EntityDimensions getDimensions(Pose pose) {
+        // 重写 getDimensions 方法，确保它返回与我们的碰撞箱计算方式一致的尺寸
+        // 我们使用 getCollisionSize() 和 getCollisionHeight() 来计算尺寸
+        // 注意：我们的碰撞箱高度是向下延伸的，所以这里需要取绝对值
+        float width = (float) (this.getCollisionSize() * 2); // 宽度是碰撞箱大小的两倍（从中心到边缘）
+        float height = (float) Math.abs(this.getCollisionHeight()); // 高度取绝对值，因为我们的碰撞箱是向下延伸的
+        
+        return EntityDimensions.fixed(width, height);
     }
 
     // 初始化目标选择器
