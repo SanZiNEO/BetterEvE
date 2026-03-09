@@ -172,6 +172,10 @@ public class BaseSystem {
     }
 
     public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, double collisionSize, double collisionHeight) {
+        spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, collisionSize, collisionHeight, 1.0); // 默认模型缩放为1.0
+    }
+    
+    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, double collisionSize, double collisionHeight, double modelScale) {
         if (level instanceof ServerLevel serverLevel) {
             try {
                 // 检查实体类型是否已正确注册
@@ -191,6 +195,7 @@ public class BaseSystem {
                 baseEntity.setAttackCooldown(attackCooldown);
                 baseEntity.setCollisionSize(collisionSize);
                 baseEntity.setCollisionHeight(collisionHeight);
+                baseEntity.setModelScale(modelScale);
 
                 // 生成实体
                 serverLevel.addFreshEntity(baseEntity);

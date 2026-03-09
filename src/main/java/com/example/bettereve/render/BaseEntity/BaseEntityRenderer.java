@@ -31,11 +31,9 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
 
     @Override
     protected void scale(BaseEntity entity, PoseStack poseStack, float partialTicks) {
-        // 计算缩放比例，使模型与碰撞箱大小匹配
-        double collisionSize = entity.getCollisionSize();
-        double modelSize = 6.0; // 新模型的默认大小
-        double scale = collisionSize / modelSize;
-        poseStack.scale((float) scale, (float) scale, (float) scale);
+        // 使用模型缩放属性控制模型大小，与碰撞箱分离
+        double modelScale = entity.getModelScale();
+        poseStack.scale((float) modelScale, (float) modelScale, (float) modelScale);
     }
 
     @Override

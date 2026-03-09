@@ -27,6 +27,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 
 import javax.annotation.Nullable;
 import java.util.EnumSet;
@@ -55,6 +56,7 @@ public class BaseEntity extends Mob {
     private static final EntityDataAccessor<Float> DATA_ATTACK_COOLDOWN = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_COLLISION_SIZE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_COLLISION_HEIGHT = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_MODEL_SCALE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> DATA_ANIMATION_STATE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ATTACK_TARGET = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
 
@@ -143,6 +145,7 @@ public class BaseEntity extends Mob {
         this.entityData.define(DATA_ATTACK_COOLDOWN, 2.0F);
         this.entityData.define(DATA_COLLISION_SIZE, 3.0F);
         this.entityData.define(DATA_COLLISION_HEIGHT, 10.0F);
+        this.entityData.define(DATA_MODEL_SCALE, 1.0F);
         this.entityData.define(DATA_ANIMATION_STATE, AnimationState.STANDBY.ordinal());
         this.entityData.define(DATA_ATTACK_TARGET, 0);
     }
@@ -238,18 +241,49 @@ public class BaseEntity extends Mob {
         return this.entityData.get(DATA_COLLISION_HEIGHT);
     }
 
+    // 模型缩放属性
+    public void setModelScale(double modelScale) {
+        this.entityData.set(DATA_MODEL_SCALE, (float) modelScale);
+    }
+
+    public double getModelScale() {
+        return this.entityData.get(DATA_MODEL_SCALE);
+    }
+
     // 设置尺寸
     @Override
     protected float getStandingEyeHeight(Pose pose, EntityDimensions size) {
         return size.height;
     }
 
-    // 根据碰撞箱属性更新实体尺寸
+    // 重写 bounding box 计算，实现从顶部向下计算
     @Override
-    public EntityDimensions getDimensions(Pose pose) {
+    protected AABB makeBoundingBox() {
         float collisionSize = (float) this.getCollisionSize();
         float collisionHeight = (float) this.getCollisionHeight();
-        return EntityDimensions.scalable(collisionSize * 2, collisionHeight); // 碰撞箱大小是直径，所以乘以2
+        
+        // 碰撞箱计算方式：使用原版方法，但高为负值，实现从顶部向下
+        // 原版 Minecraft 碰撞箱是从底部向上计算，使用负值表示高就会向下
+        float halfWidth = collisionSize;
+        double x = this.getX();
+        double y = this.getY(); // 保持原版原点位置（底部）
+        double z = this.getZ();
+        
+        return new AABB(
+            x - halfWidth, y, z - halfWidth,
+            x + halfWidth, y - collisionHeight, z + halfWidth
+        );
+    }
+    
+    @Override
+    public AABB getBoundingBoxForPose(Pose p_20218_) {
+        return this.makeBoundingBox();
+    }
+    
+    @Override
+    public void refreshDimensions() {
+        // 直接重新计算 bounding box，不使用原版尺寸更新逻辑
+        this.reapplyPosition();
     }
 
     // 初始化目标选择器
@@ -444,6 +478,9 @@ public class BaseEntity extends Mob {
         if (tag.contains("BetterEvE:CollisionHeight")) {
             this.setCollisionHeight(tag.getDouble("BetterEvE:CollisionHeight"));
         }
+        if (tag.contains("BetterEvE:ModelScale")) {
+            this.setModelScale(tag.getDouble("BetterEvE:ModelScale"));
+        }
         if (tag.contains("BetterEvE:AnimationState")) {
             int stateOrdinal = tag.getInt("BetterEvE:AnimationState");
             if (stateOrdinal >= 0 && stateOrdinal < AnimationState.values().length) {
@@ -464,6 +501,7 @@ public class BaseEntity extends Mob {
         tag.putDouble("BetterEvE:AttackCooldown", this.getAttackCooldown());
         tag.putDouble("BetterEvE:CollisionSize", this.getCollisionSize());
         tag.putDouble("BetterEvE:CollisionHeight", this.getCollisionHeight());
+        tag.putDouble("BetterEvE:ModelScale", this.getModelScale());
         tag.putInt("BetterEvE:AnimationState", this.currentAnimationState.ordinal());
     }
 
