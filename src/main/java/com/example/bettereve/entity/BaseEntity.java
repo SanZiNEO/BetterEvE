@@ -123,7 +123,7 @@ public class BaseEntity extends Mob {
 
     // 注册属性
     public static AttributeSupplier.Builder createAttributes() {
-        return AttributeSupplier.builder()
+        return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 100.0D)
                 .add(Attributes.ARMOR, 0.0D)
                 .add(Attributes.ATTACK_DAMAGE, 10.0D)
@@ -482,49 +482,6 @@ public class BaseEntity extends Mob {
         return result;
     }
 
-    // 处理受伤事件，增强异常处理 - 参考 Minecraft 原版 Guardian 类实现
-    @Override
-    public boolean hurt(DamageSource source, float amount) {
-        try {
-            if (this.level().isClientSide) {
-                return false;
-            }
-            
-            // 检查实体是否已经死亡
-            if (this.isDeadOrDying() || this.getHealth() <= 0) {
-                return false;
-            }
-            
-            // 检查伤害源的有效性
-            if (source == null || source.getEntity() == null) {
-                return false;
-            }
-            
-            // 检查属性是否有效
-            if (this.getAttribute(Attributes.MAX_HEALTH) == null || 
-                this.getAttribute(Attributes.ARMOR) == null || 
-                this.getAttribute(Attributes.ATTACK_DAMAGE) == null) {
-                return false;
-            }
-            
-            // 限制伤害量，防止溢出
-            amount = Math.min(amount, this.getHealth());
-            
-            // 执行伤害计算
-            boolean result = super.hurt(source, amount);
-            
-            // 如果攻击成功，尝试进行反击（荆棘效果）
-            if (result && source.getDirectEntity() instanceof LivingEntity attacker) {
-                attacker.hurt(this.damageSources().thorns(this), 1.0F);
-            }
-            
-            return result;
-        } catch (Exception e) {
-            System.err.println("BaseEntity hurt error: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
 
     // 获取攻击音效
     protected SoundEvent getAttackSound() {
