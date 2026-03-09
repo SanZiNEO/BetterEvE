@@ -2,6 +2,8 @@ package com.example.bettereve.base;
 
 import com.example.bettereve.Config;
 import com.example.bettereve.counter.DeathCounter;
+import com.example.bettereve.entity.BaseEntity;
+import com.example.bettereve.entity.BaseEntityType;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
@@ -66,11 +68,12 @@ public class BaseSystem {
                         100, 0.5, 0.5, 0.5, 0.1);
             }
 
-            // 触发胜利事件
-            triggerVictory(entity.level(), factionId, entity.blockPosition());
+            // 不再触发胜利事件和显示公告
+            // triggerVictory(entity.level(), factionId, entity.blockPosition());
         }
     }
 
+    /*
     private static void triggerVictory(Level level, String losingFactionId, BlockPos basePos) {
         // 获取胜利阵营ID（与失败阵营敌对的阵营）
         String winningFactionId = null;
@@ -120,13 +123,16 @@ public class BaseSystem {
             }
         }
     }
+    */
 
     public static boolean isBaseEntity(Entity entity) {
-        CompoundTag nbt = entity.getPersistentData();
-        return entity instanceof EndCrystal && nbt.contains(BASE_NBT_KEY);
+        return entity instanceof BaseEntity;
     }
 
     public static String getBaseFactionId(Entity entity) {
+        if (entity instanceof BaseEntity baseEntity) {
+            return baseEntity.getFactionId();
+        }
         CompoundTag nbt = entity.getPersistentData();
         return nbt.getString(BASE_NBT_KEY);
     }
@@ -136,33 +142,63 @@ public class BaseSystem {
             factionId = "neutral";
         }
 
-        CompoundTag nbt = entity.getPersistentData();
-        nbt.putString(BASE_NBT_KEY, factionId);
+        if (entity instanceof BaseEntity baseEntity) {
+            baseEntity.setFactionId(factionId);
+        } else {
+            CompoundTag nbt = entity.getPersistentData();
+            nbt.putString(BASE_NBT_KEY, factionId);
+        }
     }
 
     public static int getBaseHealth(Entity entity) {
+        if (entity instanceof BaseEntity baseEntity) {
+            return (int) baseEntity.getMaxHealth();
+        }
         CompoundTag nbt = entity.getPersistentData();
         return nbt.getInt(BASE_HEALTH_NBT_KEY);
     }
 
     public static void setBaseHealth(Entity entity, int health) {
-        CompoundTag nbt = entity.getPersistentData();
-        nbt.putInt(BASE_HEALTH_NBT_KEY, health);
+        if (entity instanceof BaseEntity baseEntity) {
+            baseEntity.setMaxHealth(health);
+        } else {
+            CompoundTag nbt = entity.getPersistentData();
+            nbt.putInt(BASE_HEALTH_NBT_KEY, health);
+        }
     }
 
     public static void spawnBase(Level level, BlockPos pos, String factionId, int health) {
+        spawnBase(level, pos, factionId, health, 100, 10, 10.0, 3.0, 3.0, 10.0);
+    }
+
+    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, double collisionSize, double collisionHeight) {
         if (level instanceof ServerLevel serverLevel) {
-            // 在指定位置生成末影水晶作为基地
-            EndCrystal crystal = new EndCrystal(level, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
+            try {
+                // 检查实体类型是否已正确注册
+                if (BaseEntityType.BASE_ENTITY.get() == null) {
+                    throw new IllegalStateException("BaseEntity type not registered");
+                }
 
-            // 设置基地的NBT数据
-            CompoundTag nbt = new CompoundTag();
-            nbt.putString(BASE_NBT_KEY, factionId);
-            nbt.putInt(BASE_HEALTH_NBT_KEY, health);
-            crystal.getPersistentData().merge(nbt);
+                // 在指定位置生成新的 BaseEntity 作为基地
+                BaseEntity baseEntity = new BaseEntity(BaseEntityType.BASE_ENTITY.get(), level);
+                baseEntity.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
+                baseEntity.setFactionId(factionId);
+                baseEntity.setMaxHealth(health);
+                baseEntity.setHealth(health);
+                baseEntity.setAttackDamage(attackDamage);
+                baseEntity.setArmor(armor);
+                baseEntity.setAttackRange(attackRange);
+                baseEntity.setAttackCooldown(attackCooldown);
+                baseEntity.setCollisionSize(collisionSize);
+                baseEntity.setCollisionHeight(collisionHeight);
 
-            // 生成水晶
-            serverLevel.addFreshEntity(crystal);
+                // 生成实体
+                serverLevel.addFreshEntity(baseEntity);
+                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId);
+            } catch (Exception e) {
+                System.err.println("Failed to spawn BaseEntity: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
 }

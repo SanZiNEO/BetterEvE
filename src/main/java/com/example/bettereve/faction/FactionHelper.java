@@ -11,14 +11,21 @@ public class FactionHelper {
     private static final String FACTION_NBT_KEY = "BetterEvE:FactionID";
     private static final String SHOW_HEALTH_BAR_NBT_KEY = "BetterEvE:ShowHealthBar";
 
-    // 获取实体的阵营ID（纯NBT实现，保持跨模组兼容性）
+    // 获取实体的阵营ID（支持 BaseEntity 类型的特殊处理）
     public static String getEntityFactionId(Entity entity) {
         if (entity == null) {
             return "neutral";
         }
 
+        // 特殊处理 BaseEntity 类型
+        if (entity instanceof com.example.bettereve.entity.BaseEntity) {
+            com.example.bettereve.entity.BaseEntity baseEntity = (com.example.bettereve.entity.BaseEntity) entity;
+            String factionId = baseEntity.getFactionId();
+            return factionId.isEmpty() ? "neutral" : factionId;
+        }
+
+        // 其他实体使用 NBT 实现
         CompoundTag nbt = entity.getPersistentData();
-        
         if (nbt.contains(FACTION_NBT_KEY)) {
             return nbt.getString(FACTION_NBT_KEY);
         }
@@ -26,7 +33,7 @@ public class FactionHelper {
         return "neutral"; // 默认中立阵营
     }
 
-    // 设置实体的阵营ID（纯NBT实现）
+    // 设置实体的阵营ID（支持 BaseEntity 类型的特殊处理）
     public static void setEntityFactionId(Entity entity, String factionId) {
         if (entity == null) {
             return;
@@ -36,10 +43,15 @@ public class FactionHelper {
             factionId = "neutral";
         }
 
-        CompoundTag nbt = entity.getPersistentData();
-        nbt.putString(FACTION_NBT_KEY, factionId);
-        
-        // NBT数据会自动保存，无需额外操作
+        // 特殊处理 BaseEntity 类型
+        if (entity instanceof com.example.bettereve.entity.BaseEntity) {
+            com.example.bettereve.entity.BaseEntity baseEntity = (com.example.bettereve.entity.BaseEntity) entity;
+            baseEntity.setFactionId(factionId);
+        } else {
+            // 其他实体使用 NBT 实现
+            CompoundTag nbt = entity.getPersistentData();
+            nbt.putString(FACTION_NBT_KEY, factionId);
+        }
     }
 
     // 获取实体是否显示血条（纯NBT实现）

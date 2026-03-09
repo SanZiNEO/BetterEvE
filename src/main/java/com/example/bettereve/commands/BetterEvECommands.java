@@ -80,9 +80,20 @@ public class BetterEvECommands {
                         .then(Commands.argument("x", IntegerArgumentType.integer())
                             .then(Commands.argument("y", IntegerArgumentType.integer())
                                 .then(Commands.argument("z", IntegerArgumentType.integer())
-                                    .executes(BetterEvECommands::executeCreateBase)
-                                    .then(Commands.argument("health", IntegerArgumentType.integer())
-                                        .executes(BetterEvECommands::executeCreateBaseWithHealth)
+                                    .then(Commands.argument("health", IntegerArgumentType.integer(1))
+                                        .then(Commands.argument("attackDamage", IntegerArgumentType.integer(1))
+                                            .then(Commands.argument("armor", IntegerArgumentType.integer(1))
+                                                .then(Commands.argument("attackRange", DoubleArgumentType.doubleArg(1.0))
+                                                    .then(Commands.argument("attackCycle", DoubleArgumentType.doubleArg(1.0))
+                                    .then(Commands.argument("collisionSize", DoubleArgumentType.doubleArg(1.0))
+                                        .then(Commands.argument("collisionHeight", DoubleArgumentType.doubleArg(1.0))
+                                            .executes(BetterEvECommands::executeCreateBaseWithAllAttributes)
+                                        )
+                                    )
+                                                    )
+                                                )
+                                            )
+                                        )
                                     )
                                 )
                             )
@@ -248,6 +259,10 @@ public class BetterEvECommands {
         BaseSystem.spawnBase(level, pos, factionId, health);
         context.getSource().sendSuccess(() -> Component.literal("基地创建成功: " + FactionRegistry.getFaction(factionId).getName()), true);
         return 1;
+    }
+
+    private static int executeCreateBaseWithAllAttributes(CommandContext<CommandSourceStack> context) {
+        return BetterEvECommandsAdditionalMethods.executeCreateBaseWithAllAttributes(context);
     }
 
     private static int executeSpawnEntitiesAtPosition(CommandContext<CommandSourceStack> context) {

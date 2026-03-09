@@ -1,6 +1,9 @@
 package com.example.bettereve;
 
 import com.example.bettereve.config.BetterEvEConfig;
+import com.example.bettereve.entity.BaseEntity;
+import com.example.bettereve.entity.BaseEntityModel;
+import com.example.bettereve.entity.BaseEntityType;
 import com.example.bettereve.mixin.AccessorRangedAttribute;
 import com.example.bettereve.network.NetworkManager;
 import net.minecraft.client.Minecraft;
@@ -36,6 +39,16 @@ public class Bettereve {
 
         // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, BetterEvEConfig.COMMON_SPEC);
+
+        // 注册实体类型
+        BaseEntityType.ENTITY_TYPES.register(modEventBus);
+        
+        // 注册实体属性
+        modEventBus.addListener(this::registerAttributes);
+    }
+
+    private void registerAttributes(final net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {
+        event.put(BaseEntityType.BASE_ENTITY.get(), BaseEntity.createAttributes().build());
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -78,6 +91,16 @@ public class Bettereve {
                 // 使用事件订阅方式渲染 HUD，兼容性更好
                 MinecraftForge.EVENT_BUS.register(com.example.bettereve.render.HudRenderHandler.class);
             });
+        }
+
+        @SubscribeEvent
+        public static void onRegisterRenderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+            event.registerEntityRenderer(BaseEntityType.BASE_ENTITY.get(), com.example.bettereve.render.BaseEntity.BaseEntityRenderer::new);
+        }
+
+        @SubscribeEvent
+        public static void onRegisterLayerDefinitions(net.minecraftforge.client.event.EntityRenderersEvent.RegisterLayerDefinitions event) {
+            event.registerLayerDefinition(com.example.bettereve.entity.BaseEntityModel.LAYER_LOCATION, com.example.bettereve.entity.BaseEntityModel::createBodyLayer);
         }
 
         static {
