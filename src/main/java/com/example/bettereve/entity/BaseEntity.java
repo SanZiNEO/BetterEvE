@@ -554,6 +554,32 @@ public class BaseEntity extends Mob {
         return SoundEvents.GENERIC_EXPLODE;
     }
 
+    // 重写视线检查方法，实现视线穿墙
+    @Override
+    public boolean hasLineOfSight(Entity entity) {
+        // 基地视线穿墙，总是返回 true，表示能看到目标
+        return true;
+    }
+    
+    // 重写 isInWall 方法，确保基地实体永远不被判定为完全被方块包围
+    @Override
+    public boolean isInWall() {
+        // 基地实体总是可见，不被方块包围判定影响
+        return false;
+    }
+    
+    // 重写 isInvisible 方法，确保基地实体始终可见
+    @Override
+    public boolean isInvisible() {
+        return false;
+    }
+    
+    // 重写 isInvisibleTo 方法，确保基地实体对所有玩家可见
+    @Override
+    public boolean isInvisibleTo(Player player) {
+        return false;
+    }
+
     // 攻击目标选择器 - 参考 Minecraft 原版 Guardian 类实现
     private static class BaseEntityAttackGoal extends Goal {
         private final BaseEntity entity;

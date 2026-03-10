@@ -25,8 +25,21 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
     }
 
     @Override
-    public RenderType getRenderType(BaseEntity entity, boolean visible, boolean shadowVisible, boolean outlineVisible) {
+    protected RenderType getRenderType(BaseEntity entity, boolean visible, boolean shadowVisible, boolean outlineVisible) {
+        // 确保基地实体始终使用正常的渲染类型，不受可见性判定影响
         return RenderType.entityCutout(getTextureLocation(entity));
+    }
+
+    @Override
+    protected boolean isBodyVisible(BaseEntity entity) {
+        // 确保基地实体始终可见，不受任何遮挡判定影响
+        return true;
+    }
+    
+    @Override
+    protected boolean shouldShowName(BaseEntity entity) {
+        // 确保基地实体的名称始终可见
+        return super.shouldShowName(entity);
     }
 
     @Override
