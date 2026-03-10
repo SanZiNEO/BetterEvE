@@ -22,21 +22,20 @@ import net.minecraft.client.model.EntityModel;
  * 基地实体模型类
  * 负责渲染基地实体的三维模型和动画
  * 本模型使用自定义手动动画系统，实现待机、攻击和死亡三种动画状态
+ * 完全按照 Blockbench 中的设计实现
  */
 public class BaseEntityModel<T extends BaseEntity> extends EntityModel<T> {
     // 模型层位置 - 用于在客户端注册和渲染
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation("bettereve", "baseentity"), "main");
     private final ModelPart core;        // 核心部件
     private final ModelPart kuangjia;   // 框架部件
-    private final ModelPart root;       // 根部件
 
     public BaseEntityModel(ModelPart root) {
-        this.root = root;
         this.core = root.getChild("core");
         this.kuangjia = root.getChild("kuangjia");
     }
 
-    // 创建模型图层定义
+    // 创建模型图层定义 - 与 Blockbench 导出完全一致
     public static LayerDefinition createBodyLayer() {
         MeshDefinition meshdefinition = new MeshDefinition();
         PartDefinition partdefinition = meshdefinition.getRoot();
@@ -66,60 +65,106 @@ public class BaseEntityModel<T extends BaseEntity> extends EntityModel<T> {
         return LayerDefinition.create(meshdefinition, 128, 128);
     }
 
-    // 设置动画
+    // 实现待机动画 - 4秒循环
+    private void animateStandby(T entity, float partialTicks) {
+        float time = entity.getAnimationProgress(partialTicks);
+        float animationTime = (time % 4.0F) / 4.0F; // 0.0 到 1.0
+
+        // 核心动画 - 360度旋转
+        float coreRotation = animationTime * 360.0F;
+        core.yRot = (float) Math.toRadians(-coreRotation);
+        core.xRot = (float) Math.toRadians(-coreRotation);
+        core.zRot = (float) Math.toRadians(-coreRotation);
+
+        // 框架动画 - 360度旋转
+        float kuangjiaRotation = animationTime * 360.0F;
+        kuangjia.yRot = (float) Math.toRadians(kuangjiaRotation);
+        kuangjia.xRot = (float) Math.toRadians(kuangjiaRotation);
+        kuangjia.zRot = (float) Math.toRadians(kuangjiaRotation);
+    }
+
+    // 实现攻击动画 - 1秒
+    private void animateAttack(T entity, float partialTicks) {
+        float attackTime = entity.getAttackAnimationScale(partialTicks);
+        float animationTime = Math.min(attackTime, 1.0F);
+
+        // 核心动画 - 360度Y轴旋转，XZ轴180度旋转
+        float coreYRotation = animationTime * 360.0F;
+        float coreXZRotation = animationTime * 180.0F;
+        core.yRot = (float) Math.toRadians(-coreYRotation);
+        core.xRot = (float) Math.toRadians(-coreXZRotation);
+        core.zRot = (float) Math.toRadians(-coreXZRotation);
+
+        // 框架动画 - 360度Y轴旋转，XZ轴-180度旋转
+        float kuangjiaYRotation = animationTime * 360.0F;
+        float kuangjiaXZRotation = animationTime * -180.0F;
+        kuangjia.yRot = (float) Math.toRadians(kuangjiaYRotation);
+        kuangjia.xRot = (float) Math.toRadians(kuangjiaXZRotation);
+        kuangjia.zRot = (float) Math.toRadians(kuangjiaXZRotation);
+    }
+
+    // 实现死亡动画 - 5秒
+    private void animateDeath(T entity, float partialTicks) {
+        float time = entity.getAnimationProgress(partialTicks);
+        float animationTime = Math.min(time / 5.0F, 1.0F);
+
+        // 核心动画 - 快速旋转，向上移动
+        float coreRotation = animationTime * 1800.0F;
+        core.yRot = (float) Math.toRadians(-coreRotation);
+        core.xRot = (float) Math.toRadians(-coreRotation);
+        core.zRot = (float) Math.toRadians(coreRotation);
+
+        // 核心位置向上移动
+        if (animationTime <= 0.2F) {
+            float moveTime = animationTime / 0.2F;
+            float yOffset = moveTime * 61.0F;
+            core.setPos(core.x, core.y + yOffset, core.z);
+        }
+
+        // 框架动画 - 快速旋转
+        float kuangjiaRotation = animationTime * 720.0F;
+        kuangjia.yRot = (float) Math.toRadians(-kuangjiaRotation);
+        kuangjia.xRot = (float) Math.toRadians(-kuangjiaRotation);
+        kuangjia.zRot = (float) Math.toRadians(kuangjiaRotation);
+    }
+
+    // 设置动画 - 主入口点
     @Override
     public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-        float time = entity.getAnimationProgress(ageInTicks);
+        // 重置部件状态
+        resetParts();
 
+        // 根据动画状态选择相应的动画
         switch (entity.getAnimationState()) {
             case STANDBY:
-                // 待机动画：核心和框架反向旋转
-                // 旋转速度：1秒/圈 (360度/20tick)
-                float standbyRotation = time * 120.0F;
-                core.yRot = (float) Math.toRadians(-standbyRotation); // 核心Y轴旋转(顺时针)
-                core.xRot = (float) Math.toRadians(-standbyRotation); // 核心X轴旋转(顺时针)
-                core.zRot = (float) Math.toRadians(-standbyRotation); // 核心Z轴旋转(顺时针)
-
-                kuangjia.yRot = (float) Math.toRadians(standbyRotation); // 框架Y轴旋转(逆时针)
-                kuangjia.xRot = (float) Math.toRadians(standbyRotation); // 框架X轴旋转(逆时针)
-                kuangjia.zRot = (float) Math.toRadians(standbyRotation); // 框架Z轴旋转(逆时针)
+                animateStandby(entity, ageInTicks);
                 break;
-
             case ATTACK:
-                // 攻击动画：核心快速旋转并缩放
-                // 旋转速度：3秒/圈 (1080度/20tick) - 比待机快3倍
-                float attackRotation = time * 540.0F;
-                core.yRot = (float) Math.toRadians(-attackRotation);    // 核心Y轴快速旋转(顺时针)
-                core.xRot = (float) Math.toRadians(-attackRotation * 0.5F); // 核心X轴半速旋转(顺时针)
-                core.zRot = (float) Math.toRadians(-attackRotation * 0.5F); // 核心Z轴半速旋转(顺时针)
-
-                kuangjia.yRot = (float) Math.toRadians(attackRotation);    // 框架Y轴快速旋转(逆时针)
-                kuangjia.xRot = (float) Math.toRadians(attackRotation * 0.5F); // 框架X轴半速旋转(逆时针)
-                kuangjia.zRot = (float) Math.toRadians(attackRotation * 0.5F); // 框架Z轴半速旋转(逆时针)
+                animateAttack(entity, ageInTicks);
                 break;
-
             case DEATH:
-                // 死亡动画：核心快速旋转并向上移动然后消失
-                // 旋转速度：10秒/圈 (3600度/20tick) - 比待机快10倍
-                float deathRotation = time * 1080.0F;
-                core.yRot = (float) Math.toRadians(-deathRotation); // 核心Y轴极速旋转(顺时针)
-                core.xRot = (float) Math.toRadians(-deathRotation); // 核心X轴极速旋转(顺时针)
-                core.zRot = (float) Math.toRadians(deathRotation);  // 核心Z轴极速旋转(逆时针)
-
-                kuangjia.yRot = (float) Math.toRadians(deathRotation * 2);    // 框架Y轴超高速旋转(逆时针)
-                kuangjia.xRot = (float) Math.toRadians(deathRotation * 2);    // 框架X轴超高速旋转(逆时针)
-                kuangjia.zRot = (float) Math.toRadians(-deathRotation * 2);   // 框架Z轴超高速旋转(顺时针)
-
-                // 死亡动画：位置 - 向上移动61个单位
-                float deathY = time * 90.0F;
-                core.setPos(0, deathY, 0);
+                animateDeath(entity, ageInTicks);
                 break;
         }
+    }
+
+    // 重置部件状态 - 确保每次动画都有干净的起点
+    private void resetParts() {
+        core.yRot = 0;
+        core.xRot = 0;
+        core.zRot = 0;
+        core.setPos(-0.9138F, -1.9431F, -0.0115F);
+
+        kuangjia.yRot = 0;
+        kuangjia.xRot = 0;
+        kuangjia.zRot = 0;
+        kuangjia.setPos(0.0F, -4.0F, 0.0F);
     }
 
     // 渲染模型
     @Override
     public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
-        root.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
+        core.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
+        kuangjia.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
     }
 }
