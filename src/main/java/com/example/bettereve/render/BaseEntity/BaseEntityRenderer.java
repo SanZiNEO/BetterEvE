@@ -44,9 +44,14 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
 
     @Override
     protected void scale(BaseEntity entity, PoseStack poseStack, float partialTicks) {
-        // 使用模型缩放属性控制模型大小，与碰撞箱分离
+        // 使用模型缩放属性控制模型大小
         double modelScale = entity.getModelScale();
         poseStack.scale((float) modelScale, (float) modelScale, (float) modelScale);
+        
+        // 将模型向上偏移碰撞箱高度，因为实体位置在碰撞箱底部
+        // 这样视觉上模型就显示在正确位置
+        double collisionHeight = entity.getCollisionHeight();
+        poseStack.translate(0, -1.1 * collisionHeight, 0);
     }
 
     @Override

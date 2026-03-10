@@ -253,37 +253,39 @@ public class BaseEntity extends Mob {
     // 设置尺寸
     @Override
     protected float getStandingEyeHeight(Pose pose, EntityDimensions size) {
-        // 我们的碰撞箱是从顶部向下延伸的，视线应该位于碰撞箱内部的 85% 位置（从底部向上）
-        // 计算方式：从实体原点（顶部）向下 15% 的碰撞箱高度
-        return (float) (this.getCollisionHeight() * -0.85);
+        // 现在碰撞箱是从底部向上延伸，视线设置在碰撞箱顶部
+        // 这样生物攻击碰撞箱底部（实体位置），视线在顶部用于lookAt逻辑
+        return (float) this.getCollisionHeight();
     }
     
     /**
      * 获取远程攻击的出发点位置
-     * 设置在碰撞箱上方半个模型大小的中心，这样是动态调整的
+     * 设置在模型顶部（碰撞箱顶部 + 模型缩放），这样是动态调整的
      */
     public Vec3 getRangedAttackPosition() {
-        double offsetY = this.getCollisionHeight() + (this.getModelScale() / 2.0);
+        // 偏移量 = 碰撞箱高度 + 模型缩放
+        // 这样攻击从模型顶部发射
+        double offsetY = this.getCollisionHeight() + this.getModelScale();
         return new Vec3(this.getX(), this.getY() + offsetY, this.getZ());
     }
 
-    // 重写 bounding box 计算，实现从顶部向下计算
+    // 重写 bounding box 计算，实现从底部向上计算
     @Override
     protected AABB makeBoundingBox() {
         float collisionSize = (float) this.getCollisionSize();
         float collisionHeight = (float) this.getCollisionHeight();
         
-        // 碰撞箱计算方式：使用原版方法，但高为负值，实现从顶部向下
-        // 原版 Minecraft 碰撞箱是从底部向上计算，使用负值表示高就会向下
+        // 碰撞箱计算方式：从底部向上计算，符合原版 Minecraft 逻辑
+        // 这样生物会自然攻击碰撞箱底部（实体位置）
         float halfWidth = collisionSize;
 
         double x = this.getX();
-        double y = this.getY(); // 保持原版原点位置（底部）
+        double y = this.getY(); // 实体位置在碰撞箱底部
         double z = this.getZ();
         
         return new AABB(
             x - halfWidth, y, z - halfWidth,
-            x + halfWidth, y - collisionHeight, z + halfWidth
+            x + halfWidth, y + collisionHeight, z + halfWidth
         );
     }
     
@@ -307,9 +309,9 @@ public class BaseEntity extends Mob {
     public EntityDimensions getDimensions(Pose pose) {
         // 重写 getDimensions 方法，确保它返回与我们的碰撞箱计算方式一致的尺寸
         // 我们使用 getCollisionSize() 和 getCollisionHeight() 来计算尺寸
-        // 注意：我们的碰撞箱高度是向下延伸的，所以这里需要取绝对值
+        // 现在碰撞箱是从底部向上延伸，高度使用正值
         float width = (float) (this.getCollisionSize() * 2); // 宽度是碰撞箱大小的两倍（从中心到边缘）
-        float height = (float) Math.abs(this.getCollisionHeight()); // 高度取绝对值，因为我们的碰撞箱是向下延伸的
+        float height = (float) this.getCollisionHeight(); // 高度使用正值，因为碰撞箱从底部向上延伸
         
         return EntityDimensions.fixed(width, height);
     }
