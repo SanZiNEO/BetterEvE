@@ -12,7 +12,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 
 public class BetterEvECommandsAdditionalMethods {
-    public static int executeCreateBaseWithAllAttributes(CommandContext<CommandSourceStack> context) {
+    
+    // 优化版本，使用新格式：/bettereve base create <阵营id> <x> <y> <z> <health> <攻击力> <护甲> <攻击范围> <攻击周期> <size>
+    public static int executeCreateBaseOptimized(CommandContext<CommandSourceStack> context) {
         String factionId = StringArgumentType.getString(context, "factionId");
         int x = IntegerArgumentType.getInteger(context, "x");
         int y = IntegerArgumentType.getInteger(context, "y");
@@ -22,13 +24,28 @@ public class BetterEvECommandsAdditionalMethods {
         int armor = IntegerArgumentType.getInteger(context, "armor");
         double attackRange = DoubleArgumentType.getDouble(context, "attackRange");
         double attackCycle = DoubleArgumentType.getDouble(context, "attackCycle");
-        double collisionSize = DoubleArgumentType.getDouble(context, "collisionSize");
-        double collisionHeight = DoubleArgumentType.getDouble(context, "collisionHeight");
-        BlockPos pos = new BlockPos(x, y, z);
-        ServerLevel level = context.getSource().getLevel();
+        String sizeKey = StringArgumentType.getString(context, "size");
         
-        BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, collisionSize, collisionHeight);
-        context.getSource().sendSuccess(() -> Component.literal("基地创建成功: " + FactionRegistry.getFaction(factionId).getName()), true);
+        // 解析坐标
+        BlockPos pos = new BlockPos(x, y, z);
+        
+        // 检查尺寸键值是否有效
+        if (!BaseSystem.isValidSizeKey(sizeKey)) {
+            context.getSource().sendFailure(Component.literal("无效的尺寸键值: " + sizeKey + 
+                "，有效的尺寸格式为: 宽度x高度（例如 3x10）"));
+            return 0;
+        }
+        
+        // 调用 BaseSystem
+        ServerLevel level = context.getSource().getLevel();
+        double modelScale = 1.0; // 默认模型缩放
+        
+        BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale);
+        
+        context.getSource().sendSuccess(() -> Component.literal("基地创建成功: " + 
+            FactionRegistry.getFaction(factionId).getName() + 
+            " 位置: " + pos.toShortString() + 
+            " 尺寸: " + sizeKey), true);
         return 1;
     }
 }

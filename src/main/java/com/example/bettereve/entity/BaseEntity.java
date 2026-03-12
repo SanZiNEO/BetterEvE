@@ -54,11 +54,13 @@ public class BaseEntity extends Mob {
     private static final EntityDataAccessor<Integer> DATA_ATTACK_DAMAGE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> DATA_ATTACK_RANGE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_ATTACK_COOLDOWN = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_COLLISION_SIZE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_COLLISION_HEIGHT = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_MODEL_SCALE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> DATA_ANIMATION_STATE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ATTACK_TARGET = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
+    
+    // 缓存实体尺寸（从EntityType预设）
+    private float cachedWidth = 3.0F;
+    private float cachedHeight = 10.0F;
 
     // 攻击计时器 - 用于控制攻击频率
     private int attackTimer;
@@ -143,11 +145,19 @@ public class BaseEntity extends Mob {
         this.entityData.define(DATA_ATTACK_DAMAGE, 10);
         this.entityData.define(DATA_ATTACK_RANGE, 32.0F);
         this.entityData.define(DATA_ATTACK_COOLDOWN, 2.0F);
-        this.entityData.define(DATA_COLLISION_SIZE, 3.0F);
-        this.entityData.define(DATA_COLLISION_HEIGHT, 10.0F);
         this.entityData.define(DATA_MODEL_SCALE, 1.0F);
         this.entityData.define(DATA_ANIMATION_STATE, AnimationState.STANDBY.ordinal());
         this.entityData.define(DATA_ATTACK_TARGET, 0);
+    }
+    
+    // 初始化实体时缓存尺寸
+    @Override
+    public void onAddedToWorld() {
+        super.onAddedToWorld();
+        // 初始化缓存尺寸
+        EntityDimensions dimensions = this.getDimensions(Pose.STANDING);
+        this.cachedWidth = dimensions.width;
+        this.cachedHeight = dimensions.height;
     }
 
     // 阵营ID属性
@@ -221,24 +231,30 @@ public class BaseEntity extends Mob {
         setAttackCooldown(attackCycle);
     }
 
-    // 碰撞箱大小属性
-    public void setCollisionSize(double collisionSize) {
-        this.entityData.set(DATA_COLLISION_SIZE, (float) collisionSize);
-        this.refreshDimensions();
-    }
-
+    // 获取碰撞箱尺寸（从实体类型预设）
     public double getCollisionSize() {
-        return this.entityData.get(DATA_COLLISION_SIZE);
+        // 宽度是从中心到边缘的距离，所以实际碰撞箱宽度是 cachedWidth / 2
+        return this.cachedWidth / 2.0;
     }
-
-    // 碰撞箱高度属性
-    public void setCollisionHeight(double collisionHeight) {
-        this.entityData.set(DATA_COLLISION_HEIGHT, (float) collisionHeight);
-        this.refreshDimensions();
-    }
-
+    
+    // 获取碰撞箱高度（从实体类型预设）
     public double getCollisionHeight() {
-        return this.entityData.get(DATA_COLLISION_HEIGHT);
+        return this.cachedHeight;
+    }
+    
+    // 获取实体类型名称中的尺寸信息
+    public String getSizeKey() {
+        String entityName = this.getType().getDescriptionId();
+        if (entityName.contains("base_entity_")) {
+            // 从实体名称中提取尺寸信息，如 "base_entity_3x10" -> "3x10"
+            return entityName.substring(entityName.indexOf("base_entity_") + "base_entity_".length());
+        }
+        return "3x10"; // 默认尺寸
+    }
+    
+    // 从尺寸键值解析宽度和高度
+    public int[] parseSizeKey() {
+        return BaseEntityType.parseSizeKey(getSizeKey());
     }
 
     // 模型缩放属性
@@ -502,12 +518,6 @@ public class BaseEntity extends Mob {
         if (tag.contains("BetterEvE:AttackCooldown")) {
             this.setAttackCooldown(tag.getDouble("BetterEvE:AttackCooldown"));
         }
-        if (tag.contains("BetterEvE:CollisionSize")) {
-            this.setCollisionSize(tag.getDouble("BetterEvE:CollisionSize"));
-        }
-        if (tag.contains("BetterEvE:CollisionHeight")) {
-            this.setCollisionHeight(tag.getDouble("BetterEvE:CollisionHeight"));
-        }
         if (tag.contains("BetterEvE:ModelScale")) {
             this.setModelScale(tag.getDouble("BetterEvE:ModelScale"));
         }
@@ -529,8 +539,6 @@ public class BaseEntity extends Mob {
         tag.putInt("BetterEvE:AttackDamage", this.getAttackDamageValue());
         tag.putDouble("BetterEvE:AttackRange", this.getAttackRange());
         tag.putDouble("BetterEvE:AttackCooldown", this.getAttackCooldown());
-        tag.putDouble("BetterEvE:CollisionSize", this.getCollisionSize());
-        tag.putDouble("BetterEvE:CollisionHeight", this.getCollisionHeight());
         tag.putDouble("BetterEvE:ModelScale", this.getModelScale());
         tag.putInt("BetterEvE:AnimationState", this.currentAnimationState.ordinal());
     }

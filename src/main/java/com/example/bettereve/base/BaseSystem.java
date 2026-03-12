@@ -12,6 +12,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
@@ -168,23 +169,29 @@ public class BaseSystem {
     }
 
     public static void spawnBase(Level level, BlockPos pos, String factionId, int health) {
-        spawnBase(level, pos, factionId, health, 100, 10, 10.0, 3.0, 3.0, 10.0);
+        spawnBase(level, pos, factionId, health, 100, 10, 10.0, 3.0, "3x10");
     }
 
-    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, double collisionSize, double collisionHeight) {
-        spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, collisionSize, collisionHeight, 1.0); // 默认模型缩放为1.0
+    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey) {
+        spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, 1.0); // 默认模型缩放为1.0
     }
     
-    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, double collisionSize, double collisionHeight, double modelScale) {
+    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale) {
         if (level instanceof ServerLevel serverLevel) {
             try {
-                // 检查实体类型是否已正确注册
-                if (BaseEntityType.BASE_ENTITY.get() == null) {
-                    throw new IllegalStateException("BaseEntity type not registered");
+                // 检查尺寸键值是否有效
+                if (!BaseEntityType.isValidSizeKey(sizeKey)) {
+                    throw new IllegalArgumentException("Invalid size key: " + sizeKey + ". Valid keys are: " + String.join(", ", BaseEntityType.getAllSizeKeys()));
+                }
+
+                // 根据尺寸键值获取对应的实体类型
+                EntityType<BaseEntity> entityType = BaseEntityType.getEntityTypeBySize(sizeKey);
+                if (entityType == null) {
+                    throw new IllegalStateException("BaseEntity type not found for size: " + sizeKey);
                 }
 
                 // 在指定位置生成新的 BaseEntity 作为基地
-                BaseEntity baseEntity = new BaseEntity(BaseEntityType.BASE_ENTITY.get(), level);
+                BaseEntity baseEntity = new BaseEntity(entityType, level);
                 baseEntity.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
                 baseEntity.setFactionId(factionId);
                 baseEntity.setMaxHealth(health);
@@ -193,17 +200,47 @@ public class BaseSystem {
                 baseEntity.setArmor(armor);
                 baseEntity.setAttackRange(attackRange);
                 baseEntity.setAttackCooldown(attackCooldown);
-                baseEntity.setCollisionSize(collisionSize);
-                baseEntity.setCollisionHeight(collisionHeight);
                 baseEntity.setModelScale(modelScale);
 
                 // 生成实体
                 serverLevel.addFreshEntity(baseEntity);
-                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId);
+                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey);
+                
+                // 解析尺寸键值，显示尺寸信息
+                int[] size = BaseEntityType.parseSizeKey(sizeKey);
+                System.out.println("Size details: width=" + size[0] + ", height=" + size[1]);
             } catch (Exception e) {
                 System.err.println("Failed to spawn BaseEntity: " + e.getMessage());
                 e.printStackTrace();
             }
         }
+    }
+    
+    /**
+     * 获取所有可用的基地尺寸键值
+     */
+    public static String[] getAllBaseSizes() {
+        return BaseEntityType.getAllSizeKeys();
+    }
+    
+    /**
+     * 检查尺寸键值是否有效
+     */
+    public static boolean isValidSizeKey(String sizeKey) {
+        return BaseEntityType.isValidSizeKey(sizeKey);
+    }
+    
+    /**
+     * 根据需求推荐合适的尺寸键值
+     * @param width 期望的宽度（1-10）
+     * @param height 期望的高度（1-15）
+     * @return 尺寸键值，如 "3x10"
+     */
+    public static String getRecommendedSizeKey(int width, int height) {
+        // 确保宽度在有效范围内
+        width = Math.max(1, Math.min(10, width));
+        // 确保高度在有效范围内
+        height = Math.max(1, Math.min(15, height));
+        return BaseEntityType.getSizeKey(width, height);
     }
 }

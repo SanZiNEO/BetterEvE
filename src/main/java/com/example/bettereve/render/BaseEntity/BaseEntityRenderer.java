@@ -48,10 +48,12 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
         double modelScale = entity.getModelScale();
         poseStack.scale((float) modelScale, (float) modelScale, (float) modelScale);
         
-        // 将模型向上偏移碰撞箱高度，因为实体位置在碰撞箱底部
-        // 这样视觉上模型就显示在正确位置
+        // 将模型向上偏移，使模型显示在碰撞箱上方
+        // 实体位置在碰撞箱底部，需要将模型向上移动一半的碰撞箱高度
+        // 这样模型就会在碰撞箱上方，视觉上更加合理
         double collisionHeight = entity.getCollisionHeight();
-        poseStack.translate(0, -1.1 * collisionHeight, 0);
+        double offsetY = collisionHeight * 0.5;
+        poseStack.translate(0, offsetY, 0);
     }
 
     @Override

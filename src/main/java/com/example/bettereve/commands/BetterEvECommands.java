@@ -85,11 +85,10 @@ public class BetterEvECommands {
                                             .then(Commands.argument("armor", IntegerArgumentType.integer(1))
                                                 .then(Commands.argument("attackRange", DoubleArgumentType.doubleArg(1.0))
                                                     .then(Commands.argument("attackCycle", DoubleArgumentType.doubleArg(1.0))
-                                    .then(Commands.argument("collisionSize", DoubleArgumentType.doubleArg(1.0))
-                                        .then(Commands.argument("collisionHeight", DoubleArgumentType.doubleArg(1.0))
-                                            .executes(BetterEvECommands::executeCreateBaseWithAllAttributes)
-                                        )
-                                    )
+                                                        .then(Commands.argument("size", StringArgumentType.word())
+                                                            .suggests(SIZE_SUGGESTIONS)
+                                                            .executes(BetterEvECommands::executeCreateBaseOptimized)
+                                                        )
                                                     )
                                                 )
                                             )
@@ -205,6 +204,39 @@ public class BetterEvECommands {
         return builder.buildFuture();
     };
 
+    private static final SuggestionProvider<CommandSourceStack> SIZE_SUGGESTIONS = (context, builder) -> {
+        // 获取所有可用的尺寸键值
+        String[] sizeKeys = com.example.bettereve.base.BaseSystem.getAllBaseSizes();
+        
+        // 添加常见的尺寸建议
+        String[] commonSizes = {
+            "3x10",   // 默认尺寸
+            "5x15",   // 中等尺寸
+            "10x15",  // 大尺寸
+            "1x5",    // 小尺寸
+            "8x12",   // 宽尺寸
+            "3x20"    // 高尺寸
+        };
+        
+        // 首先添加常见尺寸
+        for (String commonSize : commonSizes) {
+            String[] parts = commonSize.split("x");
+            if (parts.length == 2) {
+                builder.suggest(commonSize, Component.literal("宽度=" + parts[0] + "，高度=" + parts[1]));
+            }
+        }
+        
+        // 然后添加所有可用的尺寸键值
+        for (String sizeKey : sizeKeys) {
+            String[] parts = sizeKey.split("x");
+            if (parts.length == 2) {
+                builder.suggest(sizeKey, Component.literal("宽度=" + parts[0] + "，高度=" + parts[1]));
+            }
+        }
+        
+        return builder.buildFuture();
+    };
+
     private static int executeCreateFaction(CommandContext<CommandSourceStack> context) {
         String id = StringArgumentType.getString(context, "id");
         String name = StringArgumentType.getString(context, "name");
@@ -234,36 +266,6 @@ public class BetterEvECommands {
         return 1;
     }
 
-    private static int executeCreateBase(CommandContext<CommandSourceStack> context) {
-        String factionId = StringArgumentType.getString(context, "factionId");
-        int x = IntegerArgumentType.getInteger(context, "x");
-        int y = IntegerArgumentType.getInteger(context, "y");
-        int z = IntegerArgumentType.getInteger(context, "z");
-        BlockPos pos = new BlockPos(x, y, z);
-        ServerLevel level = context.getSource().getLevel();
-
-        BaseSystem.spawnBase(level, pos, factionId, Config.baseDefaultHealth);
-        context.getSource().sendSuccess(() -> Component.literal("基地创建成功: " + FactionRegistry.getFaction(factionId).getName()), true);
-        return 1;
-    }
-
-    private static int executeCreateBaseWithHealth(CommandContext<CommandSourceStack> context) {
-        String factionId = StringArgumentType.getString(context, "factionId");
-        int x = IntegerArgumentType.getInteger(context, "x");
-        int y = IntegerArgumentType.getInteger(context, "y");
-        int z = IntegerArgumentType.getInteger(context, "z");
-        int health = IntegerArgumentType.getInteger(context, "health");
-        BlockPos pos = new BlockPos(x, y, z);
-        ServerLevel level = context.getSource().getLevel();
-
-        BaseSystem.spawnBase(level, pos, factionId, health);
-        context.getSource().sendSuccess(() -> Component.literal("基地创建成功: " + FactionRegistry.getFaction(factionId).getName()), true);
-        return 1;
-    }
-
-    private static int executeCreateBaseWithAllAttributes(CommandContext<CommandSourceStack> context) {
-        return BetterEvECommandsAdditionalMethods.executeCreateBaseWithAllAttributes(context);
-    }
 
     private static int executeSpawnEntitiesAtPosition(CommandContext<CommandSourceStack> context) {
         return executeSpawnEntitiesAtPositionWithNBTInternal(context, null, true);
@@ -530,5 +532,9 @@ public class BetterEvECommands {
         );
         
         return 1;
+    }
+    
+    private static int executeCreateBaseOptimized(CommandContext<CommandSourceStack> context) {
+        return BetterEvECommandsAdditionalMethods.executeCreateBaseOptimized(context);
     }
 }
