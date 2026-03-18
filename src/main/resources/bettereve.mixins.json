@@ -9,7 +9,8 @@
     "MobAccessor",
     "WardenMixin",
     "ProjectileCollisionMixin",
-    "EnderDragonMixin"
+    "EnderDragonMixin",
+    "MobAttackDistanceMixin"
   ],
   "client": [
     "LevelRendererMixin"
