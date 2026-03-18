@@ -48,7 +48,11 @@ public class Bettereve {
     }
 
     private void registerAttributes(final net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {
-        event.put(BaseEntityType.BASE_ENTITY.get(), BaseEntity.createAttributes().build());
+        // 为所有不同尺寸的实体类型注册属性
+        for (net.minecraftforge.registries.RegistryObject<net.minecraft.world.entity.EntityType<com.example.bettereve.entity.BaseEntity>> entityType : 
+             com.example.bettereve.entity.BaseEntityType.getAllEntityTypes()) {
+            event.put(entityType.get(), com.example.bettereve.entity.BaseEntity.createAttributes().build());
+        }
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -95,7 +99,11 @@ public class Bettereve {
 
         @SubscribeEvent
         public static void onRegisterRenderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
-            event.registerEntityRenderer(BaseEntityType.BASE_ENTITY.get(), com.example.bettereve.render.BaseEntity.BaseEntityRenderer::new);
+            // 为所有不同尺寸的实体类型注册渲染器
+            for (net.minecraftforge.registries.RegistryObject<net.minecraft.world.entity.EntityType<com.example.bettereve.entity.BaseEntity>> entityType : 
+                 com.example.bettereve.entity.BaseEntityType.getAllEntityTypes()) {
+                event.registerEntityRenderer(entityType.get(), com.example.bettereve.render.BaseEntity.BaseEntityRenderer::new);
+            }
         }
 
         @SubscribeEvent

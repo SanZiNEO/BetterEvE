@@ -101,4 +101,14 @@ public class BaseEntityType {
         }
         return new int[] { 3, 10 }; // 默认尺寸
     }
+    
+    /**
+     * 获取所有实体类型的RegistryObject列表
+     */
+    public static java.util.List<RegistryObject<EntityType<BaseEntity>>> getAllEntityTypes() {
+        java.util.List<RegistryObject<EntityType<BaseEntity>>> list = new java.util.ArrayList<>();
+        list.add(BASE_ENTITY);
+        list.addAll(ENTITY_MAP.values());
+        return list;
+    }
 }

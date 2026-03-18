@@ -47,12 +47,19 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
         // 使用模型缩放属性控制模型大小
         double modelScale = entity.getModelScale();
         poseStack.scale((float) modelScale, (float) modelScale, (float) modelScale);
-        
-        // 将模型向上偏移，使模型显示在碰撞箱上方
-        // 实体位置在碰撞箱底部，需要将模型向上移动一半的碰撞箱高度
-        // 这样模型就会在碰撞箱上方，视觉上更加合理
+
+        // 重要：必须使用负号！这是经过实际测试验证的
+        // 原因：实体位置在碰撞箱底部（getY()返回脚部位置）
+        // Minecraft坐标系：Y轴向上为正，translate(0, offsetY, 0)中：
+        // - offsetY > 0：向下移动（因为世界坐标系Y向上为正）
+        // - offsetY < 0：向上移动
+        // 我们需要将模型从碰撞箱底部向上移动到碰撞箱顶部
+        // 所以offsetY必须是负值：-collisionHeight
         double collisionHeight = entity.getCollisionHeight();
-        double offsetY = collisionHeight * 0.5;
+        double offsetY = - collisionHeight; // 向上移动碰撞箱高度，使模型在碰撞箱顶部
+
+        // 注意：不要改成正号！经过实际游戏测试，负号才是正确的
+        // 如果改为正号，模型会在碰撞箱下方，而不是顶部
         poseStack.translate(0, offsetY, 0);
     }
 

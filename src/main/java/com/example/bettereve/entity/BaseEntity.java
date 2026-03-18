@@ -26,8 +26,8 @@ import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
 import java.util.EnumSet;
@@ -37,6 +37,13 @@ import java.util.List;
  * 基地实体类
  * 代表游戏中的基地，具有攻击、防御和动画功能
  * 注意：基地实体不可移动，只能在原地攻击
+ * 
+ * 碰撞箱逻辑：
+ * - 实体位置在碰撞箱底部（原版标准）
+ * - 视线高度 = 碰撞箱高度（从底部到顶部的相对高度）
+ * - 模型渲染在碰撞箱顶部（通过渲染器偏移实现）
+ * - 其他生物攻击碰撞箱底部
+ * - 远程攻击从模型位置发射
  */
 public class BaseEntity extends Mob {
     
@@ -58,9 +65,9 @@ public class BaseEntity extends Mob {
     private static final EntityDataAccessor<Integer> DATA_ANIMATION_STATE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ATTACK_TARGET = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
     
-    // 缓存实体尺寸（从EntityType预设）
-    private float cachedWidth = 3.0F;
-    private float cachedHeight = 10.0F;
+    // 注意：碰撞箱已经通过EntityType.Builder.sized(width, height)预设
+    // 实体位置在碰撞箱底部（原版标准）
+    // 尺寸通过getDimensions()方法动态获取，不需要缓存
 
     // 攻击计时器 - 用于控制攻击频率
     private int attackTimer;
@@ -150,15 +157,7 @@ public class BaseEntity extends Mob {
         this.entityData.define(DATA_ATTACK_TARGET, 0);
     }
     
-    // 初始化实体时缓存尺寸
-    @Override
-    public void onAddedToWorld() {
-        super.onAddedToWorld();
-        // 初始化缓存尺寸
-        EntityDimensions dimensions = this.getDimensions(Pose.STANDING);
-        this.cachedWidth = dimensions.width;
-        this.cachedHeight = dimensions.height;
-    }
+    // 注意：不需要缓存尺寸，原版Minecraft会自动处理碰撞箱尺寸
 
     // 阵营ID属性
     public void setFactionId(String factionId) {
@@ -233,13 +232,15 @@ public class BaseEntity extends Mob {
 
     // 获取碰撞箱尺寸（从实体类型预设）
     public double getCollisionSize() {
-        // 宽度是从中心到边缘的距离，所以实际碰撞箱宽度是 cachedWidth / 2
-        return this.cachedWidth / 2.0;
+        // 宽度是从中心到边缘的距离，所以实际碰撞箱宽度是宽度的一半
+        EntityDimensions dimensions = this.getDimensions(Pose.STANDING);
+        return dimensions.width / 2.0;
     }
     
     // 获取碰撞箱高度（从实体类型预设）
     public double getCollisionHeight() {
-        return this.cachedHeight;
+        EntityDimensions dimensions = this.getDimensions(Pose.STANDING);
+        return dimensions.height;
     }
     
     // 获取实体类型名称中的尺寸信息
@@ -256,6 +257,8 @@ public class BaseEntity extends Mob {
     public int[] parseSizeKey() {
         return BaseEntityType.parseSizeKey(getSizeKey());
     }
+    
+    // 注意：不需要缓存尺寸，原版Minecraft会自动处理
 
     // 模型缩放属性
     public void setModelScale(double modelScale) {
@@ -266,71 +269,27 @@ public class BaseEntity extends Mob {
         return this.entityData.get(DATA_MODEL_SCALE);
     }
 
-    // 设置尺寸
+    // 视线高度设置
     @Override
     protected float getStandingEyeHeight(Pose pose, EntityDimensions size) {
-        // 现在碰撞箱是从底部向上延伸，视线设置在碰撞箱顶部
-        // 这样生物攻击碰撞箱底部（实体位置），视线在顶部用于lookAt逻辑
+        // 视线高度 = 碰撞箱高度（从实体位置（底部）到碰撞箱顶部的相对高度）
+        // 这样getEyeY()就在碰撞箱顶部
         return (float) this.getCollisionHeight();
     }
     
     /**
      * 获取远程攻击的出发点位置
-     * 设置在模型顶部（碰撞箱顶部 + 模型缩放），这样是动态调整的
+     * 从模型位置发射（碰撞箱顶部 + 模型缩放）
      */
     public Vec3 getRangedAttackPosition() {
         // 偏移量 = 碰撞箱高度 + 模型缩放
-        // 这样攻击从模型顶部发射
+        // 攻击从模型顶部发射（碰撞箱顶部上方）
         double offsetY = this.getCollisionHeight() + this.getModelScale();
         return new Vec3(this.getX(), this.getY() + offsetY, this.getZ());
     }
-
-    // 重写 bounding box 计算，实现从底部向上计算
-    @Override
-    protected AABB makeBoundingBox() {
-        float collisionSize = (float) this.getCollisionSize();
-        float collisionHeight = (float) this.getCollisionHeight();
-        
-        // 碰撞箱计算方式：从底部向上计算，符合原版 Minecraft 逻辑
-        // 这样生物会自然攻击碰撞箱底部（实体位置）
-        float halfWidth = collisionSize;
-
-        double x = this.getX();
-        double y = this.getY(); // 实体位置在碰撞箱底部
-        double z = this.getZ();
-        
-        return new AABB(
-            x - halfWidth, y, z - halfWidth,
-            x + halfWidth, y + collisionHeight, z + halfWidth
-        );
-    }
     
-    @Override
-    public AABB getBoundingBoxForPose(Pose p_20218_) {
-        return this.makeBoundingBox();
-    }
-    
-    @Override
-    public void refreshDimensions() {
-        // 调用父类方法来更新尺寸和视线高度缓存
-        // 父类方法会调用 getEyeHeight() 并更新 eyeHeight 字段
-        // 我们需要确保这个过程正常工作，以便实体尺寸变化时视线高度也会更新
-        super.refreshDimensions();
-        
-        // 然后重新计算我们的自定义 bounding box
-        this.reapplyPosition();
-    }
-    
-    @Override
-    public EntityDimensions getDimensions(Pose pose) {
-        // 重写 getDimensions 方法，确保它返回与我们的碰撞箱计算方式一致的尺寸
-        // 我们使用 getCollisionSize() 和 getCollisionHeight() 来计算尺寸
-        // 现在碰撞箱是从底部向上延伸，高度使用正值
-        float width = (float) (this.getCollisionSize() * 2); // 宽度是碰撞箱大小的两倍（从中心到边缘）
-        float height = (float) this.getCollisionHeight(); // 高度使用正值，因为碰撞箱从底部向上延伸
-        
-        return EntityDimensions.fixed(width, height);
-    }
+    // 注意：碰撞箱已经通过EntityType.Builder.sized(width, height)预设
+    // 使用原版Minecraft的碰撞箱计算，不需要自定义方法
 
     // 初始化目标选择器
     @Override
