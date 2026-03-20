@@ -73,7 +73,7 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
     }
     
-    // 渲染攻击粒子效果
+    // 渲染攻击粒子效果 - 使用连续的粒子组成激光路径
     private void renderAttackParticles(BaseEntity entity, float partialTicks) {
         // 获取攻击目标
         if (entity.getActiveAttackTarget() == null) {
@@ -93,10 +93,11 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
         d1 /= d3;
         d2 /= d3;
         
-        // 生成粒子效果
+        // 生成连续的粒子效果，组成激光路径
         double d4 = entity.level().random.nextDouble();
         while(d4 < d3) {
             d4 += 1.8D - d5 + entity.level().random.nextDouble() * (1.7D - d5);
+            // 使用DRAGON_BREATH粒子，看起来像激光
             entity.level().addParticle(ParticleTypes.DRAGON_BREATH, 
                     entity.getX() + d0 * d4, 
                     entity.getEyeY() + d1 * d4, 

@@ -366,14 +366,6 @@ public class BaseEntity extends Mob {
                 return;
             }
             
-            // 检查攻击冷却
-            if (this.attackTimer > 0) {
-                return;
-            }
-            
-            // 设置攻击冷却（使用计算后的冷却时间）
-            this.attackTimer = this.getAttackCooldownTicks();
-            
             // 执行混合伤害攻击（最大化穿透）
             float totalDamage = (float) this.getAttributeValue(Attributes.ATTACK_DAMAGE);
             
@@ -405,9 +397,6 @@ public class BaseEntity extends Mob {
             
             // 播放攻击音效
             this.playSound(this.getAttackSound(), 1.0F, 1.0F);
-            
-            // 设置攻击动画
-            this.setAnimationState(AnimationState.ATTACK);
         } catch (Exception e) {
             System.err.println("BaseEntity attackTarget error: " + e.getMessage());
             e.printStackTrace();
@@ -439,7 +428,8 @@ public class BaseEntity extends Mob {
         // 根据实体状态自动更新动画
         if (this.isDeadOrDying()) {
             this.setAnimationState(AnimationState.DEATH);
-        } else if (this.attackTimer > 0) {
+        } else if (this.hasActiveAttackTarget() || this.attackTimer > 0) {
+            // 如果有攻击目标或正在攻击冷却，显示攻击动画
             this.setAnimationState(AnimationState.ATTACK);
         } else {
             this.setAnimationState(AnimationState.STANDBY);
@@ -563,7 +553,7 @@ public class BaseEntity extends Mob {
 
         @Override
         public boolean canUse() {
-            if (this.entity.getFactionId().isEmpty() || this.entity.attackTimer > 0) {
+            if (this.entity.getFactionId().isEmpty()) {
                 return false;
             }
 
@@ -580,7 +570,7 @@ public class BaseEntity extends Mob {
 
             if (!nearbyEntities.isEmpty()) {
                 this.target = nearbyEntities.get(0);
-                this.attackTime = 0;
+                this.attackTime = -10; // 参考Guardian，从-10开始
                 return true;
             }
 
@@ -597,7 +587,7 @@ public class BaseEntity extends Mob {
         @Override
         public void start() {
             this.entity.setTarget(this.target);
-            this.attackTime = 0;
+            this.attackTime = -10; // 参考Guardian，从-10开始
         }
 
         @Override
@@ -605,7 +595,7 @@ public class BaseEntity extends Mob {
             this.entity.setTarget(null);
             this.entity.setActiveAttackTarget(0);
             this.target = null;
-            this.attackTime = 0;
+            this.attackTime = -10;
         }
 
         @Override
@@ -618,7 +608,7 @@ public class BaseEntity extends Mob {
             if (this.target != null && this.target.isAlive()) {
                 this.entity.getLookControl().setLookAt(this.target, 90.0F, 90.0F);
                 
-                // 攻击时序控制
+                // 攻击时序控制 - 参考Guardian实现
                 this.attackTime++;
                 
                 // 开始攻击时设置攻击目标ID
@@ -630,11 +620,12 @@ public class BaseEntity extends Mob {
                 } else if (this.attackTime >= this.entity.getAttackDuration()) {
                     // 攻击完成，造成伤害
                     this.entity.attackTarget(this.target);
-                    this.attackTime = 0;
-                    this.entity.setActiveAttackTarget(0);
                     
-                    // 设置攻击冷却
-                    this.entity.attackTimer = this.entity.getAttackCooldownTicks();
+                    // 攻击完成后清除目标，让canUse()重新选择
+                    this.entity.setTarget(null);
+                    this.entity.setActiveAttackTarget(0);
+                    this.target = null;
+                    this.attackTime = -10;
                 }
             }
         }
