@@ -2,6 +2,8 @@ package com.example.bettereve.entity;
 
 import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -29,6 +31,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
 import java.util.EnumSet;
@@ -422,6 +425,9 @@ public class BaseEntity extends Mob {
                 if (this.clientSideAttackTime < getAttackDuration()) {
                     ++this.clientSideAttackTime;
                 }
+                
+                // 每tick生成激光粒子（参考Guardian实现）
+                this.tickAttackParticles();
             }
         }
         
@@ -628,6 +634,49 @@ public class BaseEntity extends Mob {
                     this.attackTime = -10;
                 }
             }
+        }
+    }
+    
+    // 每tick生成激光粒子（参考Guardian实现）
+    private void tickAttackParticles() {
+        // 获取攻击目标
+        LivingEntity target = this.getActiveAttackTarget();
+        if (target == null || !target.isAlive()) {
+            return;
+        }
+        
+        // 计算攻击目标的位置（每tick重新计算，实现实时追踪）
+        double d0 = target.getX() - this.getX();
+        double d1 = target.getY(0.5D) - this.getEyeY();
+        double d2 = target.getZ() - this.getZ();
+        double d3 = Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2);
+        d0 /= d3;
+        d1 /= d3;
+        d2 /= d3;
+        
+        // 生成连续的粒子效果，组成激光路径
+        // 固定粒子间距0.5
+        double particleSpacing = 0.05D;
+        double d4 = 0.0D;
+        
+        // 创建DUST粒子选项：白色激光，五分之一大小（0.2f）
+        // 颜色：Vector3f(1.0f, 1.0f, 1.0f) = 白色
+        DustParticleOptions dustOptions = new DustParticleOptions(
+            new Vector3f(1.0f, 1.0f, 1.0f),  // RGB颜色（白色）
+            1.0f  // 缩放大小，一倍
+        );
+        
+        while(d4 < d3) {
+            // 固定间距0.5
+            d4 += particleSpacing;
+            
+            // 使用DUST粒子，支持颜色和大小控制
+            // DUST粒子最后三个参数是速度，我们设为0
+            this.level().addParticle(dustOptions, 
+                    this.getX() + d0 * d4, 
+                    this.getEyeY() + d1 * d4, 
+                    this.getZ() + d2 * d4, 
+                    0.0D, 0.0D, 0.0D);  // 速度设为0
         }
     }
 }
