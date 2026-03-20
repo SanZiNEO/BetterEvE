@@ -18,6 +18,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.client.model.EntityModel;
 
+import javax.annotation.Nullable;
+
 /**
  * 基地实体模型类
  * 负责渲染基地实体的三维模型和动画
@@ -65,10 +67,20 @@ public class BaseEntityModel<T extends BaseEntity> extends EntityModel<T> {
         return LayerDefinition.create(meshdefinition, 128, 128);
     }
 
-    // 实现待机动画 - 4秒循环
-    private void animateStandby(T entity, float partialTicks) {
-        float time = entity.getAnimationProgress(partialTicks);
-        float animationTime = (time % 4.0F) / 4.0F; // 0.0 到 1.0
+    // 设置动画 - 主入口点
+    @Override
+    public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+        // 重置部件状态
+        resetParts();
+
+        // 获取动画速度因子
+        float speedFactor = entity.getAnimationSpeedFactor();
+        
+        // 基础动画速度：4秒完成360度旋转（每秒90度）
+        // 根据速度因子调整动画速度
+        float time = entity.getAnimationProgress(ageInTicks);
+        float adjustedTime = time * speedFactor;
+        float animationTime = (adjustedTime % 4.0F) / 4.0F; // 0.0 到 1.0
 
         // 核心动画 - 360度旋转
         float coreRotation = animationTime * 360.0F;
@@ -81,71 +93,6 @@ public class BaseEntityModel<T extends BaseEntity> extends EntityModel<T> {
         kuangjia.yRot = (float) Math.toRadians(kuangjiaRotation);
         kuangjia.xRot = (float) Math.toRadians(kuangjiaRotation);
         kuangjia.zRot = (float) Math.toRadians(kuangjiaRotation);
-    }
-
-    // 实现攻击动画 - 1秒
-    private void animateAttack(T entity, float partialTicks) {
-        float attackTime = entity.getAttackAnimationScale(partialTicks);
-        float animationTime = Math.min(attackTime, 1.0F);
-
-        // 核心动画 - 360度Y轴旋转，XZ轴180度旋转
-        float coreYRotation = animationTime * 360.0F;
-        float coreXZRotation = animationTime * 180.0F;
-        core.yRot = (float) Math.toRadians(-coreYRotation);
-        core.xRot = (float) Math.toRadians(-coreXZRotation);
-        core.zRot = (float) Math.toRadians(-coreXZRotation);
-
-        // 框架动画 - 360度Y轴旋转，XZ轴-180度旋转
-        float kuangjiaYRotation = animationTime * 360.0F;
-        float kuangjiaXZRotation = animationTime * -180.0F;
-        kuangjia.yRot = (float) Math.toRadians(kuangjiaYRotation);
-        kuangjia.xRot = (float) Math.toRadians(kuangjiaXZRotation);
-        kuangjia.zRot = (float) Math.toRadians(kuangjiaXZRotation);
-    }
-
-    // 实现死亡动画 - 5秒
-    private void animateDeath(T entity, float partialTicks) {
-        float time = entity.getAnimationProgress(partialTicks);
-        float animationTime = Math.min(time / 5.0F, 1.0F);
-
-        // 核心动画 - 快速旋转，向上移动
-        float coreRotation = animationTime * 1800.0F;
-        core.yRot = (float) Math.toRadians(-coreRotation);
-        core.xRot = (float) Math.toRadians(-coreRotation);
-        core.zRot = (float) Math.toRadians(coreRotation);
-
-        // 核心位置向上移动
-        if (animationTime <= 0.2F) {
-            float moveTime = animationTime / 0.2F;
-            float yOffset = moveTime * 61.0F;
-            core.setPos(core.x, core.y + yOffset, core.z);
-        }
-
-        // 框架动画 - 快速旋转
-        float kuangjiaRotation = animationTime * 720.0F;
-        kuangjia.yRot = (float) Math.toRadians(-kuangjiaRotation);
-        kuangjia.xRot = (float) Math.toRadians(-kuangjiaRotation);
-        kuangjia.zRot = (float) Math.toRadians(kuangjiaRotation);
-    }
-
-    // 设置动画 - 主入口点
-    @Override
-    public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-        // 重置部件状态
-        resetParts();
-
-        // 根据动画状态选择相应的动画
-        switch (entity.getAnimationState()) {
-            case STANDBY:
-                animateStandby(entity, ageInTicks);
-                break;
-            case ATTACK:
-                animateAttack(entity, ageInTicks);
-                break;
-            case DEATH:
-                animateDeath(entity, ageInTicks);
-                break;
-        }
     }
 
     // 重置部件状态 - 确保每次动画都有干净的起点

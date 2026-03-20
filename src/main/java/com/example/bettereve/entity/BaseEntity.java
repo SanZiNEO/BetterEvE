@@ -15,6 +15,7 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -451,6 +452,38 @@ public class BaseEntity extends Mob {
     public float getClientSideAttackTime() {
         return (float) this.clientSideAttackTime;
     }
+    
+    // 获取当前攻击进度（0.0 到 1.0）
+    public float getAttackProgress() {
+        if (!this.hasActiveAttackTarget() || this.clientSideAttackTime <= 0) {
+            return 0.0f;
+        }
+        return Math.min((float) this.clientSideAttackTime / (float) getAttackDuration(), 1.0f);
+    }
+    
+    // 获取动画速度因子
+    public float getAnimationSpeedFactor() {
+        if (this.isDeadOrDying()) {
+            return 4.0f; // 死亡：4倍速
+        }
+        
+        if (this.hasActiveAttackTarget()) {
+            float attackProgress = getAttackProgress();
+            float chargingRatio = 0.8f; // 蓄力阶段占80%
+            
+            if (attackProgress < chargingRatio) {
+                // 蓄力阶段：从1.0线性过渡到2.0
+                float chargingProgress = attackProgress / chargingRatio;
+                return 1.0f + chargingProgress * 1.0f; // 1.0 → 2.0
+            } else {
+                // 攻击阶段：2.0倍速
+                return 2.0f;
+            }
+        }
+        
+        // 待机状态：1.0倍速
+        return 1.0f;
+    }
 
     // 读取 NBT 数据
     @Override
@@ -571,6 +604,7 @@ public class BaseEntity extends Mob {
                             targetEntity.isAlive() &&
                             !targetEntity.isInvulnerable() &&
                             !targetEntity.isDeadOrDying() &&
+                            EntitySelector.NO_CREATIVE_OR_SPECTATOR.test(targetEntity) &&
                             FactionHelper.isEntitiesHostile(this.entity, targetEntity)
             );
 
