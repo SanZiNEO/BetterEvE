@@ -10,7 +10,9 @@
     "WardenMixin",
     "ProjectileCollisionMixin",
     "EnderDragonMixin",
-    "MobAttackDistanceMixin"
+    "MobAttackDistanceMixin",
+    "RangedAttackGoalMixin",
+    "SensingMixin"
   ],
   "client": [
     "LevelRendererMixin"
