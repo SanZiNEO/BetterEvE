@@ -69,7 +69,6 @@ public class BaseEntity extends Mob {
     private static final EntityDataAccessor<Float> DATA_MODEL_SCALE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> DATA_ANIMATION_STATE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ATTACK_TARGET = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<Boolean> DATA_SHOW_HEALTH_BAR = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.BOOLEAN);
     
     // 注意：碰撞箱已经通过EntityType.Builder.sized(width, height)预设
     // 实体位置在碰撞箱底部（原版标准）
@@ -167,16 +166,20 @@ public class BaseEntity extends Mob {
         this.entityData.define(DATA_MODEL_SCALE, 1.0F);
         this.entityData.define(DATA_ANIMATION_STATE, AnimationState.STANDBY.ordinal());
         this.entityData.define(DATA_ATTACK_TARGET, 0);
-        this.entityData.define(DATA_SHOW_HEALTH_BAR, true); // 默认显示血条
     }
     
-    // 血条可见性属性
+    // 血条可见性属性 - 使用NBT存储，与FactionHelper保持一致
     public void setShowHealthBar(boolean showHealthBar) {
-        this.entityData.set(DATA_SHOW_HEALTH_BAR, showHealthBar);
+        CompoundTag nbt = this.getPersistentData();
+        nbt.putBoolean("BetterEvE:ShowHealthBar", showHealthBar);
     }
     
     public boolean getShowHealthBar() {
-        return this.entityData.get(DATA_SHOW_HEALTH_BAR);
+        CompoundTag nbt = this.getPersistentData();
+        if (nbt.contains("BetterEvE:ShowHealthBar")) {
+            return nbt.getBoolean("BetterEvE:ShowHealthBar");
+        }
+        return true; // 默认显示血条
     }
     
     // 注意：不需要缓存尺寸，原版Minecraft会自动处理碰撞箱尺寸
