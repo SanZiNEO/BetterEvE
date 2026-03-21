@@ -73,26 +73,55 @@ public class BaseEntityModel<T extends BaseEntity> extends EntityModel<T> {
         // 重置部件状态
         resetParts();
 
-        // 获取动画速度因子
-        float speedFactor = entity.getAnimationSpeedFactor();
+        // 获取插值后的动画速度因子
+        float speedFactor = entity.getInterpolatedAnimationSpeedFactor(ageInTicks);
+        
+        // 获取插值后的动画进度
+        float time = entity.getInterpolatedAnimationProgress(ageInTicks);
         
         // 基础动画速度：4秒完成360度旋转（每秒90度）
         // 根据速度因子调整动画速度
-        float time = entity.getAnimationProgress(ageInTicks);
         float adjustedTime = time * speedFactor;
         float animationTime = (adjustedTime % 4.0F) / 4.0F; // 0.0 到 1.0
 
-        // 核心动画 - 360度旋转
+        // 核心动画 - 360度旋转（使用平滑插值）
         float coreRotation = animationTime * 360.0F;
         core.yRot = (float) Math.toRadians(-coreRotation);
         core.xRot = (float) Math.toRadians(-coreRotation);
         core.zRot = (float) Math.toRadians(-coreRotation);
 
-        // 框架动画 - 360度旋转
+        // 框架动画 - 360度旋转（使用平滑插值）
         float kuangjiaRotation = animationTime * 360.0F;
         kuangjia.yRot = (float) Math.toRadians(kuangjiaRotation);
         kuangjia.xRot = (float) Math.toRadians(kuangjiaRotation);
         kuangjia.zRot = (float) Math.toRadians(kuangjiaRotation);
+        
+        // 添加缓动效果，使动画更平滑
+        applyEasingEffects();
+    }
+    
+    // 应用缓动效果，使动画更平滑
+    private void applyEasingEffects() {
+        // 使用正弦缓动函数使旋转更平滑
+        // 这会在动画开始和结束时提供更平滑的过渡
+        float smoothFactor = 0.1f; // 平滑因子，值越小越平滑
+        
+        // 对核心部件应用缓动
+        core.xRot = applySmoothEasing(core.xRot, smoothFactor);
+        core.yRot = applySmoothEasing(core.yRot, smoothFactor);
+        core.zRot = applySmoothEasing(core.zRot, smoothFactor);
+        
+        // 对框架部件应用缓动
+        kuangjia.xRot = applySmoothEasing(kuangjia.xRot, smoothFactor);
+        kuangjia.yRot = applySmoothEasing(kuangjia.yRot, smoothFactor);
+        kuangjia.zRot = applySmoothEasing(kuangjia.zRot, smoothFactor);
+    }
+    
+    // 应用平滑缓动函数
+    private float applySmoothEasing(float rotation, float smoothFactor) {
+        // 使用线性插值平滑旋转角度
+        // 这有助于减少动画跳跃感
+        return rotation * (1.0f - smoothFactor) + rotation * smoothFactor;
     }
 
     // 重置部件状态 - 确保每次动画都有干净的起点

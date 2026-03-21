@@ -69,6 +69,7 @@ public class BaseEntity extends Mob {
     private static final EntityDataAccessor<Float> DATA_MODEL_SCALE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> DATA_ANIMATION_STATE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ATTACK_TARGET = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_SHOW_HEALTH_BAR = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.BOOLEAN);
     
     // 注意：碰撞箱已经通过EntityType.Builder.sized(width, height)预设
     // 实体位置在碰撞箱底部（原版标准）
@@ -80,8 +81,14 @@ public class BaseEntity extends Mob {
     // 动画播放计时器 - 用于计算动画进度
     private int animationTimer;
     
+    // 上一帧的动画计时器，用于插值计算
+    private int prevAnimationTimer;
+    
     // 当前动画状态
     private AnimationState currentAnimationState = AnimationState.STANDBY;
+    
+    // 上一帧的动画状态
+    private AnimationState prevAnimationState = AnimationState.STANDBY;
     
     // 客户端攻击动画相关
     @Nullable
@@ -160,6 +167,16 @@ public class BaseEntity extends Mob {
         this.entityData.define(DATA_MODEL_SCALE, 1.0F);
         this.entityData.define(DATA_ANIMATION_STATE, AnimationState.STANDBY.ordinal());
         this.entityData.define(DATA_ATTACK_TARGET, 0);
+        this.entityData.define(DATA_SHOW_HEALTH_BAR, true); // 默认显示血条
+    }
+    
+    // 血条可见性属性
+    public void setShowHealthBar(boolean showHealthBar) {
+        this.entityData.set(DATA_SHOW_HEALTH_BAR, showHealthBar);
+    }
+    
+    public boolean getShowHealthBar() {
+        return this.entityData.get(DATA_SHOW_HEALTH_BAR);
     }
     
     // 注意：不需要缓存尺寸，原版Minecraft会自动处理碰撞箱尺寸
@@ -412,6 +429,10 @@ public class BaseEntity extends Mob {
     public void tick() {
         super.tick();
 
+        // 保存上一帧的动画状态用于插值
+        this.prevAnimationTimer = this.animationTimer;
+        this.prevAnimationState = this.currentAnimationState;
+        
         // 更新攻击计时器
         if (this.attackTimer > 0) {
             this.attackTimer--;
@@ -441,6 +462,49 @@ public class BaseEntity extends Mob {
         } else {
             this.setAnimationState(AnimationState.STANDBY);
         }
+    }
+    
+    // 获取插值后的动画进度
+    public float getInterpolatedAnimationProgress(float partialTicks) {
+        // 使用线性插值计算平滑的动画进度
+        float prevProgress = this.prevAnimationTimer / 20.0F;
+        float currentProgress = this.animationTimer / 20.0F;
+        return prevProgress + (currentProgress - prevProgress) * partialTicks;
+    }
+    
+    // 获取插值后的动画速度因子
+    public float getInterpolatedAnimationSpeedFactor(float partialTicks) {
+        // 计算上一帧和当前帧的速度因子
+        float prevSpeedFactor = calculateSpeedFactorForState(this.prevAnimationState, this.prevAnimationTimer);
+        float currentSpeedFactor = this.getAnimationSpeedFactor();
+        
+        // 使用线性插值
+        return prevSpeedFactor + (currentSpeedFactor - prevSpeedFactor) * partialTicks;
+    }
+    
+    // 根据状态和计时器计算速度因子
+    private float calculateSpeedFactorForState(AnimationState state, int timer) {
+        if (state == AnimationState.DEATH) {
+            return 4.0f; // 死亡：4倍速
+        }
+        
+        if (state == AnimationState.ATTACK) {
+            // 模拟攻击进度计算
+            float attackProgress = Math.min((float) this.clientSideAttackTime / (float) getAttackDuration(), 1.0f);
+            float chargingRatio = 0.8f; // 蓄力阶段占80%
+            
+            if (attackProgress < chargingRatio) {
+                // 蓄力阶段：从1.0线性过渡到2.0
+                float chargingProgress = attackProgress / chargingRatio;
+                return 1.0f + chargingProgress * 1.0f; // 1.0 → 2.0
+            } else {
+                // 攻击阶段：2.0倍速
+                return 2.0f;
+            }
+        }
+        
+        // 待机状态：1.0倍速
+        return 1.0f;
     }
     
     // 获取攻击动画进度
@@ -516,6 +580,9 @@ public class BaseEntity extends Mob {
                 this.setAnimationState(AnimationState.values()[stateOrdinal]);
             }
         }
+        if (tag.contains("BetterEvE:ShowHealthBar")) {
+            this.setShowHealthBar(tag.getBoolean("BetterEvE:ShowHealthBar"));
+        }
     }
 
     // 写入 NBT 数据
@@ -530,6 +597,7 @@ public class BaseEntity extends Mob {
         tag.putDouble("BetterEvE:AttackCooldown", this.getAttackCooldown());
         tag.putDouble("BetterEvE:ModelScale", this.getModelScale());
         tag.putInt("BetterEvE:AnimationState", this.currentAnimationState.ordinal());
+        tag.putBoolean("BetterEvE:ShowHealthBar", this.getShowHealthBar());
     }
 
     // 初始化时设置属性

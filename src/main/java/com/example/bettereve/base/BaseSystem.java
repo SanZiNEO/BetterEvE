@@ -177,6 +177,10 @@ public class BaseSystem {
     }
     
     public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale) {
+        spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, true); // 默认显示血条
+    }
+    
+    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar) {
         if (level instanceof ServerLevel serverLevel) {
             try {
                 // 检查尺寸键值是否有效
@@ -201,10 +205,11 @@ public class BaseSystem {
                 baseEntity.setAttackRange(attackRange);
                 baseEntity.setAttackCooldown(attackCooldown);
                 baseEntity.setModelScale(modelScale);
+                baseEntity.setShowHealthBar(showHealthBar); // 设置血条可见性
 
                 // 生成实体
                 serverLevel.addFreshEntity(baseEntity);
-                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey);
+                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey + ", health bar: " + (showHealthBar ? "visible" : "hidden"));
                 
                 // 解析尺寸键值，显示尺寸信息
                 int[] size = BaseEntityType.parseSizeKey(sizeKey);

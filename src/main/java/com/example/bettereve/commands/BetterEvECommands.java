@@ -88,6 +88,9 @@ public class BetterEvECommands {
                                                         .then(Commands.argument("size", StringArgumentType.word())
                                                             .suggests(SIZE_SUGGESTIONS)
                                                             .executes(BetterEvECommands::executeCreateBaseOptimized)
+                                                            .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                                                .executes(BetterEvECommands::executeCreateBaseWithHealthBar)
+                                                            )
                                                         )
                                                     )
                                                 )
@@ -536,5 +539,42 @@ public class BetterEvECommands {
     
     private static int executeCreateBaseOptimized(CommandContext<CommandSourceStack> context) {
         return BetterEvECommandsAdditionalMethods.executeCreateBaseOptimized(context);
+    }
+    
+    private static int executeCreateBaseWithHealthBar(CommandContext<CommandSourceStack> context) {
+        String factionId = StringArgumentType.getString(context, "factionId");
+        int x = IntegerArgumentType.getInteger(context, "x");
+        int y = IntegerArgumentType.getInteger(context, "y");
+        int z = IntegerArgumentType.getInteger(context, "z");
+        int health = IntegerArgumentType.getInteger(context, "health");
+        int attackDamage = IntegerArgumentType.getInteger(context, "attackDamage");
+        int armor = IntegerArgumentType.getInteger(context, "armor");
+        double attackRange = DoubleArgumentType.getDouble(context, "attackRange");
+        double attackCycle = DoubleArgumentType.getDouble(context, "attackCycle");
+        String sizeKey = StringArgumentType.getString(context, "size");
+        boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
+        
+        // 解析坐标
+        net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+        
+        // 检查尺寸键值是否有效
+        if (!com.example.bettereve.base.BaseSystem.isValidSizeKey(sizeKey)) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("无效的尺寸键值: " + sizeKey + 
+                "，有效的尺寸格式为: 宽度x高度（例如 3x10）"));
+            return 0;
+        }
+        
+        // 调用 BaseSystem
+        net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
+        double modelScale = 1.0; // 默认模型缩放
+        
+        com.example.bettereve.base.BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar);
+        
+        context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("基地创建成功: " + 
+            com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() + 
+            " 位置: " + pos.toShortString() + 
+            " 尺寸: " + sizeKey + 
+            " 血条: " + (showHealthBar ? "可见" : "隐藏")), true);
+        return 1;
     }
 }
