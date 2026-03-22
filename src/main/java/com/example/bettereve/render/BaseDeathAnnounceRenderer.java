@@ -53,7 +53,7 @@ public class BaseDeathAnnounceRenderer {
      * 文字缩放系数
      * 修改此值可统一调整两行文字的大小，例如：1.2f = 增大20%，0.8f = 缩小20%
      */
-    private static final float TEXT_SCALE = 1.0f;
+    private static final float TEXT_SCALE = 3.0f;
     
     /**
      * 行间距（像素）
@@ -228,28 +228,35 @@ public class BaseDeathAnnounceRenderer {
         poseStack.pushPose();
         
         // 应用缩放变换（屏幕中央缩放）
+        // 重要：将坐标原点平移到屏幕中心，然后应用缩放
+        // 保持原点在屏幕中心，这样位置计算更直观
         poseStack.translate(width / 2.0f, height / 2.0f, 0);
         poseStack.scale(TEXT_SCALE, TEXT_SCALE, TEXT_SCALE);
-        poseStack.translate(-width / 2.0f, -height / 2.0f, 0);
+        // 注意：不再平移回去！保持原点在屏幕中心
         
-        // 计算文字尺寸（应用缩放后）
-        int firstLineWidth = (int) (font.width(firstLine) * TEXT_SCALE);
-        int secondLineWidth = (int) (font.width(secondLine) * TEXT_SCALE);
-        int lineHeight = (int) (font.lineHeight * TEXT_SCALE);
+        // 计算原始文字尺寸（不应用缩放）
+        int firstLineWidth = font.width(firstLine);
+        int secondLineWidth = font.width(secondLine);
+        int lineHeight = font.lineHeight;
         
-        // 计算渲染位置（屏幕正中央对称居中）
-        int centerX = width / 2;
-        int centerY = height / 2;
+        // 计算渲染位置（在以屏幕中心为原点的缩放后坐标系统中）
+        // 原点在屏幕中心：(0,0)就是屏幕中心点
+        // 文字以原点为中心对称显示
         
         // 第一行位置（在中心线上方）
-        int firstLineX = centerX - firstLineWidth / 2;
-        int firstLineY = centerY - lineHeight - LINE_SPACING / 2;
+        // x坐标：文字向左偏移一半宽度，使其居中
+        // y坐标：向上偏移（行高 + 行间距/2）
+        int firstLineX = -firstLineWidth / 2;
+        int firstLineY = -lineHeight - LINE_SPACING / 2;
         
         // 第二行位置（在中心线下方）
-        int secondLineX = centerX - secondLineWidth / 2;
-        int secondLineY = centerY + LINE_SPACING / 2;
+        // x坐标：文字向左偏移一半宽度，使其居中
+        // y坐标：向下偏移（行间距/2）
+        int secondLineX = -secondLineWidth / 2;
+        int secondLineY = LINE_SPACING / 2;
         
         // 渲染第一行文字
+        // 现在的位置是在以屏幕中心为原点的坐标系统中
         guiGraphics.drawString(font, Component.literal(firstLine), firstLineX, firstLineY, color, TEXT_SHADOW);
         
         // 渲染第二行文字（倒计时）
