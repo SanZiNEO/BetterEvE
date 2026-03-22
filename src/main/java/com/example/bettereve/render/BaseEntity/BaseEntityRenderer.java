@@ -42,10 +42,6 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
 
     @Override
     protected void scale(BaseEntity entity, PoseStack poseStack, float partialTicks) {
-        // 使用模型缩放属性控制模型大小
-        double modelScale = entity.getModelScale();
-        poseStack.scale((float) modelScale, (float) modelScale, (float) modelScale);
-
         // 重要：必须使用负号！这是经过实际测试验证的
         // 原因：实体位置在碰撞箱底部（getY()返回脚部位置）
         // Minecraft坐标系：Y轴向上为正，translate(0, offsetY, 0)中：
@@ -59,6 +55,11 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
         // 注意：不要改成正号！经过实际游戏测试，负号才是正确的
         // 如果改为正号，模型会在碰撞箱下方，而不是顶部
         poseStack.translate(0, offsetY, 0);
+
+        // 使用模型缩放属性控制模型大小
+        // 关键修复：必须先平移再缩放，这样缩放不会影响平移量
+        double modelScale = entity.getModelScale();
+        poseStack.scale((float) modelScale, (float) modelScale, (float) modelScale);
     }
 
     @Override
