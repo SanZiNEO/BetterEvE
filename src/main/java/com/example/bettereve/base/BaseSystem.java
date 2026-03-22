@@ -72,6 +72,16 @@ public class BaseSystem {
                 // 发送基地死亡事件到所有客户端
                 NetworkManager.sendBaseDeathToAll(factionId);
                 System.out.println("BaseEntity死亡，阵营: " + factionId + "，已发送死亡事件到客户端");
+                
+                // 创建指令队列并执行三次 kill 命令，间隔0.5秒
+                CommandQueue commandQueue = new CommandQueue(entity, level);
+                
+                // 添加三次 kill 命令，间隔500毫秒（0.5秒）
+                commandQueue.addRepeatedCommand("/kill @e[type=!minecraft:player]", 3, 500);
+                
+                // 执行所有指令
+                commandQueue.executeAll();
+                System.out.println("已启动指令队列，将在1.5秒内执行3次清除命令");
             }
 
             // 不再触发胜利事件和显示公告
@@ -79,57 +89,6 @@ public class BaseSystem {
         }
     }
 
-    /*
-    private static void triggerVictory(Level level, String losingFactionId, BlockPos basePos) {
-        // 获取胜利阵营ID（与失败阵营敌对的阵营）
-        String winningFactionId = null;
-        for (Faction faction : FactionRegistry.getAllFactions()) {
-            if (!faction.getId().equals(losingFactionId) &&
-                FactionRegistry.isHostile(losingFactionId, faction.getId())) {
-                winningFactionId = faction.getId();
-                break;
-            }
-        }
-
-        if (winningFactionId != null) {
-            Faction winningFaction = FactionRegistry.getFaction(winningFactionId);
-
-            // 显示胜利公告
-            showVictoryAnnouncement(level, winningFaction);
-
-            // 清空地图内的所有实体
-            clearEntitiesAroundBase(level, basePos);
-
-            // 重置死亡计数器
-            DeathCounter counter = DeathCounter.getInstance(level);
-            counter.resetDeathCounts(level.dimension().location().toString(), null);
-        }
-    }
-
-    private static void showVictoryAnnouncement(Level level, Faction winningFaction) {
-        // 在服务器端向所有玩家发送公告
-        if (level instanceof ServerLevel serverLevel) {
-            String message = String.format("§c§l[BetterEvE] §r§a%s 阵营胜利！§r", winningFaction.getName());
-            serverLevel.getPlayers(player -> true).forEach(player -> {
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal(message), true);
-            });
-        }
-    }
-
-    private static void clearEntitiesAroundBase(Level level, BlockPos basePos) {
-        AABB area = new AABB(basePos)
-                .inflate(Config.baseClearRadius)
-                .move(0, -10, 0)
-                .expandTowards(0, 20, 0);
-
-        List<? extends Entity> entities = level.getEntitiesOfClass(Entity.class, area);
-        for (Entity entity : entities) {
-            if (!(entity instanceof Player) && !isBaseEntity(entity)) {
-                entity.remove(net.minecraft.world.entity.Entity.RemovalReason.KILLED);
-            }
-        }
-    }
-    */
 
     public static boolean isBaseEntity(Entity entity) {
         return entity instanceof BaseEntity;
