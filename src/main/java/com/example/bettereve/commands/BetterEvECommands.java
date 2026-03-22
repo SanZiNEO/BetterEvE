@@ -134,6 +134,13 @@ public class BetterEvECommands {
             .then(Commands.literal("scoreboard")
                 .then(Commands.literal("clear")
                     .executes(BetterEvECommands::clearAllScoreboards)
+                    .then(Commands.literal("base")
+                        .executes(BetterEvECommands::clearBaseScoreboard)
+                        .then(Commands.argument("factionName", StringArgumentType.greedyString())
+                            .suggests(FACTION_NAME_SUGGESTIONS)
+                            .executes(BetterEvECommands::clearBaseFactionScoreboard)
+                        )
+                    )
                     .then(Commands.argument("factionName", StringArgumentType.greedyString())
                         .suggests(FACTION_NAME_SUGGESTIONS)
                         .executes(BetterEvECommands::clearFactionScoreboard)
@@ -576,5 +583,66 @@ public class BetterEvECommands {
             " 尺寸: " + sizeKey + 
             " 血条: " + (showHealthBar ? "可见" : "隐藏")), true);
         return 1;
+    }
+    
+    /**
+     * 清除所有基地死亡计数
+     */
+    private static int clearBaseScoreboard(CommandContext<CommandSourceStack> context) {
+        // 这里需要调用BaseDeathCounter的清除方法
+        // 但BaseDeathCounter是客户端专用的，我们需要通过网络数据包通知所有客户端
+        try {
+            // 使用NetworkManager的现有方法清除所有基地死亡计数
+            com.example.bettereve.network.NetworkManager.clearBaseDeathCounts();
+            
+            context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("已发送清除基地死亡计数的指令到所有客户端"), true);
+            LOGGER.info("Base death counters cleared via command");
+            return 1;
+        } catch (Exception e) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("清除基地死亡计数失败: " + e.getMessage()));
+            LOGGER.error("Failed to clear base death counters", e);
+            return 0;
+        }
+    }
+    
+    /**
+     * 清除指定阵营的基地死亡计数
+     */
+    private static int clearBaseFactionScoreboard(CommandContext<CommandSourceStack> context) {
+        String factionName = StringArgumentType.getString(context, "factionName");
+        net.minecraft.server.level.ServerLevel serverLevel = context.getSource().getLevel();
+        
+        // 查找对应的阵营
+        com.example.bettereve.faction.Faction targetFaction = null;
+        for (com.example.bettereve.faction.Faction faction : com.example.bettereve.faction.FactionRegistry.getAllFactions()) {
+            if (faction.getName().equals(factionName)) {
+                targetFaction = faction;
+                break;
+            }
+        }
+        
+        if (targetFaction == null) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("未找到阵营: " + factionName));
+            return 0;
+        }
+        
+        try {
+            // 创建清除指定阵营的数据包
+            com.example.bettereve.network.BaseDeathPacket packet = new com.example.bettereve.network.BaseDeathPacket(targetFaction.getId(), true);
+            
+            // 使用NetworkManager的通道发送数据包给所有玩家
+            com.example.bettereve.network.NetworkManager.getChannel().send(
+                net.minecraftforge.network.PacketDistributor.ALL.noArg(), 
+                packet
+            );
+            
+            context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("已发送清除阵营 " + factionName + " 的基地死亡计数的指令到所有客户端"), true);
+            LOGGER.info("Base death counters for faction {} cleared via command", factionName);
+            return 1;
+        } catch (Exception e) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("清除阵营基地死亡计数失败: " + e.getMessage()));
+            LOGGER.error("Failed to clear base death counters for faction {}", factionName, e);
+            return 0;
+        }
     }
 }

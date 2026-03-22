@@ -22,7 +22,8 @@ public class BaseDeathPacket {
     // 同步模式
     public enum SyncMode {
         ADD_DEATH,      // 增加死亡计数
-        CLEAR_COUNTS    // 清除所有计数
+        CLEAR_ALL,      // 清除所有计数
+        CLEAR_FACTION   // 清除指定阵营计数
     }
     
     private final SyncMode mode;
@@ -37,11 +38,21 @@ public class BaseDeathPacket {
     }
     
     /**
-     * 清除计数构造函数
+     * 清除所有计数构造函数
      */
     public BaseDeathPacket() {
-        this.mode = SyncMode.CLEAR_COUNTS;
+        this.mode = SyncMode.CLEAR_ALL;
         this.factionId = null;
+    }
+    
+    /**
+     * 清除指定阵营计数构造函数
+     * @param factionId 要清除的阵营ID
+     * @param clearFaction 标记为清除指定阵营
+     */
+    public BaseDeathPacket(String factionId, boolean clearFaction) {
+        this.mode = SyncMode.CLEAR_FACTION;
+        this.factionId = factionId;
     }
     
     /**
@@ -50,10 +61,15 @@ public class BaseDeathPacket {
     public void encode(FriendlyByteBuf buffer) {
         buffer.writeEnum(mode);
         
-        if (mode == SyncMode.ADD_DEATH) {
-            buffer.writeUtf(factionId != null ? factionId : "neutral");
+        switch (mode) {
+            case ADD_DEATH:
+            case CLEAR_FACTION:
+                buffer.writeUtf(factionId != null ? factionId : "neutral");
+                break;
+            case CLEAR_ALL:
+                // 不需要额外数据
+                break;
         }
-        // CLEAR_COUNTS模式不需要额外数据
     }
     
     /**
@@ -67,8 +83,12 @@ public class BaseDeathPacket {
                 String factionId = buffer.readUtf(32767);
                 return new BaseDeathPacket(factionId);
                 
-            case CLEAR_COUNTS:
+            case CLEAR_ALL:
                 return new BaseDeathPacket();
+                
+            case CLEAR_FACTION:
+                String clearFactionId = buffer.readUtf(32767);
+                return new BaseDeathPacket(clearFactionId, true);
                 
             default:
                 LOGGER.error("BaseDeathPacket: unknown sync mode: {}", mode);
@@ -103,9 +123,16 @@ public class BaseDeathPacket {
                 }
                 break;
                 
-            case CLEAR_COUNTS:
+            case CLEAR_ALL:
                 BaseDeathCounter.clearAll();
                 LOGGER.debug("Client: Cleared all base death counts");
+                break;
+                
+            case CLEAR_FACTION:
+                if (factionId != null) {
+                    BaseDeathCounter.clearFaction(factionId);
+                    LOGGER.debug("Client: Cleared base death count for faction {}", factionId);
+                }
                 break;
         }
     }
@@ -126,10 +153,14 @@ public class BaseDeathPacket {
     
     @Override
     public String toString() {
-        if (mode == SyncMode.ADD_DEATH) {
-            return String.format("BaseDeathPacket{mode=%s, factionId=%s}", mode, factionId);
-        } else {
-            return String.format("BaseDeathPacket{mode=%s}", mode);
+        switch (mode) {
+            case ADD_DEATH:
+            case CLEAR_FACTION:
+                return String.format("BaseDeathPacket{mode=%s, factionId=%s}", mode, factionId);
+            case CLEAR_ALL:
+                return String.format("BaseDeathPacket{mode=%s}", mode);
+            default:
+                return String.format("BaseDeathPacket{mode=UNKNOWN}");
         }
     }
 }
