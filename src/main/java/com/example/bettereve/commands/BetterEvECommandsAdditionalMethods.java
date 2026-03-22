@@ -13,7 +13,7 @@ import net.minecraft.server.level.ServerLevel;
 
 public class BetterEvECommandsAdditionalMethods {
     
-    // 优化版本，使用新格式：/bettereve base create <阵营id> <x> <y> <z> <health> <攻击力> <护甲> <攻击范围> <攻击周期> <size>
+    // 优化版本，使用新格式：/bettereve base create <阵营id> <x> <y> <z> <health> <攻击力> <护甲> <攻击范围> <攻击周期> <size> <模型缩放>
     public static int executeCreateBaseOptimized(CommandContext<CommandSourceStack> context) {
         String factionId = StringArgumentType.getString(context, "factionId");
         int x = IntegerArgumentType.getInteger(context, "x");
@@ -25,6 +25,7 @@ public class BetterEvECommandsAdditionalMethods {
         double attackRange = DoubleArgumentType.getDouble(context, "attackRange");
         double attackCycle = DoubleArgumentType.getDouble(context, "attackCycle");
         String sizeKey = StringArgumentType.getString(context, "size");
+        double modelScale = DoubleArgumentType.getDouble(context, "modelScale");
         
         // 解析坐标
         BlockPos pos = new BlockPos(x, y, z);
@@ -36,16 +37,23 @@ public class BetterEvECommandsAdditionalMethods {
             return 0;
         }
         
+        // 检查模型缩放范围
+        if (modelScale < 0.01 || modelScale > 4.0) {
+            context.getSource().sendFailure(Component.literal("模型缩放必须在0.01到4.0之间"));
+            return 0;
+        }
+        
         // 调用 BaseSystem
         ServerLevel level = context.getSource().getLevel();
-        double modelScale = 1.0; // 默认模型缩放
+        boolean showHealthBar = true; // 默认显示血条（优化版本）
         
-        BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale);
+        BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar);
         
         context.getSource().sendSuccess(() -> Component.literal("基地创建成功: " + 
             FactionRegistry.getFaction(factionId).getName() + 
             " 位置: " + pos.toShortString() + 
-            " 尺寸: " + sizeKey), true);
+            " 尺寸: " + sizeKey +
+            " 模型缩放: " + String.format("%.2f", modelScale) + "x"), true);
         return 1;
     }
 }

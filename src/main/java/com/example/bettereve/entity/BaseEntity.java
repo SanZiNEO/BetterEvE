@@ -108,7 +108,8 @@ public class BaseEntity extends Mob {
         float attackCycle = (float) this.getAttackCooldown(); // 攻击周期（秒）
         float baseCycle = 6.0f; // 基础周期（秒）
         float ratio = attackCycle / baseCycle;
-        return (int) (BASE_ATTACK_DURATION * ratio);
+        int result = (int) (BASE_ATTACK_DURATION * ratio);
+        return Math.max(1, result); // 确保至少1 tick
     }
     
     // 计算实际攻击冷却时间（基于攻击周期比例）
@@ -116,7 +117,8 @@ public class BaseEntity extends Mob {
         float attackCycle = (float) this.getAttackCooldown(); // 攻击周期（秒）
         float baseCycle = 6.0f; // 基础周期（秒）
         float ratio = attackCycle / baseCycle;
-        return (int) (BASE_ATTACK_COOLDOWN * ratio);
+        int result = (int) (BASE_ATTACK_COOLDOWN * ratio);
+        return Math.max(1, result); // 确保至少1 tick
     }
     
     // 计算实际总攻击周期（ticks）
@@ -287,7 +289,9 @@ public class BaseEntity extends Mob {
 
     // 模型缩放属性
     public void setModelScale(double modelScale) {
-        this.entityData.set(DATA_MODEL_SCALE, (float) modelScale);
+        // 确保模型缩放范围在0.01到4.0之间
+        double clampedScale = Math.max(0.01, Math.min(4.0, modelScale));
+        this.entityData.set(DATA_MODEL_SCALE, (float) clampedScale);
     }
 
     public double getModelScale() {

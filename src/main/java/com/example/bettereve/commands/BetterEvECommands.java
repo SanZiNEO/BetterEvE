@@ -84,12 +84,14 @@ public class BetterEvECommands {
                                         .then(Commands.argument("attackDamage", IntegerArgumentType.integer(1))
                                             .then(Commands.argument("armor", IntegerArgumentType.integer(1))
                                                 .then(Commands.argument("attackRange", DoubleArgumentType.doubleArg(1.0))
-                                                    .then(Commands.argument("attackCycle", DoubleArgumentType.doubleArg(1.0))
+                                                    .then(Commands.argument("attackCycle", DoubleArgumentType.doubleArg(0.05, 20.0))
                                                         .then(Commands.argument("size", StringArgumentType.word())
                                                             .suggests(SIZE_SUGGESTIONS)
-                                                            .executes(BetterEvECommands::executeCreateBaseOptimized)
-                                                            .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
-                                                                .executes(BetterEvECommands::executeCreateBaseWithHealthBar)
+                                                            .then(Commands.argument("modelScale", DoubleArgumentType.doubleArg(0.01, 4.0))
+                                                                .executes(BetterEvECommands::executeCreateBaseOptimized)
+                                                                .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                                                    .executes(BetterEvECommands::executeCreateBaseWithHealthBar)
+                                                                )
                                                             )
                                                         )
                                                     )
@@ -559,6 +561,7 @@ public class BetterEvECommands {
         double attackRange = DoubleArgumentType.getDouble(context, "attackRange");
         double attackCycle = DoubleArgumentType.getDouble(context, "attackCycle");
         String sizeKey = StringArgumentType.getString(context, "size");
+        double modelScale = DoubleArgumentType.getDouble(context, "modelScale");
         boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
         
         // 解析坐标
@@ -571,9 +574,14 @@ public class BetterEvECommands {
             return 0;
         }
         
+        // 检查模型缩放范围
+        if (modelScale < 0.01 || modelScale > 4.0) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("模型缩放必须在0.01到4.0之间"));
+            return 0;
+        }
+        
         // 调用 BaseSystem
         net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
-        double modelScale = 1.0; // 默认模型缩放
         
         com.example.bettereve.base.BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar);
         
@@ -581,6 +589,7 @@ public class BetterEvECommands {
             com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() + 
             " 位置: " + pos.toShortString() + 
             " 尺寸: " + sizeKey + 
+            " 模型缩放: " + String.format("%.2f", modelScale) + "x" +
             " 血条: " + (showHealthBar ? "可见" : "隐藏")), true);
         return 1;
     }
