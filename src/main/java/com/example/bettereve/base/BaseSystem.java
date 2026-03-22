@@ -7,6 +7,7 @@ import com.example.bettereve.entity.BaseEntityType;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
+import com.example.bettereve.network.NetworkManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -67,6 +68,10 @@ public class BaseSystem {
                 level.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
                         entity.getX(), entity.getY(), entity.getZ(),
                         100, 0.5, 0.5, 0.5, 0.1);
+                
+                // 发送基地死亡事件到所有客户端
+                NetworkManager.sendBaseDeathToAll(factionId);
+                System.out.println("BaseEntity死亡，阵营: " + factionId + "，已发送死亡事件到客户端");
             }
 
             // 不再触发胜利事件和显示公告

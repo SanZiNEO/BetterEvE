@@ -92,6 +92,15 @@ public class NetworkManager {
             HealthBarVisibilityPacket::decode,
             HealthBarVisibilityPacket::handle
         );
+        
+        // 注册基地死亡同步数据包
+        CHANNEL.registerMessage(
+            packetId++,
+            BaseDeathPacket.class,
+            BaseDeathPacket::encode,
+            BaseDeathPacket::decode,
+            BaseDeathPacket::handle
+        );
     }
     
     /**
@@ -342,5 +351,56 @@ public class NetworkManager {
     public static String getStatistics() {
         return String.format("Network: queueSize=%d, lastBatchSync=%dms ago", 
             getSyncQueueSize(), System.currentTimeMillis() - lastBatchSyncTime);
+    }
+    
+    /**
+     * 发送基地死亡事件到所有客户端
+     * @param factionId 死亡的基地所属阵营ID
+     */
+    public static void sendBaseDeathToAll(String factionId) {
+        if (factionId == null || factionId.isEmpty()) {
+            factionId = "neutral";
+        }
+        
+        // 创建数据包
+        BaseDeathPacket packet = new BaseDeathPacket(factionId);
+        
+        // 发送给所有玩家
+        CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+        LOGGER.debug("Sent base death packet for faction {} to all clients", factionId);
+    }
+    
+    /**
+     * 发送基地死亡事件到指定玩家
+     * @param factionId 死亡的基地所属阵营ID
+     * @param player 目标玩家
+     */
+    public static void sendBaseDeathToPlayer(String factionId, ServerPlayer player) {
+        if (factionId == null || factionId.isEmpty()) {
+            factionId = "neutral";
+        }
+        
+        if (player == null) {
+            return;
+        }
+        
+        // 创建数据包
+        BaseDeathPacket packet = new BaseDeathPacket(factionId);
+        
+        // 发送给指定玩家
+        CHANNEL.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+        LOGGER.debug("Sent base death packet for faction {} to player {}", factionId, player.getName().getString());
+    }
+    
+    /**
+     * 清除所有客户端的基地死亡计数
+     */
+    public static void clearBaseDeathCounts() {
+        // 创建数据包
+        BaseDeathPacket packet = new BaseDeathPacket();
+        
+        // 发送给所有玩家
+        CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+        LOGGER.debug("Sent clear base death counts packet to all clients");
     }
 }
