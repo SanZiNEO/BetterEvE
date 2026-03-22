@@ -69,9 +69,9 @@ public class ScoreboardManager {
         Scoreboard scoreboard = level.getScoreboard();
         Objective objective = scoreboard.getObjective(OBJECTIVE_NAME);
         if (objective != null) {
-            // 清除所有阵营的分数
-            for (Faction faction : FactionRegistry.getAllFactions()) {
-                scoreboard.resetPlayerScore(faction.getName(), objective);
+            // 清除所有参与者的分数（包括旧名称和非阵营条目）
+            for (String playerName : scoreboard.getTrackedPlayers()) {
+                scoreboard.resetPlayerScore(playerName, objective);
             }
             
             // 强制刷新显示

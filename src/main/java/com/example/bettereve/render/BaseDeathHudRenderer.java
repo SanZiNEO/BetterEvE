@@ -34,9 +34,9 @@ public class BaseDeathHudRenderer {
     private static final int TITLE_COLOR = 0xFFFFFF; // 白色
     private static final int TEXT_COLOR = 0xFFFFFF;  // 白色
     private static final int BACKGROUND_COLOR = 0x80000000; // 半透明黑色背景
-    private static final int PADDING = 5;
-    private static final int SPACING = 15; // 阵营之间的间距
-    private static final int VERTICAL_SPACING = 10; // 标题和内容之间的垂直间距
+    private static final int PADDING = 3;
+    private static final int SPACING = 10; // 阵营之间的间距
+    private static final int VERTICAL_SPACING = 2; // 标题和内容之间的垂直间距
     
     public static final IGuiOverlay BASE_DEATH_OVERLAY = (gui, guiGraphics, partialTick, width, height) -> {
         Minecraft mc = Minecraft.getInstance();
