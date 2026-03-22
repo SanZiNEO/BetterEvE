@@ -1,6 +1,7 @@
 package com.example.bettereve.network;
 
 import com.example.bettereve.base.BaseDeathCounter;
+import com.example.bettereve.render.BaseDeathAnnounceRenderer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -119,19 +120,23 @@ public class BaseDeathPacket {
             case ADD_DEATH:
                 if (factionId != null) {
                     BaseDeathCounter.addDeath(factionId);
-                    LOGGER.debug("Client: Added base death for faction {}", factionId);
+                    // 触发中央文字播报显示
+                    BaseDeathAnnounceRenderer.addAnnounce(factionId);
+                    LOGGER.debug("Client: Added base death for faction {} and triggered announce", factionId);
                 }
                 break;
                 
             case CLEAR_ALL:
                 BaseDeathCounter.clearAll();
-                LOGGER.debug("Client: Cleared all base death counts");
+                BaseDeathAnnounceRenderer.clearAll();
+                LOGGER.debug("Client: Cleared all base death counts and announces");
                 break;
                 
             case CLEAR_FACTION:
                 if (factionId != null) {
                     BaseDeathCounter.clearFaction(factionId);
-                    LOGGER.debug("Client: Cleared base death count for faction {}", factionId);
+                    BaseDeathAnnounceRenderer.clearFaction(factionId);
+                    LOGGER.debug("Client: Cleared base death count and announces for faction {}", factionId);
                 }
                 break;
         }
