@@ -59,6 +59,12 @@ public class BaseSystem {
     public static void onLivingDeath(LivingDeathEvent event) {
         Entity entity = event.getEntity();
         if (isBaseEntity(entity)) {
+            // 检查是否正在播报期间，如果是则跳过处理（防止连锁计数）
+            if (BaseDeathLockManager.isBroadcasting()) {
+                System.out.println("播报期间，跳过基地死亡逻辑: " + entity.getUUID());
+                return;
+            }
+            
             String factionId = getBaseFactionId(entity);
             Faction faction = FactionRegistry.getFaction(factionId);
 
@@ -73,15 +79,20 @@ public class BaseSystem {
                 NetworkManager.sendBaseDeathToAll(factionId);
                 System.out.println("BaseEntity死亡，阵营: " + factionId + "，已发送死亡事件到客户端");
                 
-                // 创建指令队列并执行三次 kill 命令，间隔0.5秒
+                // 创建指令队列并执行三次 kill 命令，延迟1秒后开始，间隔0.5秒
                 CommandQueue commandQueue = new CommandQueue(entity, level);
                 
-                // 添加三次 kill 命令，间隔500毫秒（0.5秒）
-                commandQueue.addRepeatedCommand("/kill @e[type=!minecraft:player]", 3, 500);
+                // 添加三次 kill 命令，分别在1.0s, 1.5s, 2.0s后执行
+                commandQueue.addCommand("/kill @e[type=!minecraft:player]", 1000);  // 第1次在1秒后
+                commandQueue.addCommand("/kill @e[type=!minecraft:player]", 1500);  // 第2次在1.5秒后
+                commandQueue.addCommand("/kill @e[type=!minecraft:player]", 2000);  // 第3次在2秒后
+                
+                // 服务器端开始播报锁定（等待客户端确认）
+                BaseDeathLockManager.startBroadcast(factionId);
                 
                 // 执行所有指令
                 commandQueue.executeAll();
-                System.out.println("已启动指令队列，将在1.5秒内执行3次清除命令");
+                System.out.println("已启动指令队列，将在2秒内执行3次清除命令（1秒延迟）");
             }
 
             // 不再触发胜利事件和显示公告

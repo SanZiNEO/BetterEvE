@@ -123,8 +123,19 @@ public class BaseDeathPacket {
                     BaseDeathCounter.addDeath(factionId);
                     // 触发中央文字播报显示
                     BaseDeathAnnounceRenderer.addAnnounce(factionId);
+                    
+                    // 向服务器发送播报确认包，通知服务器客户端已开始播报
+                    // 获取当前时间戳（客户端时间）
+                    long clientTimestamp = System.currentTimeMillis();
+                    
+                    // 创建确认包
+                    BaseDeathLockPacket lockPacket = new BaseDeathLockPacket(factionId, clientTimestamp);
+                    
+                    // 发送给服务器
+                    NetworkManager.getChannel().sendToServer(lockPacket);
+                    
                     if (DebugConfig.isDebugEnabled()) {
-                        LOGGER.debug("Client: Added base death for faction {} and triggered announce", factionId);
+                        LOGGER.debug("Client: Added base death for faction {} and sent lock confirmation", factionId);
                     }
                 }
                 break;

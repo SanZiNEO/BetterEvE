@@ -102,6 +102,15 @@ public class NetworkManager {
             BaseDeathPacket::decode,
             BaseDeathPacket::handle
         );
+        
+        // 注册基地死亡播报锁定确认包（客户端→服务器）
+        CHANNEL.registerMessage(
+            packetId++,
+            BaseDeathLockPacket.class,
+            BaseDeathLockPacket::encode,
+            BaseDeathLockPacket::decode,
+            BaseDeathLockPacket::handle
+        );
     }
     
     /**
