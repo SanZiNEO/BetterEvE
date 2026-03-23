@@ -48,7 +48,7 @@ public class BaseDeathAnnounceRenderer {
      * 播报总显示时间（毫秒）
      * 修改此值可调整倒计时总时长，例如：5000 = 5秒，10000 = 10秒
      */
-    private static final int ANNOUNCE_TOTAL_DURATION_MS = 3000; // 3秒总时长
+    private static final int ANNOUNCE_TOTAL_DURATION_MS = 10000; // 3秒总时长
     
     /**
      * 文字缩放系数

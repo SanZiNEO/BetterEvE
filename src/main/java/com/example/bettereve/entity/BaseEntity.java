@@ -388,9 +388,13 @@ public class BaseEntity extends Mob {
                 return;
             }
             
-            // 检查攻击范围
+            // 检查攻击范围（双重验证）
+            double attackRange = this.getAttackRange();
             double distance = this.distanceTo(target);
-            if (distance > this.getAttackRange()) {
+            if (distance > attackRange) {
+                // 如果目标超出范围，清除目标并返回
+                this.setTarget(null);
+                this.setActiveAttackTarget(0);
                 return;
             }
             
@@ -672,6 +676,8 @@ public class BaseEntity extends Mob {
             }
 
             double range = this.entity.getAttackRange();
+            double rangeSqr = range * range;  // 使用平方距离提高性能
+            
             List<LivingEntity> nearbyEntities = this.entity.level().getEntitiesOfClass(
                     LivingEntity.class,
                     this.entity.getBoundingBox().inflate(range),
@@ -680,23 +686,50 @@ public class BaseEntity extends Mob {
                             !targetEntity.isInvulnerable() &&
                             !targetEntity.isDeadOrDying() &&
                             EntitySelector.NO_CREATIVE_OR_SPECTATOR.test(targetEntity) &&
-                            FactionHelper.isEntitiesHostile(this.entity, targetEntity)
+                            FactionHelper.isEntitiesHostile(this.entity, targetEntity) &&
+                            this.entity.distanceToSqr(targetEntity) <= rangeSqr  // 添加精确距离检查，确保目标在攻击范围内
             );
 
             if (!nearbyEntities.isEmpty()) {
-                this.target = nearbyEntities.get(0);
+                // 找到最近的目标，而不是第一个
+                this.target = findNearestTarget(nearbyEntities);
                 this.attackTime = -10; // 参考Guardian，从-10开始
                 return true;
             }
 
             return false;
         }
+        
+        // 找到最近的目标
+        private LivingEntity findNearestTarget(List<LivingEntity> entities) {
+            LivingEntity nearest = null;
+            double nearestDistance = Double.MAX_VALUE;
+
+            for (LivingEntity entity : entities) {
+                double distance = this.entity.distanceToSqr(entity);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearest = entity;
+                }
+            }
+
+            return nearest;
+        }
 
         @Override
         public boolean canContinueToUse() {
-            return this.target != null && this.target.isAlive() &&
-                    this.entity.distanceTo(this.target) <= this.entity.getAttackRange() &&
-                    FactionHelper.isEntitiesHostile(this.entity, this.target);
+            if (this.target == null || !this.target.isAlive()) {
+                return false;
+            }
+            
+            double range = this.entity.getAttackRange();
+            double rangeSqr = range * range;
+            double distanceSqr = this.entity.distanceToSqr(this.target);
+            
+            // 更严格的边界条件，留出一点余量防止边界抖动
+            // 使用平方距离提高性能，并确保目标在99%的攻击范围内
+            return distanceSqr <= (rangeSqr * 0.99) &&  // 99% 范围内，留出1%余量防止边界抖动
+                   FactionHelper.isEntitiesHostile(this.entity, this.target);
         }
 
         @Override
