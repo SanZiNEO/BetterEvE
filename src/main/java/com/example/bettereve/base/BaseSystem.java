@@ -65,7 +65,9 @@ public class BaseSystem {
                 return;
             }
             
-            String factionId = getBaseFactionId(entity);
+            // 获取基地实体和字段
+            BaseEntity baseEntity = (BaseEntity) entity;
+            String factionId = baseEntity.getFactionId();
             Faction faction = FactionRegistry.getFaction(factionId);
 
             // 播放爆炸特效
@@ -75,12 +77,27 @@ public class BaseSystem {
                         entity.getX(), entity.getY(), entity.getZ(),
                         100, 0.5, 0.5, 0.5, 0.1);
                 
-                // 发送基地死亡事件到所有客户端
-                NetworkManager.sendBaseDeathToAll(factionId);
-                System.out.println("BaseEntity死亡，阵营: " + factionId + "，已发送死亡事件到客户端");
+                // 检查是否需要播报和死亡计数
+                boolean shouldBroadcast = baseEntity.getEnableBroadcast();
+                boolean shouldCountDeath = baseEntity.getEnableDeathCount();
+                
+                if (shouldBroadcast || shouldCountDeath) {
+                    // 发送基地死亡事件到所有客户端，包含两个控制字段
+                    NetworkManager.sendBaseDeathToAll(factionId, shouldCountDeath, shouldBroadcast);
+                    System.out.println("BaseEntity死亡，阵营: " + factionId + 
+                        "，死亡计数: " + (shouldCountDeath ? "启用" : "禁用") +
+                        "，播报: " + (shouldBroadcast ? "启用" : "禁用"));
+                    
+                    // 如果启用了播报，服务器端开始播报锁定（等待客户端确认）
+                    if (shouldBroadcast) {
+                        BaseDeathLockManager.startBroadcast(factionId);
+                    }
+                } else {
+                    System.out.println("BaseEntity死亡，阵营: " + factionId + "，播报和死亡计数均已禁用");
+                }
                 
                 // 检查是否需要执行清场指令
-                if (entity instanceof BaseEntity baseEntity && baseEntity.getEnableDeathClear()) {
+                if (baseEntity.getEnableDeathClear()) {
                     // 创建指令队列并执行三次 kill 命令，延迟1秒后开始，间隔0.5秒
                     CommandQueue commandQueue = new CommandQueue(entity, level);
                     
@@ -95,9 +112,6 @@ public class BaseSystem {
                 } else {
                     System.out.println("基地死亡清场已禁用，跳过指令队列执行");
                 }
-                
-                // 服务器端开始播报锁定（等待客户端确认）
-                BaseDeathLockManager.startBroadcast(factionId);
             }
 
             // 不再触发胜利事件和显示公告
@@ -165,6 +179,10 @@ public class BaseSystem {
     }
     
     public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar, boolean enableDeathClear) {
+        spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, showHealthBar, enableDeathClear, false, false); // 默认不播报，不加入计数
+    }
+    
+    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar, boolean enableDeathClear, boolean enableBroadcast, boolean enableDeathCount) {
         if (level instanceof ServerLevel serverLevel) {
             try {
                 // 检查尺寸键值是否有效
@@ -191,10 +209,16 @@ public class BaseSystem {
                 baseEntity.setModelScale(modelScale);
                 baseEntity.setShowHealthBar(showHealthBar); // 设置血条可见性
                 baseEntity.setEnableDeathClear(enableDeathClear); // 设置死亡清场控制
+                baseEntity.setEnableBroadcast(enableBroadcast); // 设置播报控制
+                baseEntity.setEnableDeathCount(enableDeathCount); // 设置死亡计数控制
 
                 // 生成实体
                 serverLevel.addFreshEntity(baseEntity);
-                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey + ", health bar: " + (showHealthBar ? "visible" : "hidden") + ", death clear: " + (enableDeathClear ? "enabled" : "disabled"));
+                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey + 
+                    ", health bar: " + (showHealthBar ? "visible" : "hidden") + 
+                    ", death clear: " + (enableDeathClear ? "enabled" : "disabled") +
+                    ", broadcast: " + (enableBroadcast ? "enabled" : "disabled") +
+                    ", death count: " + (enableDeathCount ? "enabled" : "disabled"));
                 
                 // 解析尺寸键值，显示尺寸信息
                 int[] size = BaseEntityType.parseSizeKey(sizeKey);

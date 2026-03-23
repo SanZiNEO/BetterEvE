@@ -30,13 +30,27 @@ public class BaseDeathPacket {
     
     private final SyncMode mode;
     private final String factionId; // 阵营ID
+    private final boolean shouldCountDeath; // 是否增加死亡计数（ADD_DEATH模式专用）
+    private final boolean shouldShowAnnounce; // 是否显示播报（ADD_DEATH模式专用）
     
     /**
-     * 增加死亡计数构造函数
+     * 增加死亡计数构造函数（向后兼容）
      */
     public BaseDeathPacket(String factionId) {
         this.mode = SyncMode.ADD_DEATH;
         this.factionId = factionId;
+        this.shouldCountDeath = true; // 默认增加死亡计数
+        this.shouldShowAnnounce = true; // 默认显示播报
+    }
+    
+    /**
+     * 完全控制构造函数
+     */
+    public BaseDeathPacket(String factionId, boolean shouldCountDeath, boolean shouldShowAnnounce) {
+        this.mode = SyncMode.ADD_DEATH;
+        this.factionId = factionId;
+        this.shouldCountDeath = shouldCountDeath;
+        this.shouldShowAnnounce = shouldShowAnnounce;
     }
     
     /**
@@ -45,6 +59,8 @@ public class BaseDeathPacket {
     public BaseDeathPacket() {
         this.mode = SyncMode.CLEAR_ALL;
         this.factionId = null;
+        this.shouldCountDeath = false; // 清除操作不需要计数
+        this.shouldShowAnnounce = false; // 清除操作不需要播报
     }
     
     /**
@@ -55,6 +71,8 @@ public class BaseDeathPacket {
     public BaseDeathPacket(String factionId, boolean clearFaction) {
         this.mode = SyncMode.CLEAR_FACTION;
         this.factionId = factionId;
+        this.shouldCountDeath = false; // 清除操作不需要计数
+        this.shouldShowAnnounce = false; // 清除操作不需要播报
     }
     
     /**
@@ -65,6 +83,10 @@ public class BaseDeathPacket {
         
         switch (mode) {
             case ADD_DEATH:
+                buffer.writeUtf(factionId != null ? factionId : "neutral");
+                buffer.writeBoolean(shouldCountDeath);
+                buffer.writeBoolean(shouldShowAnnounce);
+                break;
             case CLEAR_FACTION:
                 buffer.writeUtf(factionId != null ? factionId : "neutral");
                 break;
@@ -83,7 +105,9 @@ public class BaseDeathPacket {
         switch (mode) {
             case ADD_DEATH:
                 String factionId = buffer.readUtf(32767);
-                return new BaseDeathPacket(factionId);
+                boolean shouldCountDeath = buffer.readBoolean();
+                boolean shouldShowAnnounce = buffer.readBoolean();
+                return new BaseDeathPacket(factionId, shouldCountDeath, shouldShowAnnounce);
                 
             case CLEAR_ALL:
                 return new BaseDeathPacket();
@@ -120,22 +144,29 @@ public class BaseDeathPacket {
         switch (mode) {
             case ADD_DEATH:
                 if (factionId != null) {
-                    BaseDeathCounter.addDeath(factionId);
-                    // 触发中央文字播报显示
-                    BaseDeathAnnounceRenderer.addAnnounce(factionId);
+                    // 根据字段值决定执行哪些操作
+                    if (shouldCountDeath) {
+                        BaseDeathCounter.addDeath(factionId);
+                    }
                     
-                    // 向服务器发送播报确认包，通知服务器客户端已开始播报
-                    // 获取当前时间戳（客户端时间）
-                    long clientTimestamp = System.currentTimeMillis();
-                    
-                    // 创建确认包
-                    BaseDeathLockPacket lockPacket = new BaseDeathLockPacket(factionId, clientTimestamp);
-                    
-                    // 发送给服务器
-                    NetworkManager.getChannel().sendToServer(lockPacket);
+                    if (shouldShowAnnounce) {
+                        // 触发中央文字播报显示
+                        BaseDeathAnnounceRenderer.addAnnounce(factionId);
+                        
+                        // 向服务器发送播报确认包，通知服务器客户端已开始播报
+                        // 获取当前时间戳（客户端时间）
+                        long clientTimestamp = System.currentTimeMillis();
+                        
+                        // 创建确认包
+                        BaseDeathLockPacket lockPacket = new BaseDeathLockPacket(factionId, clientTimestamp);
+                        
+                        // 发送给服务器
+                        NetworkManager.getChannel().sendToServer(lockPacket);
+                    }
                     
                     if (DebugConfig.isDebugEnabled()) {
-                        LOGGER.debug("Client: Added base death for faction {} and sent lock confirmation", factionId);
+                        LOGGER.debug("Client: Processed base death for faction {}, shouldCountDeath: {}, shouldShowAnnounce: {}", 
+                            factionId, shouldCountDeath, shouldShowAnnounce);
                     }
                 }
                 break;
@@ -174,10 +205,26 @@ public class BaseDeathPacket {
         return factionId;
     }
     
+    /**
+     * 获取是否应该增加死亡计数
+     */
+    public boolean shouldCountDeath() {
+        return shouldCountDeath;
+    }
+    
+    /**
+     * 获取是否应该显示播报
+     */
+    public boolean shouldShowAnnounce() {
+        return shouldShowAnnounce;
+    }
+    
     @Override
     public String toString() {
         switch (mode) {
             case ADD_DEATH:
+                return String.format("BaseDeathPacket{mode=%s, factionId=%s, count=%s, announce=%s}", 
+                    mode, factionId, shouldCountDeath, shouldShowAnnounce);
             case CLEAR_FACTION:
                 return String.format("BaseDeathPacket{mode=%s, factionId=%s}", mode, factionId);
             case CLEAR_ALL:

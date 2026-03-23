@@ -364,21 +364,32 @@ public class NetworkManager {
     }
     
     /**
-     * 发送基地死亡事件到所有客户端
+     * 发送基地死亡事件到所有客户端（向后兼容，默认计数和播报都启用）
      * @param factionId 死亡的基地所属阵营ID
      */
     public static void sendBaseDeathToAll(String factionId) {
+        sendBaseDeathToAll(factionId, true, true);
+    }
+    
+    /**
+     * 发送基地死亡事件到所有客户端，带独立控制字段
+     * @param factionId 死亡的基地所属阵营ID
+     * @param shouldCountDeath 是否增加死亡计数
+     * @param shouldShowAnnounce 是否显示播报
+     */
+    public static void sendBaseDeathToAll(String factionId, boolean shouldCountDeath, boolean shouldShowAnnounce) {
         if (factionId == null || factionId.isEmpty()) {
             factionId = "neutral";
         }
         
         // 创建数据包
-        BaseDeathPacket packet = new BaseDeathPacket(factionId);
+        BaseDeathPacket packet = new BaseDeathPacket(factionId, shouldCountDeath, shouldShowAnnounce);
         
         // 发送给所有玩家
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
         if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Sent base death packet for faction {} to all clients", factionId);
+            LOGGER.debug("Sent base death packet for faction {} to all clients, count={}, announce={}", 
+                factionId, shouldCountDeath, shouldShowAnnounce);
         }
     }
     

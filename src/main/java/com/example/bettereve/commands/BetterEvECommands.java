@@ -73,7 +73,7 @@ public class BetterEvECommands {
                         .suggests(FACTION_ID_SUGGESTIONS)
                         .executes(BetterEvECommands::executeDeleteFaction)))
             )
-            .then(Commands.literal("base")
+                .then(Commands.literal("base")
                 .then(Commands.literal("create")
                     .then(Commands.argument("factionId", StringArgumentType.word())
                         .suggests(FACTION_ID_SUGGESTIONS)
@@ -93,6 +93,12 @@ public class BetterEvECommands {
                                                                     .executes(BetterEvECommands::executeCreateBaseWithHealthBar)
                                                                     .then(Commands.argument("enableDeathClear", com.mojang.brigadier.arguments.BoolArgumentType.bool())
                                                                         .executes(BetterEvECommands::executeCreateBaseWithDeathClear)
+                                                                        .then(Commands.argument("enableBroadcast", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                                                            .executes(BetterEvECommands::executeCreateBaseWithBroadcast)
+                                                                            .then(Commands.argument("enableDeathCount", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                                                                .executes(BetterEvECommands::executeCreateBaseWithDeathCount)
+                                                                            )
+                                                                        )
                                                                     )
                                                                 )
                                                             )
@@ -704,5 +710,109 @@ public class BetterEvECommands {
             LOGGER.error("Failed to clear base death counters for faction {}", factionName, e);
             return 0;
         }
+    }
+    
+    /**
+     * 创建基地实体，支持播报控制参数
+     */
+    private static int executeCreateBaseWithBroadcast(CommandContext<CommandSourceStack> context) {
+        String factionId = StringArgumentType.getString(context, "factionId");
+        int x = IntegerArgumentType.getInteger(context, "x");
+        int y = IntegerArgumentType.getInteger(context, "y");
+        int z = IntegerArgumentType.getInteger(context, "z");
+        int health = IntegerArgumentType.getInteger(context, "health");
+        int attackDamage = IntegerArgumentType.getInteger(context, "attackDamage");
+        int armor = IntegerArgumentType.getInteger(context, "armor");
+        double attackRange = DoubleArgumentType.getDouble(context, "attackRange");
+        double attackCycle = DoubleArgumentType.getDouble(context, "attackCycle");
+        String sizeKey = StringArgumentType.getString(context, "size");
+        double modelScale = DoubleArgumentType.getDouble(context, "modelScale");
+        boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
+        boolean enableDeathClear = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "enableDeathClear");
+        boolean enableBroadcast = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "enableBroadcast");
+        
+        // 解析坐标
+        net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+        
+        // 检查尺寸键值是否有效
+        if (!com.example.bettereve.base.BaseSystem.isValidSizeKey(sizeKey)) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("无效的尺寸键值: " + sizeKey + 
+                "，有效的尺寸格式为: 宽度x高度（例如 3x10）"));
+            return 0;
+        }
+        
+        // 检查模型缩放范围
+        if (modelScale < 0.01 || modelScale > 4.0) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("模型缩放必须在0.01到4.0之间"));
+            return 0;
+        }
+        
+        // 调用 BaseSystem
+        net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
+        
+        com.example.bettereve.base.BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar, enableDeathClear, enableBroadcast, false);
+        
+        context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("基地创建成功: " + 
+            com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() + 
+            " 位置: " + pos.toShortString() + 
+            " 尺寸: " + sizeKey + 
+            " 模型缩放: " + String.format("%.2f", modelScale) + "x" +
+            " 血条: " + (showHealthBar ? "可见" : "隐藏") +
+            " 死亡清场: " + (enableDeathClear ? "启用" : "禁用") +
+            " 播报: " + (enableBroadcast ? "启用" : "禁用")), true);
+        return 1;
+    }
+    
+    /**
+     * 创建基地实体，支持所有参数（播报控制和死亡计数控制）
+     */
+    private static int executeCreateBaseWithDeathCount(CommandContext<CommandSourceStack> context) {
+        String factionId = StringArgumentType.getString(context, "factionId");
+        int x = IntegerArgumentType.getInteger(context, "x");
+        int y = IntegerArgumentType.getInteger(context, "y");
+        int z = IntegerArgumentType.getInteger(context, "z");
+        int health = IntegerArgumentType.getInteger(context, "health");
+        int attackDamage = IntegerArgumentType.getInteger(context, "attackDamage");
+        int armor = IntegerArgumentType.getInteger(context, "armor");
+        double attackRange = DoubleArgumentType.getDouble(context, "attackRange");
+        double attackCycle = DoubleArgumentType.getDouble(context, "attackCycle");
+        String sizeKey = StringArgumentType.getString(context, "size");
+        double modelScale = DoubleArgumentType.getDouble(context, "modelScale");
+        boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
+        boolean enableDeathClear = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "enableDeathClear");
+        boolean enableBroadcast = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "enableBroadcast");
+        boolean enableDeathCount = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "enableDeathCount");
+        
+        // 解析坐标
+        net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+        
+        // 检查尺寸键值是否有效
+        if (!com.example.bettereve.base.BaseSystem.isValidSizeKey(sizeKey)) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("无效的尺寸键值: " + sizeKey + 
+                "，有效的尺寸格式为: 宽度x高度（例如 3x10）"));
+            return 0;
+        }
+        
+        // 检查模型缩放范围
+        if (modelScale < 0.01 || modelScale > 4.0) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("模型缩放必须在0.01到4.0之间"));
+            return 0;
+        }
+        
+        // 调用 BaseSystem
+        net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
+        
+        com.example.bettereve.base.BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar, enableDeathClear, enableBroadcast, enableDeathCount);
+        
+        context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("基地创建成功: " + 
+            com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() + 
+            " 位置: " + pos.toShortString() + 
+            " 尺寸: " + sizeKey + 
+            " 模型缩放: " + String.format("%.2f", modelScale) + "x" +
+            " 血条: " + (showHealthBar ? "可见" : "隐藏") +
+            " 死亡清场: " + (enableDeathClear ? "启用" : "禁用") +
+            " 播报: " + (enableBroadcast ? "启用" : "禁用") +
+            " 死亡计数: " + (enableDeathCount ? "启用" : "禁用")), true);
+        return 1;
     }
 }
