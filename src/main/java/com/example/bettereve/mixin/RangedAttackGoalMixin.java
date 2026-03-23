@@ -1,5 +1,6 @@
 package com.example.bettereve.mixin;
 
+import com.example.bettereve.DebugConfig;
 import com.example.bettereve.entity.BaseEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -35,7 +36,9 @@ public abstract class RangedAttackGoalMixin {
     private boolean redirectHasLineOfSight(Sensing sensing, Entity targetEntity) {
         // 如果目标是BaseEntity，直接返回true，跳过所有视线检查
         if (targetEntity instanceof BaseEntity) {
-            LOGGER.debug("RangedAttackGoalMixin: 检测到BaseEntity目标，跳过视线检查");
+            if (DebugConfig.isDebugEnabled()) {
+                LOGGER.debug("RangedAttackGoalMixin: 检测到BaseEntity目标，跳过视线检查");
+            }
             return true;
         }
         

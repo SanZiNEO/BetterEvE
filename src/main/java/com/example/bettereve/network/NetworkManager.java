@@ -1,6 +1,7 @@
 package com.example.bettereve.network;
 
 import com.example.bettereve.Bettereve;
+import com.example.bettereve.DebugConfig;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -367,7 +368,9 @@ public class NetworkManager {
         
         // 发送给所有玩家
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
-        LOGGER.debug("Sent base death packet for faction {} to all clients", factionId);
+        if (DebugConfig.isDebugEnabled()) {
+            LOGGER.debug("Sent base death packet for faction {} to all clients", factionId);
+        }
     }
     
     /**
@@ -389,7 +392,9 @@ public class NetworkManager {
         
         // 发送给指定玩家
         CHANNEL.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
-        LOGGER.debug("Sent base death packet for faction {} to player {}", factionId, player.getName().getString());
+        if (DebugConfig.isDebugEnabled()) {
+            LOGGER.debug("Sent base death packet for faction {} to player {}", factionId, player.getName().getString());
+        }
     }
     
     /**
@@ -401,6 +406,8 @@ public class NetworkManager {
         
         // 发送给所有玩家
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
-        LOGGER.debug("Sent clear base death counts packet to all clients");
+        if (DebugConfig.isDebugEnabled()) {
+            LOGGER.debug("Sent clear base death counts packet to all clients");
+        }
     }
 }

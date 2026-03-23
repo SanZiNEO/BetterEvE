@@ -1,5 +1,6 @@
 package com.example.bettereve.mixin;
 
+import com.example.bettereve.DebugConfig;
 import com.example.bettereve.entity.BaseEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -39,7 +40,9 @@ public abstract class SensingMixin {
     private void bettereve$skipLineOfSightForBaseEntity(Entity entity, CallbackInfoReturnable<Boolean> cir) {
         // 检查攻击者是否是远程生物，且目标是否是BaseEntity
         if (this.mob instanceof RangedAttackMob && entity instanceof BaseEntity) {
-            LOGGER.debug("SensingMixin: 远程生物攻击BaseEntity，跳过视线检查");
+            if (DebugConfig.isDebugEnabled()) {
+                LOGGER.debug("SensingMixin: 远程生物攻击BaseEntity，跳过视线检查");
+            }
             cir.setReturnValue(true);
             cir.cancel();
         }

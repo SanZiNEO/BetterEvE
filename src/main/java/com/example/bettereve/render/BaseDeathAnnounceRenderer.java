@@ -1,6 +1,7 @@
 package com.example.bettereve.render;
 
 import com.example.bettereve.Bettereve;
+import com.example.bettereve.DebugConfig;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -104,7 +105,9 @@ public class BaseDeathAnnounceRenderer {
             int newRemainSeconds = (int) Math.ceil((totalDuration - elapsed) / 1000.0);
             if (newRemainSeconds != remainSeconds) {
                 remainSeconds = newRemainSeconds;
-                LOGGER.trace("Updated remain seconds for faction {}: {}s", factionId, remainSeconds);
+                if (DebugConfig.isTraceEnabled()) {
+                    LOGGER.trace("Updated remain seconds for faction {}: {}s", factionId, remainSeconds);
+                }
             }
             return true;
         }
@@ -149,7 +152,9 @@ public class BaseDeathAnnounceRenderer {
                     color = Color.decode(hexColor).getRGB();
                 }
             } catch (Exception e) {
-                LOGGER.debug("Failed to parse color for faction {}: {}", factionId, faction != null ? faction.getColor() : "null");
+                if (DebugConfig.isDebugEnabled()) {
+                    LOGGER.debug("Failed to parse color for faction {}: {}", factionId, faction != null ? faction.getColor() : "null");
+                }
             }
         }
         
@@ -161,7 +166,9 @@ public class BaseDeathAnnounceRenderer {
         activeAnnounces.clear();
         activeAnnounces.add(announce);
         
-        LOGGER.debug("Added death announce for faction: {} (color: #{}) - cleared old announces", factionName, Integer.toHexString(color));
+        if (DebugConfig.isDebugEnabled()) {
+            LOGGER.debug("Added death announce for faction: {} (color: #{}) - cleared old announces", factionName, Integer.toHexString(color));
+        }
     }
     
     /**
@@ -169,7 +176,9 @@ public class BaseDeathAnnounceRenderer {
      */
     public static void clearAll() {
         activeAnnounces.clear();
-        LOGGER.debug("Cleared all death announces");
+        if (DebugConfig.isDebugEnabled()) {
+            LOGGER.debug("Cleared all death announces");
+        }
     }
     
     /**
@@ -178,7 +187,9 @@ public class BaseDeathAnnounceRenderer {
      */
     public static void clearFaction(String factionId) {
         activeAnnounces.removeIf(announce -> announce.factionId.equals(factionId));
-        LOGGER.debug("Cleared death announces for faction: {}", factionId);
+        if (DebugConfig.isDebugEnabled()) {
+            LOGGER.debug("Cleared death announces for faction: {}", factionId);
+        }
     }
     
     /**
@@ -207,7 +218,9 @@ public class BaseDeathAnnounceRenderer {
             DeathAnnounce announce = iterator.next();
             if (!announce.update(currentTime)) {
                 iterator.remove();
-                LOGGER.trace("Removed expired announce for faction: {}", announce.factionId);
+                if (DebugConfig.isTraceEnabled()) {
+                    LOGGER.trace("Removed expired announce for faction: {}", announce.factionId);
+                }
             }
         }
         
@@ -265,7 +278,9 @@ public class BaseDeathAnnounceRenderer {
         // 恢复变换状态
         poseStack.popPose();
         
-        LOGGER.trace("Rendered death announce for faction: {} (remain: {}s)", latestAnnounce.factionName, latestAnnounce.remainSeconds);
+        if (DebugConfig.isTraceEnabled()) {
+            LOGGER.trace("Rendered death announce for faction: {} (remain: {}s)", latestAnnounce.factionName, latestAnnounce.remainSeconds);
+        }
     };
     
     /**

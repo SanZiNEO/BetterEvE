@@ -417,7 +417,9 @@ public class BetterEvECommands {
                         // 重要：在将实体添加到世界之前，确保阵营设置正确
                         // 这样 onEntityJoinLevel 事件会正确检测到我们已经设置了阵营
                         // 并且不会尝试继承其他阵营
-                        LOGGER.debug("Entity {} will be spawned with faction {}, position {},{},{}", mob.getName(), factionId, x+i, y, z);
+                        if (com.example.bettereve.DebugConfig.isDebugEnabled()) {
+                            LOGGER.debug("Entity {} will be spawned with faction {}, position {},{},{}", mob.getName(), factionId, x+i, y, z);
+                        }
                         
                         serverLevel.addFreshEntity(mob);
                         

@@ -1,6 +1,7 @@
 package com.example.bettereve.render;
 
 import com.example.bettereve.Bettereve;
+import com.example.bettereve.DebugConfig;
 import com.example.bettereve.base.BaseDeathCounter;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
@@ -117,7 +118,9 @@ public class BaseDeathHudRenderer {
                     }
                 } catch (Exception e) {
                     // 如果颜色解析失败，使用默认颜色
-                    LOGGER.debug("Failed to parse color for faction {}: {}", entry.getKey(), faction.getColor());
+                    if (DebugConfig.isDebugEnabled()) {
+                        LOGGER.debug("Failed to parse color for faction {}: {}", entry.getKey(), faction.getColor());
+                    }
                 }
             }
             
@@ -125,7 +128,9 @@ public class BaseDeathHudRenderer {
             contentX += font.width(text) + SPACING;
         }
         
-        LOGGER.trace("Rendered base death HUD with {} factions", deathCounts.size());
+        if (DebugConfig.isTraceEnabled()) {
+            LOGGER.trace("Rendered base death HUD with {} factions", deathCounts.size());
+        }
     };
     
     /**
