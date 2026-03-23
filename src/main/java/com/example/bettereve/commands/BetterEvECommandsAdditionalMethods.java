@@ -46,14 +46,16 @@ public class BetterEvECommandsAdditionalMethods {
         // 调用 BaseSystem
         ServerLevel level = context.getSource().getLevel();
         boolean showHealthBar = true; // 默认显示血条（优化版本）
+        boolean enableDeathClear = false; // 默认不触发自动清场，与主命令保持一致
         
-        BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar);
+        BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar, enableDeathClear);
         
         context.getSource().sendSuccess(() -> Component.literal("基地创建成功: " + 
             FactionRegistry.getFaction(factionId).getName() + 
             " 位置: " + pos.toShortString() + 
             " 尺寸: " + sizeKey +
-            " 模型缩放: " + String.format("%.2f", modelScale) + "x"), true);
+            " 模型缩放: " + String.format("%.2f", modelScale) + "x" +
+            " 死亡清场: " + (enableDeathClear ? "启用" : "禁用")), true);
         return 1;
     }
 }

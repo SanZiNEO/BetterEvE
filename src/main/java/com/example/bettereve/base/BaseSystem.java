@@ -79,20 +79,25 @@ public class BaseSystem {
                 NetworkManager.sendBaseDeathToAll(factionId);
                 System.out.println("BaseEntity死亡，阵营: " + factionId + "，已发送死亡事件到客户端");
                 
-                // 创建指令队列并执行三次 kill 命令，延迟1秒后开始，间隔0.5秒
-                CommandQueue commandQueue = new CommandQueue(entity, level);
-                
-                // 添加三次 kill 命令，分别在1.0s, 1.5s, 2.0s后执行
-                commandQueue.addCommand("/kill @e[type=!minecraft:player]", 1000);  // 第1次在1秒后
-                commandQueue.addCommand("/kill @e[type=!minecraft:player]", 1500);  // 第2次在1.5秒后
-                commandQueue.addCommand("/kill @e[type=!minecraft:player]", 2000);  // 第3次在2秒后
+                // 检查是否需要执行清场指令
+                if (entity instanceof BaseEntity baseEntity && baseEntity.getEnableDeathClear()) {
+                    // 创建指令队列并执行三次 kill 命令，延迟1秒后开始，间隔0.5秒
+                    CommandQueue commandQueue = new CommandQueue(entity, level);
+                    
+                    // 添加三次 kill 命令，分别在1.0s, 1.5s, 2.0s后执行
+                    commandQueue.addCommand("/kill @e[type=!minecraft:player]", 1000);  // 第1次在1秒后
+                    commandQueue.addCommand("/kill @e[type=!minecraft:player]", 1500);  // 第2次在1.5秒后
+                    commandQueue.addCommand("/kill @e[type=!minecraft:player]", 2000);  // 第3次在2秒后
+                    
+                    // 执行所有指令
+                    commandQueue.executeAll();
+                    System.out.println("已启动指令队列，将在2秒内执行3次清除命令（1秒延迟）");
+                } else {
+                    System.out.println("基地死亡清场已禁用，跳过指令队列执行");
+                }
                 
                 // 服务器端开始播报锁定（等待客户端确认）
                 BaseDeathLockManager.startBroadcast(factionId);
-                
-                // 执行所有指令
-                commandQueue.executeAll();
-                System.out.println("已启动指令队列，将在2秒内执行3次清除命令（1秒延迟）");
             }
 
             // 不再触发胜利事件和显示公告
@@ -156,6 +161,10 @@ public class BaseSystem {
     }
     
     public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar) {
+        spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, showHealthBar, false); // 默认不触发自动清场
+    }
+    
+    public static void spawnBase(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar, boolean enableDeathClear) {
         if (level instanceof ServerLevel serverLevel) {
             try {
                 // 检查尺寸键值是否有效
@@ -181,10 +190,11 @@ public class BaseSystem {
                 baseEntity.setAttackCooldown(attackCooldown);
                 baseEntity.setModelScale(modelScale);
                 baseEntity.setShowHealthBar(showHealthBar); // 设置血条可见性
+                baseEntity.setEnableDeathClear(enableDeathClear); // 设置死亡清场控制
 
                 // 生成实体
                 serverLevel.addFreshEntity(baseEntity);
-                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey + ", health bar: " + (showHealthBar ? "visible" : "hidden"));
+                System.out.println("BaseEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey + ", health bar: " + (showHealthBar ? "visible" : "hidden") + ", death clear: " + (enableDeathClear ? "enabled" : "disabled"));
                 
                 // 解析尺寸键值，显示尺寸信息
                 int[] size = BaseEntityType.parseSizeKey(sizeKey);

@@ -96,11 +96,15 @@ public class BaseEntity extends Mob {
     private static final int BASE_ATTACK_DURATION = 80; // 基础攻击持续时间（ticks，4秒）
     private static final int BASE_ATTACK_COOLDOWN = 40; // 基础攻击冷却时间（ticks，2秒）
     private static final int BASE_TOTAL_CYCLE = 120; // 基础总攻击周期（ticks，6秒）
+    
+    // 死亡清场控制
+    private boolean enableDeathClear = false; // 默认不触发自动清场
 
     public BaseEntity(EntityType<? extends BaseEntity> type, Level level) {
         super(type, level);
         this.attackTimer = 0;
         this.animationTimer = 0;
+        this.enableDeathClear = false; // 默认不触发自动清场
     }
     
     // 计算实际攻击动画持续时间（基于攻击周期比例）
@@ -182,6 +186,21 @@ public class BaseEntity extends Mob {
             return nbt.getBoolean("BetterEvE:ShowHealthBar");
         }
         return true; // 默认显示血条
+    }
+    
+    // 死亡清场控制属性
+    public void setEnableDeathClear(boolean enableDeathClear) {
+        this.enableDeathClear = enableDeathClear;
+        CompoundTag nbt = this.getPersistentData();
+        nbt.putBoolean("BetterEvE:EnableDeathClear", enableDeathClear);
+    }
+    
+    public boolean getEnableDeathClear() {
+        CompoundTag nbt = this.getPersistentData();
+        if (nbt.contains("BetterEvE:EnableDeathClear")) {
+            return nbt.getBoolean("BetterEvE:EnableDeathClear");
+        }
+        return false; // 默认不触发自动清场
     }
     
     // 注意：不需要缓存尺寸，原版Minecraft会自动处理碰撞箱尺寸
@@ -594,6 +613,9 @@ public class BaseEntity extends Mob {
         if (tag.contains("BetterEvE:ShowHealthBar")) {
             this.setShowHealthBar(tag.getBoolean("BetterEvE:ShowHealthBar"));
         }
+        if (tag.contains("BetterEvE:EnableDeathClear")) {
+            this.setEnableDeathClear(tag.getBoolean("BetterEvE:EnableDeathClear"));
+        }
     }
 
     // 写入 NBT 数据
@@ -609,6 +631,7 @@ public class BaseEntity extends Mob {
         tag.putDouble("BetterEvE:ModelScale", this.getModelScale());
         tag.putInt("BetterEvE:AnimationState", this.currentAnimationState.ordinal());
         tag.putBoolean("BetterEvE:ShowHealthBar", this.getShowHealthBar());
+        tag.putBoolean("BetterEvE:EnableDeathClear", this.getEnableDeathClear());
     }
 
     // 初始化时设置属性
