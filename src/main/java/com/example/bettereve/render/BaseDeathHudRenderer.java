@@ -58,14 +58,16 @@ public class BaseDeathHudRenderer {
             return;
         }
         
-        // 计算总内容宽度
+        // 计算总内容宽度（阵营名称: 数字）
         int totalWidth = 0;
         for (Map.Entry<String, Integer> entry : deathCounts.entrySet()) {
             Faction faction = FactionRegistry.getFaction(entry.getKey());
             String displayName = faction != null ? faction.getName() : entry.getKey();
             int count = entry.getValue();
-            String text = String.format("%s: %d", displayName, count);
-            totalWidth += font.width(text) + SPACING;
+            // 分开计算阵营名称部分（带冒号）和数字部分的宽度
+            String namePart = displayName + ": ";
+            String countPart = String.valueOf(count);
+            totalWidth += font.width(namePart) + font.width(countPart) + SPACING;
         }
         
         // 减去最后一个间距
@@ -105,17 +107,17 @@ public class BaseDeathHudRenderer {
             Faction faction = FactionRegistry.getFaction(entry.getKey());
             String displayName = faction != null ? faction.getName() : entry.getKey();
             int count = entry.getValue();
-            String text = String.format("%s: %d", displayName, count);
             
-            // 如果有阵营颜色，使用阵营颜色，否则使用默认颜色
-            int color = TEXT_COLOR;
+            // 分开渲染阵营名称部分（带冒号）和数字部分
+            String namePart = displayName + ": ";
+            String countPart = String.valueOf(count);
+            
+            // 获取阵营颜色（如果可用），否则使用默认颜色
+            int factionColor = TEXT_COLOR;
             if (faction != null) {
                 try {
-                    // 尝试解析十六进制颜色
-                    String hexColor = faction.getColor();
-                    if (hexColor.startsWith("#")) {
-                        color = Color.decode(hexColor).getRGB();
-                    }
+                    // 使用Faction类的getColorInt()方法获取颜色整数
+                    factionColor = faction.getColorInt();
                 } catch (Exception e) {
                     // 如果颜色解析失败，使用默认颜色
                     if (DebugConfig.isDebugEnabled()) {
@@ -124,8 +126,16 @@ public class BaseDeathHudRenderer {
                 }
             }
             
-            guiGraphics.drawString(font, Component.literal(text), contentX, contentY, color, false);
-            contentX += font.width(text) + SPACING;
+            // 数字颜色固定为白色
+            int countColor = 0xFFFFFF;
+            
+            // 渲染阵营名称部分（带冒号）
+            guiGraphics.drawString(font, Component.literal(namePart), contentX, contentY, factionColor, false);
+            contentX += font.width(namePart);
+            
+            // 渲染数字部分
+            guiGraphics.drawString(font, Component.literal(countPart), contentX, contentY, countColor, false);
+            contentX += font.width(countPart) + SPACING;
         }
         
         if (DebugConfig.isTraceEnabled()) {
