@@ -40,6 +40,27 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
         return super.shouldShowName(entity);
     }
 
+    /**
+     * ============================== 重要设计说明 ==============================
+     * 
+     * 基地实体的碰撞箱和模型是故意分离的：
+     * 
+     *   碰撞箱（底部） ← 生物攻击目标在这里
+     *        ↑
+     *   模型（顶部）   ← 视觉显示在这里，攻击也从这里发射
+     * 
+     * 这样设计的原因：
+     *   1. 生物攻击的是碰撞箱（脚部位置），但由于基地有巨大碰撞箱
+     *      近战生物仍能打到，不需要靠近模型顶部
+     *   2. 模型渲染在顶部，看起来像是"建筑"在地面上
+     *   3. 远程攻击从模型位置（顶部）发射，视觉效果合理
+     * 
+     * 关键约束：
+     *   - offsetY 必须是负值（向上偏移），不能改成正值
+     *   - 必须先平移后缩放
+     *   - 改动可能破坏已有游戏地图中的基地位置
+     * ==================================================================
+     */
     @Override
     protected void scale(BaseEntity entity, PoseStack poseStack, float partialTicks) {
         // 重要：必须使用负号！这是经过实际测试验证的
@@ -58,6 +79,7 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
 
         // 使用模型缩放属性控制模型大小
         // 关键修复：必须先平移再缩放，这样缩放不会影响平移量
+        // 如果先缩放后平移，缩放会放大平移量，导致模型位置错误
         double modelScale = entity.getModelScale();
         poseStack.scale((float) modelScale, (float) modelScale, (float) modelScale);
     }
