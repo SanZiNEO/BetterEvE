@@ -2,10 +2,11 @@
 # 用于 BetterEvE 模组的代码混淆和优化
 
 # 基础配置
+# 避免某些优化导致的类层次结构问题
+-dontoptimize
+-dontshrink
+# 基础配置
 -optimizationpasses 5
--dontusemixedcaseclassnames
--dontpreverify
--verbose
 -dump class_files.txt
 -printseeds seeds.txt
 -printusage unused.txt

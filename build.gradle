@@ -201,73 +201,38 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
-// ProGuard 混淆任务
+// ProGuard 混淆任务（手动执行：gradlew releaseJar）
 task obfuscateJar(type: proguard.gradle.ProGuardTask) {
     group 'build'
     description '使用 ProGuard 混淆 JAR 文件'
-    
-    // 明确声明输入和输出，确保 Gradle 能正确判断任务是否需要重新执行
-    inputs.files tasks.jar.archiveFile
-    inputs.file 'proguard-rules.pro'
-    inputs.files configurations.compileClasspath
-    inputs.files configurations.runtimeClasspath
+    dependsOn tasks.jar
     
     def outputFile = file("${project.buildDir}/libs/${mod_id}-${mod_version}-release.jar")
     outputs.file outputFile
     
-    // 延迟配置以避免在配置阶段访问依赖
     doFirst {
         injars "${tasks.jar.archiveFile.get()}"
         outjars "${outputFile}"
-        
         configuration files('proguard-rules.pro')
         
-        // 配置库 JAR 文件，确保只有唯一的文件
         def libraryJars = [] as Set
-        
-        // 添加 rt.jar
         libraryJars << "${System.getProperty('java.home')}/lib/rt.jar"
-        
-        // 添加 compile 和 runtime 依赖，但只保留唯一的 JAR 文件
-        configurations.compileClasspath.files.each { file ->
-            if (file.name.endsWith('.jar')) {
-                libraryJars << file
-            }
-        }
-        
-        configurations.runtimeClasspath.files.each { file ->
-            if (file.name.endsWith('.jar')) {
-                libraryJars << file
-            }
-        }
-        
+        configurations.compileClasspath.files.each { if (it.name.endsWith('.jar')) libraryJars << it }
+        configurations.runtimeClasspath.files.each { if (it.name.endsWith('.jar')) libraryJars << it }
         libraryjars libraryJars as List
-        
-        // 避免某些优化导致的类层次结构问题
-        dontoptimize()
-        dontshrink()
     }
 }
 
-// 发布构建任务
+// 发布构建任务（需手动执行：gradlew releaseJar）
 task releaseJar(type: Task) {
     group 'build'
     description '构建并混淆发布版本的 JAR 文件'
-    
     dependsOn tasks.jar
-    // ForgeGradle 的 reobfuscate 任务通常是 reobfJar，但需要根据实际任务名调整
-    // 如果 reobfJar 不存在，可以直接依赖 reobf 任务
     if (tasks.findByName('reobfJar')) {
         dependsOn tasks.reobfJar
-    } else if (tasks.findByName('reobf')) {
-        dependsOn tasks.reobf
     }
-    
     finalizedBy tasks.obfuscateJar
-    
-    doFirst {
-        project.ext.set('release', true)
-    }
+    doFirst { project.ext.set('release', true) }
 }
 
 // 优化发布构建的资源处理
@@ -281,25 +246,11 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
-// 配置编译任务删除调试信息
+// 编译配置
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     if (project.hasProperty('release')) {
         options.compilerArgs.add('-g:none')
         options.compilerArgs.add('-Xlint:none')
     }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
-}
-
-// 修改 build 任务，直接依赖加密打包任务
-tasks.named('build', Task).configure {
-    // 让 build 任务依赖 releaseJar 任务
-    // 这样执行 gradlew build 就会自动加密打包
-    dependsOn tasks.releaseJar
-    
-    // 同时保留 build 任务的原有功能（如测试）
-    // 我们将 releaseJar 放在最后执行，确保所有其他任务完成后再加密打包
 }
