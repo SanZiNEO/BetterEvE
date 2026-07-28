@@ -1,7 +1,6 @@
 package com.example.bettereve.network;
 
 import com.example.bettereve.Bettereve;
-import com.example.bettereve.DebugConfig;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -387,10 +386,7 @@ public class NetworkManager {
         
         // 发送给所有玩家
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
-        if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Sent base death packet for faction {} to all clients, count={}, announce={}", 
-                factionId, shouldCountDeath, shouldShowAnnounce);
-        }
+        LOGGER.debug("Sent base death packet for faction {} to all clients, count={}, announce={}", factionId, shouldCountDeath, shouldShowAnnounce);
     }
     
     /**
@@ -412,9 +408,7 @@ public class NetworkManager {
         
         // 发送给指定玩家
         CHANNEL.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
-        if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Sent base death packet for faction {} to player {}", factionId, player.getName().getString());
-        }
+        LOGGER.debug("Sent base death packet for faction {} to player {}", factionId, player.getName().getString());
     }
     
     /**
@@ -426,8 +420,6 @@ public class NetworkManager {
         
         // 发送给所有玩家
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
-        if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Sent clear base death counts packet to all clients");
-        }
+        LOGGER.debug("Sent clear base death counts packet to all clients");
     }
 }

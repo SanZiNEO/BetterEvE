@@ -1,12 +1,14 @@
 package com.example.bettereve.commands;
 
-import com.example.bettereve.Config;
 import com.example.bettereve.base.BaseSystem;
 import com.example.bettereve.counter.DeathCounter;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
 import com.example.bettereve.level.LevelSystem;
+import com.example.bettereve.faction.PlayerFactionData;
+import com.example.bettereve.scenario.ScenarioIO;
+import com.example.bettereve.scenario.ScenarioManager;
 import com.example.bettereve.network.FactionSyncHandler;
 import com.example.bettereve.scoreboard.ScoreboardManager;
 import com.mojang.brigadier.CommandDispatcher;
@@ -72,8 +74,27 @@ public class BetterEvECommands {
                     .then(Commands.argument("id", StringArgumentType.word())
                         .suggests(FACTION_ID_SUGGESTIONS)
                         .executes(BetterEvECommands::executeDeleteFaction)))
-            )
-                .then(Commands.literal("base")
+                .then(Commands.literal("join")
+                    .then(Commands.argument("id", StringArgumentType.word())
+                        .suggests(FACTION_ID_SUGGESTIONS)
+                        .executes(BetterEvECommands::executeFactionJoin)))
+                .then(Commands.literal("setplayer")
+                    .then(Commands.argument("player", net.minecraft.commands.arguments.EntityArgument.player())
+                        .then(Commands.argument("id", StringArgumentType.word())
+                            .suggests(FACTION_ID_SUGGESTIONS)
+                            .requires(source -> source.hasPermission(2))
+                            .executes(BetterEvECommands::executeFactionSetPlayer))))
+                .then(Commands.literal("my").executes(BetterEvECommands::executeFactionMy))
+            )  // close faction
+            .then(Commands.literal("scenario")
+                .then(Commands.literal("list").executes(BetterEvECommands::executeScenarioList))
+                .then(Commands.literal("load")
+                    .then(Commands.argument("name", StringArgumentType.word())
+                        .suggests(SCENARIO_SUGGESTIONS)
+                        .executes(BetterEvECommands::executeScenarioLoad)))
+                .then(Commands.literal("info").executes(BetterEvECommands::executeScenarioInfo))
+            )  // close scenario
+            .then(Commands.literal("base")
                 .then(Commands.literal("create")
                     .then(Commands.argument("factionId", StringArgumentType.word())
                         .suggests(FACTION_ID_SUGGESTIONS)
@@ -177,6 +198,13 @@ public class BetterEvECommands {
     private static final SuggestionProvider<CommandSourceStack> FACTION_ID_SUGGESTIONS = (context, builder) -> {
         for (Faction faction : FactionRegistry.getAllFactions()) {
             builder.suggest(faction.getId(), Component.literal(faction.getName()));
+        }
+        return builder.buildFuture();
+    };
+
+    private static final SuggestionProvider<CommandSourceStack> SCENARIO_SUGGESTIONS = (context, builder) -> {
+        for (String name : ScenarioManager.list()) {
+            builder.suggest(name);
         }
         return builder.buildFuture();
     };
@@ -426,9 +454,7 @@ public class BetterEvECommands {
                         // 重要：在将实体添加到世界之前，确保阵营设置正确
                         // 这样 onEntityJoinLevel 事件会正确检测到我们已经设置了阵营
                         // 并且不会尝试继承其他阵营
-                        if (com.example.bettereve.DebugConfig.isDebugEnabled()) {
-                            LOGGER.debug("Entity {} will be spawned with faction {}, position {},{},{}", mob.getName(), factionId, x+i, y, z);
-                        }
+                        LOGGER.debug("Entity {} will be spawned with faction {}, position {},{},{}", mob.getName(), factionId, x+i, y, z);
                         
                         serverLevel.addFreshEntity(mob);
                         
@@ -813,6 +839,93 @@ public class BetterEvECommands {
             " 死亡清场: " + (enableDeathClear ? "启用" : "禁用") +
             " 播报: " + (enableBroadcast ? "启用" : "禁用") +
             " 死亡计数: " + (enableDeathCount ? "启用" : "禁用")), true);
+        return 1;
+    }
+
+    private static int executeScenarioList(CommandContext<CommandSourceStack> context) {
+        var scenarios = ScenarioManager.list();
+        if (scenarios.isEmpty()) {
+            context.getSource().sendSuccess(() -> Component.literal("没有找到剧本（检查 config/bettereve/scenarios/ 目录）"), false);
+            ScenarioIO.createDefaultScenario();
+            context.getSource().sendSuccess(() -> Component.literal("已创建默认示例剧本"), false);
+        } else {
+            context.getSource().sendSuccess(() -> Component.literal("可用剧本: " + String.join(", ", scenarios)), false);
+        }
+        return 1;
+    }
+
+    private static int executeScenarioLoad(CommandContext<CommandSourceStack> context) {
+        String name = StringArgumentType.getString(context, "name");
+        try {
+            ScenarioManager.load(name);
+            context.getSource().sendSuccess(() -> Component.literal("已加载剧本: " + name), true);
+        } catch (Exception e) {
+            context.getSource().sendFailure(Component.literal("加载剧本失败: " + e.getMessage()));
+        }
+        return 1;
+    }
+
+    private static int executeScenarioInfo(CommandContext<CommandSourceStack> context) {
+        var scenario = ScenarioManager.getActiveScenario();
+        if (scenario == null) {
+            context.getSource().sendFailure(Component.literal("当前未加载任何剧本"));
+        } else {
+            context.getSource().sendSuccess(() -> Component.literal("当前剧本: " + scenario.getName() + " (" + scenario.getId() + ")"), false);
+            if (scenario.getDescription() != null) {
+                context.getSource().sendSuccess(() -> Component.literal(scenario.getDescription()), false);
+            }
+        }
+        return 1;
+    }
+
+    private static int executeFactionJoin(CommandContext<CommandSourceStack> context) {
+        String factionId = StringArgumentType.getString(context, "id");
+        Faction faction = FactionRegistry.getFaction(factionId);
+        if (faction == null) {
+            context.getSource().sendFailure(Component.literal("阵营不存在: " + factionId));
+            return 0;
+        }
+        if (!faction.isEnabled()) {
+            context.getSource().sendFailure(Component.literal("该阵营未启用: " + faction.getName()));
+            return 0;
+        }
+        Player player = (Player) context.getSource().getEntity();
+        if (player == null) {
+            context.getSource().sendFailure(Component.literal("只有玩家可以执行此命令"));
+            return 0;
+        }
+        PlayerFactionData.setPlayerFaction(player, factionId);
+        context.getSource().sendSuccess(() -> Component.literal("已加入阵营: " + faction.getName()), true);
+        return 1;
+    }
+
+    private static int executeFactionSetPlayer(CommandContext<CommandSourceStack> context) {
+        try {
+            net.minecraft.world.entity.player.Player target = net.minecraft.commands.arguments.EntityArgument.getPlayer(context, "player");
+            String factionId = StringArgumentType.getString(context, "id");
+            Faction faction = FactionRegistry.getFaction(factionId);
+            if (faction == null) {
+                context.getSource().sendFailure(Component.literal("阵营不存在: " + factionId));
+                return 0;
+            }
+            PlayerFactionData.setPlayerFaction(target, factionId);
+            context.getSource().sendSuccess(() -> Component.literal("已将 " + target.getName().getString() + " 设置为阵营: " + faction.getName()), true);
+        } catch (Exception e) {
+            context.getSource().sendFailure(Component.literal("设置失败: " + e.getMessage()));
+        }
+        return 1;
+    }
+
+    private static int executeFactionMy(CommandContext<CommandSourceStack> context) {
+        Player player = (Player) context.getSource().getEntity();
+        if (player == null) {
+            context.getSource().sendFailure(Component.literal("只有玩家可以执行此命令"));
+            return 0;
+        }
+        String factionId = PlayerFactionData.getPlayerFaction(player);
+        Faction faction = FactionRegistry.getFaction(factionId);
+        String name = faction != null ? faction.getName() : factionId;
+        context.getSource().sendSuccess(() -> Component.literal("当前阵营: " + name + " (" + factionId + ")"), false);
         return 1;
     }
 }

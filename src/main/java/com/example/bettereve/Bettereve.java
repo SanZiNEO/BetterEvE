@@ -2,6 +2,7 @@ package com.example.bettereve;
 
 import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.entity.BaseEntity;
+import com.example.bettereve.scenario.ScenarioIO;
 import com.example.bettereve.entity.BaseEntityModel;
 import com.example.bettereve.entity.BaseEntityType;
 import com.example.bettereve.mixin.AccessorRangedAttribute;
@@ -74,8 +75,8 @@ public class Bettereve {
             }
         });
         
-        // 初始化配置
-        // 检查核心配置是否已加载
+        // 确保剧本目录存在
+        event.enqueueWork(ScenarioIO::getScenarioDir);
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call

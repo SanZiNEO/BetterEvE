@@ -100,6 +100,6 @@ public class FactionHelper {
         String factionId1 = getEntityFactionId(entity1);
         String factionId2 = getEntityFactionId(entity2);
 
-        return FactionRegistry.isHostile(factionId1, factionId2);
+        return FactionRelationManager.isHostile(factionId1, factionId2);
     }
 }

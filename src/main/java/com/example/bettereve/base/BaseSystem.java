@@ -1,6 +1,5 @@
 package com.example.bettereve.base;
 
-import com.example.bettereve.Config;
 import com.example.bettereve.counter.DeathCounter;
 import com.example.bettereve.entity.BaseEntity;
 import com.example.bettereve.entity.BaseEntityType;
@@ -114,8 +113,7 @@ public class BaseSystem {
                 }
             }
 
-            // 不再触发胜利事件和显示公告
-            // triggerVictory(entity.level(), factionId, entity.blockPosition());
+
         }
     }
 

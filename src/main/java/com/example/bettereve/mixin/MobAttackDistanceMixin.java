@@ -31,30 +31,32 @@ public abstract class MobAttackDistanceMixin {
      */
     @Inject(method = "getPerceivedTargetDistanceSquareForMeleeAttack", at = @At("HEAD"), cancellable = true)
     private void onGetPerceivedTargetDistanceSquareForMeleeAttack(LivingEntity target, CallbackInfoReturnable<Double> cir) {
-        // Only apply this fix for BaseEntity targets
-        if (target instanceof BaseEntity) {
-            Mob mob = (Mob)(Object)this;
-            
-            // Get the target's bounding box
-            AABB boundingBox = target.getBoundingBox();
-            
-            // Get the mob's position
-            Vec3 mobPos = mob.position();
-            
-            // Calculate the nearest point on the bounding box to the mob
-            double nearestX = Mth.clamp(mobPos.x, boundingBox.minX, boundingBox.maxX);
-            double nearestY = Mth.clamp(mobPos.y, boundingBox.minY, boundingBox.maxY);
-            double nearestZ = Mth.clamp(mobPos.z, boundingBox.minZ, boundingBox.maxZ);
-            
-            // Calculate squared distance to the nearest point
-            double dx = mobPos.x - nearestX;
-            double dy = mobPos.y - nearestY;
-            double dz = mobPos.z - nearestZ;
-            double distanceSqr = dx * dx + dy * dy + dz * dz;
-            
-            // Return the calculated distance
-            cir.setReturnValue(distanceSqr);
-            cir.cancel();
+        // 非 BaseEntity 不拦截，走原版逻辑
+        if (!(target instanceof BaseEntity)) {
+            return;
         }
+        
+        Mob mob = (Mob)(Object)this;
+        
+        // Get the target's bounding box
+        AABB boundingBox = target.getBoundingBox();
+        
+        // Get the mob's position
+        Vec3 mobPos = mob.position();
+        
+        // Calculate the nearest point on the bounding box to the mob
+        double nearestX = Mth.clamp(mobPos.x, boundingBox.minX, boundingBox.maxX);
+        double nearestY = Mth.clamp(mobPos.y, boundingBox.minY, boundingBox.maxY);
+        double nearestZ = Mth.clamp(mobPos.z, boundingBox.minZ, boundingBox.maxZ);
+        
+        // Calculate squared distance to the nearest point
+        double dx = mobPos.x - nearestX;
+        double dy = mobPos.y - nearestY;
+        double dz = mobPos.z - nearestZ;
+        double distanceSqr = dx * dx + dy * dy + dz * dz;
+        
+        // Return the calculated distance
+        cir.setReturnValue(distanceSqr);
+        cir.cancel();
     }
 }

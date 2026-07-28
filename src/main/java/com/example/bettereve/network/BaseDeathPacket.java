@@ -1,6 +1,5 @@
 package com.example.bettereve.network;
 
-import com.example.bettereve.DebugConfig;
 import com.example.bettereve.base.BaseDeathCounter;
 import com.example.bettereve.render.BaseDeathAnnounceRenderer;
 import net.minecraft.network.FriendlyByteBuf;
@@ -164,28 +163,21 @@ public class BaseDeathPacket {
                         NetworkManager.getChannel().sendToServer(lockPacket);
                     }
                     
-                    if (DebugConfig.isDebugEnabled()) {
-                        LOGGER.debug("Client: Processed base death for faction {}, shouldCountDeath: {}, shouldShowAnnounce: {}", 
-                            factionId, shouldCountDeath, shouldShowAnnounce);
-                    }
+                    LOGGER.debug("Client: Processed base death for faction {}, shouldCountDeath: {}, shouldShowAnnounce: {}", factionId, shouldCountDeath, shouldShowAnnounce);
                 }
                 break;
                 
             case CLEAR_ALL:
                 BaseDeathCounter.clearAll();
                 BaseDeathAnnounceRenderer.clearAll();
-                if (DebugConfig.isDebugEnabled()) {
-                    LOGGER.debug("Client: Cleared all base death counts and announces");
-                }
+                LOGGER.debug("Client: Cleared all base death counts and announces");
                 break;
                 
             case CLEAR_FACTION:
                 if (factionId != null) {
                     BaseDeathCounter.clearFaction(factionId);
                     BaseDeathAnnounceRenderer.clearFaction(factionId);
-                    if (DebugConfig.isDebugEnabled()) {
-                        LOGGER.debug("Client: Cleared base death count and announces for faction {}", factionId);
-                    }
+                    LOGGER.debug("Client: Cleared base death count and announces for faction {}", factionId);
                 }
                 break;
         }

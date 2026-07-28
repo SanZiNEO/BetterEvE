@@ -20,22 +20,16 @@ public class BetterEvEConfig {
 
     // ===================== 2. 寻敌系统配置 =====================
     public final ForgeConfigSpec.DoubleValue targeting_defaultFollowRange;
-    public final ForgeConfigSpec.ConfigValue<String> targeting_entityFollowRange;
-    public final ForgeConfigSpec.ConfigValue<String> targeting_factionFollowRange;
+    
 
     // ===================== 3. 计数器系统配置 =====================
-    public final ForgeConfigSpec.ConfigValue<Boolean> counter_hudEnabled;
-    public final ForgeConfigSpec.DoubleValue counter_hudPosX;
-    public final ForgeConfigSpec.DoubleValue counter_hudPosY;
-    public final ForgeConfigSpec.ConfigValue<Boolean> counter_tabPanelEnabled;
-    public final ForgeConfigSpec.ConfigValue<String> counter_tabPanelKey;
     public final ForgeConfigSpec.ConfigValue<Boolean> counter_countEntityType;
 
     // ===================== 4. 基地系统配置 =====================
     public final ForgeConfigSpec.IntValue base_defaultHealth;
-    public final ForgeConfigSpec.IntValue base_victoryAnnounceTime;
+    // base_clearRadius — 保留但当前未使用（清场逻辑走全图 /kill）
     public final ForgeConfigSpec.IntValue base_clearRadius;
-    public final ForgeConfigSpec.ConfigValue<Boolean> base_onlyHostileAttack;
+    
 
     // ===================== 5. 等级系统配置 =====================
     public final ForgeConfigSpec.DoubleValue level_healthBonus;
@@ -75,31 +69,12 @@ public class BetterEvEConfig {
         targeting_defaultFollowRange = builder
                 .comment("全局默认寻敌范围（格），覆盖原版生物默认值")
                 .defineInRange("defaultFollowRange", 64.0D, 1.0D, 128.0D); // 范围1~128格
-        targeting_entityFollowRange = builder
-                .comment("按实体类型自定义寻敌范围（格式：实体ID=距离，多个用;分隔，例：minecraft:zombie=80;minecraft:skeleton=70）")
-                .define("entityFollowRange", "minecraft:zombie=64;minecraft:skeleton=64");
-        targeting_factionFollowRange = builder
-                .comment("按阵营自定义寻敌范围（格式：阵营ID=距离，多个用;分隔，例：red=70;blue=70）")
-                .define("factionFollowRange", "red=64;blue=64");
+        
         builder.pop();
 
         // ---------- 3. 计数器系统配置 ----------
         builder.push("counter");
-        counter_hudEnabled = builder
-                .comment("是否启用计数器HUD显示（true=启用，false=关闭）")
-                .define("hudEnabled", true);
-        counter_hudPosX = builder
-                .comment("HUD位置X轴（0=最左，1=最右，相对屏幕）")
-                .defineInRange("hudPosX", 0.0D, 0.0D, 1.0D);
-        counter_hudPosY = builder
-                .comment("HUD位置Y轴（0=最上，1=最下，相对屏幕）")
-                .defineInRange("hudPosY", 0.0D, 0.0D, 1.0D);
-        counter_tabPanelEnabled = builder
-                .comment("是否启用TAB面板统计（true=启用，false=关闭）")
-                .define("tabPanelEnabled", false);
-        counter_tabPanelKey = builder
-                .comment("TAB面板切换按键（支持MC按键名，例：KEY_TAB）")
-                .define("tabPanelKey", "KEY_TAB");
+        
         counter_countEntityType = builder
                 .comment("是否统计实体类型明细（true=显示每种生物数量，false=仅总数量）")
                 .define("countEntityType", true);
@@ -110,15 +85,11 @@ public class BetterEvEConfig {
         base_defaultHealth = builder
                 .comment("基地默认血量")
                 .defineInRange("defaultHealth", 10000, 100, 100000); // 范围100~10万
-        base_victoryAnnounceTime = builder
-                .comment("胜利播报时长（秒）")
-                .defineInRange("victoryAnnounceTime", 5, 1, 30); // 1~30秒
+        // base_clearRadius — 保留但当前未使用（清场逻辑走全图 /kill）
         base_clearRadius = builder
-                .comment("基地清空地图范围（以基地为中心的半径，格）")
-                .defineInRange("clearRadius", 50, 10, 200); // 10~200格
-        base_onlyHostileAttack = builder
-                .comment("是否仅敌对阵营可攻击基地（true=仅敌对能打，false=所有人能打）")
-                .define("onlyHostileAttack", true);
+                .comment("基地清空地图范围（以基地为中心的半径，格）[当前未使用]")
+                .defineInRange("clearRadius", 50, 10, 200);
+        
         builder.pop();
 
         // ---------- 5. 等级系统配置 ----------

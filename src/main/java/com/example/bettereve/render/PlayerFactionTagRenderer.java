@@ -1,0 +1,41 @@
+package com.example.bettereve.render;
+
+import com.example.bettereve.faction.Faction;
+import com.example.bettereve.faction.FactionRegistry;
+import com.example.bettereve.faction.PlayerFactionData;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.client.event.RenderNameTagEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+/**
+ * 玩家头顶阵营颜色标记渲染器。
+ * 在玩家名称标签旁显示阵营颜色圆点和名称。
+ */
+@Mod.EventBusSubscriber(modid = "bettereve")
+public class PlayerFactionTagRenderer {
+
+    @SubscribeEvent
+    public static void onRenderNameTag(RenderNameTagEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        
+        String factionId = PlayerFactionData.getPlayerFaction(player);
+        Faction faction = FactionRegistry.getFaction(factionId);
+        if (faction == null || FactionRegistry.isNeutralFaction(factionId)) {
+            return;
+        }
+        
+        // 在名字前添加阵营颜色标记
+        String tag = "[" + faction.getName() + "] ";
+        Component coloredTag = Component.literal(tag).withStyle(
+                style -> style.withColor(faction.getColorInt())
+        );
+        event.setContent(coloredTag.copy().append(event.getContent()));
+    }
+}

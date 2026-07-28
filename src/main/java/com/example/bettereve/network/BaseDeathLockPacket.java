@@ -1,6 +1,5 @@
 package com.example.bettereve.network;
 
-import com.example.bettereve.DebugConfig;
 import com.example.bettereve.base.BaseDeathLockManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
@@ -92,19 +91,15 @@ public class BaseDeathLockPacket {
             // 客户端确认播报开始，服务器开始锁定
             BaseDeathLockManager.startBroadcast(factionId);
             
-            if (DebugConfig.isDebugEnabled()) {
-                long serverTime = System.currentTimeMillis();
-                long latency = serverTime - clientTimestamp;
-                LOGGER.debug("Received lock request from client - faction: {}, clientTime: {}, serverTime: {}, latency: {}ms",
-                    factionId, clientTimestamp, serverTime, latency);
-            }
+            long serverTime = System.currentTimeMillis();
+            long latency = serverTime - clientTimestamp;
+            LOGGER.debug("Received lock request from client - faction: {}, clientTime: {}, serverTime: {}, latency: {}ms",
+                factionId, clientTimestamp, serverTime, latency);
         } else {
             // 客户端请求解锁（特殊情况处理）
             BaseDeathLockManager.forceEndAllBroadcasts();
             
-            if (DebugConfig.isDebugEnabled()) {
-                LOGGER.debug("Received unlock request from client - faction: {}", factionId);
-            }
+            LOGGER.debug("Received unlock request from client - faction: {}", factionId);
         }
     }
     

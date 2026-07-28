@@ -18,8 +18,6 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -276,50 +274,7 @@ public class SimpleHealthBarRenderer {
      * 获取当前 FOV，模拟原版 GameRenderer.getFov() 方法
      */
     private static double getCurrentFov(GameRenderer gameRenderer, Camera camera) {
-        Minecraft mc = Minecraft.getInstance();
-        
-        // 尝试通过反射获取 GameRenderer 中的 fov 和 oldFov 字段
-        try {
-            java.lang.reflect.Field fovField = GameRenderer.class.getDeclaredField("fov");
-            java.lang.reflect.Field oldFovField = GameRenderer.class.getDeclaredField("oldFov");
-            
-            fovField.setAccessible(true);
-            oldFovField.setAccessible(true);
-            
-            float fov = fovField.getFloat(gameRenderer);
-            float oldFov = oldFovField.getFloat(gameRenderer);
-            
-            // 获取当前部分 Tick（用于插值）
-            float partialTick = mc.getDeltaFrameTime();
-            
-            // 计算最终 FOV
-            double baseFov = mc.options.fov().get().intValue();
-            double dynamicFov = Mth.lerp(partialTick, oldFov, fov);
-            double finalFov = baseFov * dynamicFov;
-            
-            // 应用流体视角修正（暂时注释掉，避免依赖未正确导入的 FogType）
-            /*
-            FogType fogType = camera.getFluidInCamera();
-            if (fogType == FogType.LAVA || fogType == FogType.WATER) {
-                finalFov *= Mth.lerp(mc.options.fovEffectScale().get(), 1.0D, 0.85714287D);
-            }
-            */
-            
-            // 应用 Forge 钩子（如果有）
-            try {
-                Class<?> forgeHooksClientClass = Class.forName("net.minecraftforge.client.ForgeHooksClient");
-                java.lang.reflect.Method getFieldOfViewMethod = forgeHooksClientClass.getMethod("getFieldOfView", GameRenderer.class, Camera.class, float.class, double.class, boolean.class);
-                finalFov = (double)getFieldOfViewMethod.invoke(null, gameRenderer, camera, partialTick, finalFov, true);
-            } catch (Exception e) {
-                // 如果 Forge 钩子不可用（如在纯净版中），直接返回计算值
-            }
-            
-            return finalFov;
-            
-        } catch (Exception e) {
-            // 如果反射失败，返回默认 FOV（70.0）
-            return 70.0D;
-        }
+        return (double) Minecraft.getInstance().options.fov().get();
     }
     
     private static float getHealthPercent(LivingEntity entity) {

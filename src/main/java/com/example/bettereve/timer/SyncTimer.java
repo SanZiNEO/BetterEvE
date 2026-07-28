@@ -53,49 +53,29 @@ public class SyncTimer {
      * 执行同步操作
      */
     private static void performSync(TickEvent.ServerTickEvent event) {
-        // 从事件中获取服务器实例
-        try {
-            // 在服务器tick事件中，我们可以直接从事件获取服务器实例
-            net.minecraft.server.MinecraftServer server = null;
-            
-            try {
-                // 尝试通过事件对象获取服务器实例
-                // 使用反射获取事件对象中的服务器字段
-                java.lang.reflect.Field serverField = TickEvent.ServerTickEvent.class.getDeclaredField("server");
-                serverField.setAccessible(true);
-                server = (net.minecraft.server.MinecraftServer) serverField.get(event);
-            } catch (Exception e) {
-                // 如果事件对象没有直接提供服务器实例，使用其他方法
-                // 尝试从加载的世界中获取
-                return;
-            }
-            
-            if (server == null) {
-                return;
-            }
-            
-            // 遍历所有加载的维度
-            for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
-                // 遍历维度中的所有实体
-                for (Entity entity : level.getAllEntities()) {
-                    // 只处理LivingEntity类型的实体
-                    if (entity instanceof LivingEntity) {
-                        LivingEntity livingEntity = (LivingEntity) entity;
-                        
-                        // 同步实体的等级信息
-                        syncEntityLevel(livingEntity);
-                        
-                        // 同步实体的阵营信息
-                        syncEntityFaction(livingEntity);
-                        
-                        // 添加到已同步集合
-                        synchronizedEntities.add(entity.getId());
-                    }
+        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+        
+        // 遍历所有加载的维度
+        for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+            // 遍历维度中的所有实体
+            for (Entity entity : level.getAllEntities()) {
+                // 只处理LivingEntity类型的实体
+                if (entity instanceof LivingEntity) {
+                    LivingEntity livingEntity = (LivingEntity) entity;
+                    
+                    // 同步实体的等级信息
+                    syncEntityLevel(livingEntity);
+                    
+                    // 同步实体的阵营信息
+                    syncEntityFaction(livingEntity);
+                    
+                    // 添加到已同步集合
+                    synchronizedEntities.add(entity.getId());
                 }
             }
-        } catch (Exception e) {
-            // 如果无法获取服务器实例，退出
-            return;
         }
     }
     

@@ -1,0 +1,214 @@
+package com.example.bettereve.scenario;
+
+import java.util.List;
+
+/**
+ * 剧本数据模型 — 一个 JSON 文件定义一个完整的游戏模式。
+ */
+public class Scenario {
+    private String id;
+    private String name;
+    private String description;
+    private List<FactionDef> factions;
+    private List<RelationDef> relations;
+    private List<GoalRegionDef> goals;
+    private List<BaseTemplateDef> bases;
+    private List<MonitorDef> monitors;
+    private List<PhaseDef> phases;
+    private ScenarioOptions options;
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public List<FactionDef> getFactions() { return factions; }
+    public void setFactions(List<FactionDef> factions) { this.factions = factions; }
+    public List<RelationDef> getRelations() { return relations; }
+    public void setRelations(List<RelationDef> relations) { this.relations = relations; }
+    public List<GoalRegionDef> getGoals() { return goals; }
+    public void setGoals(List<GoalRegionDef> goals) { this.goals = goals; }
+    public List<BaseTemplateDef> getBases() { return bases; }
+    public void setBases(List<BaseTemplateDef> bases) { this.bases = bases; }
+    public List<MonitorDef> getMonitors() { return monitors; }
+    public void setMonitors(List<MonitorDef> monitors) { this.monitors = monitors; }
+    public List<PhaseDef> getPhases() { return phases; }
+    public void setPhases(List<PhaseDef> phases) { this.phases = phases; }
+    public ScenarioOptions getOptions() { return options; }
+    public void setOptions(ScenarioOptions options) { this.options = options; }
+
+    public static class FactionDef {
+        private String id;
+        private String name;
+        private String color;
+        public FactionDef() {}
+        public FactionDef(String id, String name, String color) {
+            this.id = id; this.name = name; this.color = color;
+        }
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getColor() { return color; }
+        public void setColor(String color) { this.color = color; }
+    }
+
+    public static class RelationDef {
+        private String from;
+        private String to;
+        private String type; // "hostile" 或 "neutral"
+        public RelationDef() {}
+        public RelationDef(String from, String to, String type) {
+            this.from = from; this.to = to; this.type = type;
+        }
+        public String getFrom() { return from; }
+        public void setFrom(String from) { this.from = from; }
+        public String getTo() { return to; }
+        public void setTo(String to) { this.to = to; }
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+    }
+
+    public static class GoalRegionDef {
+        private String id;
+        private String factionId;
+        private int order;
+        private double x1, z1, x2, z2;
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public String getFactionId() { return factionId; }
+        public void setFactionId(String factionId) { this.factionId = factionId; }
+        public int getOrder() { return order; }
+        public void setOrder(int order) { this.order = order; }
+        public double getX1() { return x1; }
+        public void setX1(double x1) { this.x1 = x1; }
+        public double getZ1() { return z1; }
+        public void setZ1(double z1) { this.z1 = z1; }
+        public double getX2() { return x2; }
+        public void setX2(double x2) { this.x2 = x2; }
+        public double getZ2() { return z2; }
+        public void setZ2(double z2) { this.z2 = z2; }
+    }
+
+    public static class BaseTemplateDef {
+        private String id;
+        private String factionId;
+        private int health;
+        private int attackDamage;
+        private int armor;
+        private double attackRange;
+        private double attackCooldown;
+        private String sizeKey;
+        private double modelScale;
+        private boolean showHealthBar;
+        private boolean enableDeathClear;
+        private boolean enableBroadcast;
+        private boolean enableDeathCount;
+        // getters/setters
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public String getFactionId() { return factionId; }
+        public void setFactionId(String factionId) { this.factionId = factionId; }
+        public int getHealth() { return health; }
+        public void setHealth(int health) { this.health = health; }
+        public int getAttackDamage() { return attackDamage; }
+        public void setAttackDamage(int attackDamage) { this.attackDamage = attackDamage; }
+        public int getArmor() { return armor; }
+        public void setArmor(int armor) { this.armor = armor; }
+        public double getAttackRange() { return attackRange; }
+        public void setAttackRange(double attackRange) { this.attackRange = attackRange; }
+        public double getAttackCooldown() { return attackCooldown; }
+        public void setAttackCooldown(double attackCooldown) { this.attackCooldown = attackCooldown; }
+        public String getSizeKey() { return sizeKey; }
+        public void setSizeKey(String sizeKey) { this.sizeKey = sizeKey; }
+        public double getModelScale() { return modelScale; }
+        public void setModelScale(double modelScale) { this.modelScale = modelScale; }
+        public boolean isShowHealthBar() { return showHealthBar; }
+        public void setShowHealthBar(boolean showHealthBar) { this.showHealthBar = showHealthBar; }
+        public boolean isEnableDeathClear() { return enableDeathClear; }
+        public void setEnableDeathClear(boolean enableDeathClear) { this.enableDeathClear = enableDeathClear; }
+        public boolean isEnableBroadcast() { return enableBroadcast; }
+        public void setEnableBroadcast(boolean enableBroadcast) { this.enableBroadcast = enableBroadcast; }
+        public boolean isEnableDeathCount() { return enableDeathCount; }
+        public void setEnableDeathCount(boolean enableDeathCount) { this.enableDeathCount = enableDeathCount; }
+    }
+
+    public static class MonitorDef {
+        private String id;
+        private String type;        // "all_bases_destroyed", "death_count_reached"
+        private String factionId;   // 监控哪个阵营
+        private int threshold;      // 阈值
+        private String targetPhase; // 触发后切换到哪个阶段
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+        public String getFactionId() { return factionId; }
+        public void setFactionId(String factionId) { this.factionId = factionId; }
+        public int getThreshold() { return threshold; }
+        public void setThreshold(int threshold) { this.threshold = threshold; }
+        public String getTargetPhase() { return targetPhase; }
+        public void setTargetPhase(String targetPhase) { this.targetPhase = targetPhase; }
+    }
+
+    public static class PhaseDef {
+        private String id;
+        private AnnounceDef announce;
+        private List<CommandDef> commands;
+        private SpawnBasesDef spawnBases;
+        private int resetAfter; // 秒，0=不重置
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public AnnounceDef getAnnounce() { return announce; }
+        public void setAnnounce(AnnounceDef announce) { this.announce = announce; }
+        public List<CommandDef> getCommands() { return commands; }
+        public void setCommands(List<CommandDef> commands) { this.commands = commands; }
+        public SpawnBasesDef getSpawnBases() { return spawnBases; }
+        public void setSpawnBases(SpawnBasesDef spawnBases) { this.spawnBases = spawnBases; }
+        public int getResetAfter() { return resetAfter; }
+        public void setResetAfter(int resetAfter) { this.resetAfter = resetAfter; }
+    }
+
+    public static class AnnounceDef {
+        private String message;
+        private int duration;
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
+        public int getDuration() { return duration; }
+        public void setDuration(int duration) { this.duration = duration; }
+    }
+
+    public static class CommandDef {
+        private int delay;
+        private String command;
+        public int getDelay() { return delay; }
+        public void setDelay(int delay) { this.delay = delay; }
+        public String getCommand() { return command; }
+        public void setCommand(String command) { this.command = command; }
+    }
+
+    public static class SpawnBasesDef {
+        private String templateId;
+        private List<SpawnPosition> positions;
+        public String getTemplateId() { return templateId; }
+        public void setTemplateId(String templateId) { this.templateId = templateId; }
+        public List<SpawnPosition> getPositions() { return positions; }
+        public void setPositions(List<SpawnPosition> positions) { this.positions = positions; }
+        public static class SpawnPosition {
+            private double x, y, z;
+            public double getX() { return x; }
+            public void setX(double x) { this.x = x; }
+            public double getY() { return y; }
+            public void setY(double y) { this.y = y; }
+            public double getZ() { return z; }
+            public void setZ(double z) { this.z = z; }
+        }
+    }
+
+    public static class ScenarioOptions {
+        private String playersDefaultFaction = "neutral";
+        public String getPlayersDefaultFaction() { return playersDefaultFaction; }
+        public void setPlayersDefaultFaction(String playersDefaultFaction) { this.playersDefaultFaction = playersDefaultFaction; }
+    }
+}

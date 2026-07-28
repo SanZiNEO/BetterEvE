@@ -5,7 +5,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
-import net.minecraft.world.entity.player.Player;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +42,7 @@ public class FactionHostileTargetGoal extends TargetGoal {
         List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                 LivingEntity.class,
                 mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
-                entity -> !(entity instanceof Player) && isValidTarget(entity)
+                entity -> isValidTarget(entity)
         );
 
         if (nearbyEntities.isEmpty()) {
@@ -102,7 +101,7 @@ public class FactionHostileTargetGoal extends TargetGoal {
                 List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                         LivingEntity.class,
                         mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
-                        entity -> !(entity instanceof Player) && isValidTarget(entity)
+                        entity -> isValidTarget(entity)
                 );
                 
                 if (!nearbyEntities.isEmpty()) {
@@ -118,7 +117,7 @@ public class FactionHostileTargetGoal extends TargetGoal {
             List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                     LivingEntity.class,
                     mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
-                    entity -> !(entity instanceof Player) && isValidTarget(entity)
+                    entity -> isValidTarget(entity)
             );
             
             if (!nearbyEntities.isEmpty()) {
@@ -167,10 +166,7 @@ public class FactionHostileTargetGoal extends TargetGoal {
             return false;
         }
         
-        // 排除玩家，玩家永远不会成为攻击目标
-        if (target instanceof Player) {
-            return false;
-        }
+
 
         // 完全基于阵营判定：只攻击不同阵营的生物
         boolean isHostile = FactionHelper.isEntitiesHostile(this.mob, target);

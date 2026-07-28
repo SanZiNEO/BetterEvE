@@ -1,6 +1,5 @@
 package com.example.bettereve.base;
 
-import com.example.bettereve.DebugConfig;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
 import org.apache.logging.log4j.LogManager;
@@ -32,9 +31,7 @@ public class BaseDeathCounter {
         
         // 使用merge方法实现原子操作
         deathCounts.merge(factionId, 1, Integer::sum);
-        if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Added death for faction {}: total = {}", factionId, deathCounts.get(factionId));
-        }
+        LOGGER.debug("Added death for faction {}: total = {}", factionId, deathCounts.get(factionId));
     }
     
     /**
@@ -89,9 +86,7 @@ public class BaseDeathCounter {
      */
     public static void clearAll() {
         deathCounts.clear();
-        if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Cleared all base death counts");
-        }
+        LOGGER.debug("Cleared all base death counts");
     }
     
     /**
@@ -101,9 +96,7 @@ public class BaseDeathCounter {
     public static void clearFaction(String factionId) {
         if (factionId != null) {
             deathCounts.remove(factionId);
-            if (DebugConfig.isDebugEnabled()) {
-                LOGGER.debug("Cleared death count for faction {}", factionId);
-            }
+            LOGGER.debug("Cleared death count for faction {}", factionId);
         }
     }
     
@@ -115,9 +108,7 @@ public class BaseDeathCounter {
         for (String factionId : deathCounts.keySet()) {
             deathCounts.put(factionId, 0);
         }
-        if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Reset all base death counts to 0");
-        }
+        LOGGER.debug("Reset all base death counts to 0");
     }
     
     /**

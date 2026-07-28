@@ -1,6 +1,5 @@
 package com.example.bettereve.counter;
 
-import com.example.bettereve.Config;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
 import net.minecraft.nbt.CompoundTag;

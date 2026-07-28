@@ -1,6 +1,5 @@
 package com.example.bettereve.base;
 
-import com.example.bettereve.DebugConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -36,19 +35,14 @@ public class BaseDeathLockManager {
         broadcastingFactionId = factionId;
         broadcastEndTime = System.currentTimeMillis() + BROADCAST_LOCK_DURATION_MS;
         
-        if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Started broadcast lock for faction {} (ends at {}ms)", 
-                factionId, broadcastEndTime);
-        }
+        LOGGER.debug("Started broadcast lock for faction {} (ends at {}ms)", factionId, broadcastEndTime);
     }
     
     /**
      * 结束播报，解锁基地死亡逻辑
      */
     public static synchronized void endBroadcast() {
-        if (DebugConfig.isDebugEnabled()) {
-            LOGGER.debug("Ended broadcast lock for faction {}", broadcastingFactionId);
-        }
+        LOGGER.debug("Ended broadcast lock for faction {}", broadcastingFactionId);
         
         isBroadcasting = false;
         broadcastingFactionId = null;
@@ -70,10 +64,7 @@ public class BaseDeathLockManager {
         
         // 检查是否超时
         if (currentTime > broadcastEndTime) {
-            if (DebugConfig.isDebugEnabled()) {
-                LOGGER.debug("Broadcast lock for faction {} timed out (current={}, end={})", 
-                    broadcastingFactionId, currentTime, broadcastEndTime);
-            }
+            LOGGER.debug("Broadcast lock for faction {} timed out (current={}, end={})", broadcastingFactionId, currentTime, broadcastEndTime);
             
             // 超时自动清理
             isBroadcasting = false;
@@ -115,7 +106,7 @@ public class BaseDeathLockManager {
      * 用于紧急情况或游戏重置
      */
     public static synchronized void forceEndAllBroadcasts() {
-        if (DebugConfig.isDebugEnabled() && isBroadcasting) {
+        if (isBroadcasting) {
             LOGGER.debug("Force ending all broadcast locks");
         }
         
