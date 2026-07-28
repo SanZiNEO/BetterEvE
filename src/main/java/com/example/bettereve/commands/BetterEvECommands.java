@@ -95,14 +95,14 @@ public class BetterEvECommands {
                     .then(Commands.argument("name", StringArgumentType.word())
                         .suggests(SCENARIO_SUGGESTIONS)
                         .executes(BetterEvECommands::executeScenarioLoad)))
-                .then(Commands.literal("info").executes(BetterEvECommands::executeScenarioInfo))
             )  // close scenario
             .then(Commands.literal("phase")
                 .then(Commands.literal("list").executes(BetterEvECommands::executePhaseList))
                 .then(Commands.literal("switch")
                     .then(Commands.argument("id", StringArgumentType.word())
+                        .suggests(PHASE_SUGGESTIONS)
                         .executes(BetterEvECommands::executePhaseSwitch)))
-            )
+            )  // close phase
             .then(Commands.literal("goal")
                 .then(Commands.literal("visualize")
                     .executes(BetterEvECommands::executeGoalVisualizeToggle))
@@ -218,6 +218,16 @@ public class BetterEvECommands {
     private static final SuggestionProvider<CommandSourceStack> SCENARIO_SUGGESTIONS = (context, builder) -> {
         for (String name : ScenarioManager.list()) {
             builder.suggest(name);
+        }
+        return builder.buildFuture();
+    };
+
+    private static final SuggestionProvider<CommandSourceStack> PHASE_SUGGESTIONS = (context, builder) -> {
+        var scenario = ScenarioManager.getActiveScenario();
+        if (scenario != null && scenario.getPhases() != null) {
+            for (var phase : scenario.getPhases()) {
+                builder.suggest(phase.getId());
+            }
         }
         return builder.buildFuture();
     };
