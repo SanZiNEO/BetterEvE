@@ -1,6 +1,8 @@
 package com.example.bettereve.phase;
 
 import com.example.bettereve.base.CommandQueue;
+import com.example.bettereve.base.BaseSystem;
+import net.minecraft.core.BlockPos;
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioManager;
 import net.minecraft.server.level.ServerLevel;
@@ -147,5 +149,24 @@ public class PhaseManager {
      */
     public static boolean isLoaded() {
         return isLoaded;
+    }
+
+    @SubscribeEvent
+    public static void onPhaseSpawnBases(PhaseSpawnBasesEvent event) {
+        if (event.getTemplate() == null || event.getPositions() == null) return;
+        
+        var template = event.getTemplate();
+        for (var pos : event.getPositions()) {
+            BlockPos blockPos = BlockPos.containing(pos.getX(), pos.getY(), pos.getZ());
+            BaseSystem.spawnBase(
+                null, blockPos,
+                template.getFactionId(), template.getHealth(),
+                template.getAttackDamage(), template.getArmor(),
+                template.getAttackRange(), template.getAttackCooldown(),
+                template.getSizeKey(), template.getModelScale(),
+                template.isShowHealthBar(), template.isEnableDeathClear(),
+                template.isEnableBroadcast(), template.isEnableDeathCount()
+            );
+        }
     }
 }

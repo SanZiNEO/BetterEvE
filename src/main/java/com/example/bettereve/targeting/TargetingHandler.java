@@ -2,6 +2,8 @@ package com.example.bettereve.targeting;
 
 import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.ai.FactionHostileTargetGoal;
+import com.example.bettereve.ai.PathfindToGoalGoal;
+import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.LivingEntity;
@@ -83,6 +85,11 @@ public class TargetingHandler {
                     .anyMatch(g -> g.getGoal() instanceof MeleeAttackGoal);
             if (!hasMelee) {
                 pathfinder.goalSelector.addGoal(2, new MeleeAttackGoal(pathfinder, 1.0, false));
+            }
+            // 对非 neutral 阵营生物添加寻路 AI（优先级 1，在战斗 Goal 0 之后）
+            String factionId = FactionHelper.getEntityFactionId(mob);
+            if (!"neutral".equals(factionId)) {
+                pathfinder.goalSelector.addGoal(1, new PathfindToGoalGoal(pathfinder));
             }
         }
     }

@@ -23,7 +23,71 @@ public class ScenarioIO {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScenarioIO.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path SCENARIO_DIR = Paths.get("config", "bettereve", "scenarios");
+    private static final Path PRESET_DIR = Paths.get("scenarios"); // 项目根目录预设
 
+    /**
+     * 获取预设剧本目录。
+     */
+    public static Path getPresetDir() {
+        return PRESET_DIR;
+    }
+
+    /**
+     * 从预设目录复制剧本到运行时目录。
+     */
+    public static void copyPresetToRuntime(String name) {
+        Path presetFile = PRESET_DIR.resolve(name + ".json");
+        Path runtimeFile = getScenarioDir().resolve(name + ".json");
+        if (Files.exists(presetFile) && !Files.exists(runtimeFile)) {
+            try {
+                Files.createDirectories(getScenarioDir());
+                Files.copy(presetFile, runtimeFile);
+                LOGGER.info("Copied preset scenario {} to runtime directory", name);
+            } catch (IOException e) {
+                LOGGER.error("Failed to copy preset scenario {}", name, e);
+            }
+        }
+    }
+
+    /**
+     * 读取指定剧本 — 优先运行时目录，其次预设目录。
+     */
+    public static Scenario readScenario(String name) throws ScenarioLoadException {
+        // 先尝试运行时目录
+        Path runtimeFile = SCENARIO_DIR.resolve(name + ".json");
+        if (Files.exists(runtimeFile)) {
+            return readFromPath(runtimeFile, name);
+        }
+        // 再尝试预设目录
+        Path presetFile = PRESET_DIR.resolve(name + ".json");
+        if (Files.exists(presetFile)) {
+            // 复制到运行时目录
+            copyPresetToRuntime(name);
+            return readFromPath(presetFile, name);
+        }
+        throw new ScenarioLoadException("Scenario file not found: " + name);
+    }
+
+    private static Scenario readFromPath(Path file, String name) throws ScenarioLoadException {
+        if (!Files.exists(file)) {
+            throw new ScenarioLoadException("Scenario file not found: " + file);
+        }
+        try {
+            String json = Files.readString(file);
+            Scenario scenario = GSON.fromJson(json, Scenario.class);
+            if (scenario == null) {
+                throw new ScenarioLoadException("Failed to parse scenario (null): " + name);
+            }
+            if (scenario.getId() == null || scenario.getId().isEmpty()) {
+                scenario.setId(name);
+            }
+            return scenario;
+        } catch (JsonSyntaxException e) {
+            throw new ScenarioLoadException("Invalid JSON in scenario file " + file + ": " + e.getMessage());
+        } catch (IOException e) {
+            throw new ScenarioLoadException("Failed to read scenario file " + file + ": " + e.getMessage());
+        }
+    }
     /**
      * 获取剧本目录，如果不存在则创建。
      */
@@ -53,31 +117,6 @@ public class ScenarioIO {
         } catch (IOException e) {
             LOGGER.error("Failed to list scenarios", e);
             return new ArrayList<>();
-        }
-    }
-
-    /**
-     * 读取指定剧本的 JSON 文件。
-     */
-    public static Scenario readScenario(String name) throws ScenarioLoadException {
-        Path file = getScenarioDir().resolve(name + ".json");
-        if (!Files.exists(file)) {
-            throw new ScenarioLoadException("Scenario file not found: " + file);
-        }
-        try {
-            String json = Files.readString(file);
-            Scenario scenario = GSON.fromJson(json, Scenario.class);
-            if (scenario == null) {
-                throw new ScenarioLoadException("Failed to parse scenario (null): " + name);
-            }
-            if (scenario.getId() == null || scenario.getId().isEmpty()) {
-                scenario.setId(name);
-            }
-            return scenario;
-        } catch (JsonSyntaxException e) {
-            throw new ScenarioLoadException("Invalid JSON in scenario file " + file + ": " + e.getMessage());
-        } catch (IOException e) {
-            throw new ScenarioLoadException("Failed to read scenario file " + file + ": " + e.getMessage());
         }
     }
 

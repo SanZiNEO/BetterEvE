@@ -5,6 +5,7 @@ import com.example.bettereve.entity.BaseEntity;
 import com.example.bettereve.entity.BaseEntityType;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
+import com.example.bettereve.phase.MonitorManager;
 import com.example.bettereve.faction.FactionRegistry;
 import com.example.bettereve.network.NetworkManager;
 import net.minecraft.core.BlockPos;
@@ -113,7 +114,8 @@ public class BaseSystem {
                 }
             }
 
-
+            // 基地死亡后检查 Monitor 条件，触发阶段切换
+            MonitorManager.checkMonitors(factionId);
         }
     }
 

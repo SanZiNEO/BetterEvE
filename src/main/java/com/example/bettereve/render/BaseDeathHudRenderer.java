@@ -21,128 +21,93 @@ import java.awt.Color;
 import java.util.Map;
 
 /**
- * 基地死亡HUD渲染器
- * 在屏幕顶部显示基地被毁数计分板
- * 横向布局：标题居中，下面一行显示各阵营计数
+ * 自定义计分板 HUD — 替代原版 MC Scoreboard。
+ * 显示每个阵营的基地摧毁数和实体击杀数。
+ * 大小固定宽度，内容自适应行高。
+ * 数据源：BaseDeathCounter（客户端缓存）
  */
 @Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class BaseDeathHudRenderer {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/BaseDeathHudRenderer");
+    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/ScoreboardHUD");
     
-    // HUD配置
-    private static final String TITLE = "基地被毁数";
-    private static final int TITLE_COLOR = 0xFFFFFF; // 白色
-    private static final int TEXT_COLOR = 0xFFFFFF;  // 白色
-    private static final int BACKGROUND_COLOR = 0x80000000; // 半透明黑色背景
-    private static final int PADDING = 3;
-    private static final int SPACING = 10; // 阵营之间的间距
-    private static final int VERTICAL_SPACING = 2; // 标题和内容之间的垂直间距
+    // HUD 布局配置
+    private static final int PANEL_WIDTH = 420;
+    private static final int PANEL_MAX_HEIGHT = 300;
+    private static final int TITLE_COLOR = 0xFFFFAA;
+    private static final int HEADER_COLOR = 0xAAAAAA;
+    private static final int TEXT_COLOR = 0xFFFFFF;
+    private static final int BACKGROUND_COLOR = 0x80000000;
+    private static final int LINE_HEIGHT = 20;
+    private static final int PADDING = 4;
+    private static final int LEFT_MARGIN = 8;
+    private static final int RIGHT_MARGIN = 8;
     
     public static final IGuiOverlay BASE_DEATH_OVERLAY = (gui, guiGraphics, partialTick, width, height) -> {
         Minecraft mc = Minecraft.getInstance();
-        
-        // 检查是否在游戏中且有世界
-        if (mc.level == null || mc.player == null) {
-            return;
-        }
+        if (mc.level == null || mc.player == null) return;
         
         Font font = mc.font;
-        PoseStack poseStack = guiGraphics.pose();
         
-        // 获取所有阵营的死亡计数
-        Map<String, Integer> deathCounts = BaseDeathCounter.getAllFactionDeathCounts();
+        // 获取阵营数据
+        var deathCounts = BaseDeathCounter.getAllFactionDeathCounts();
+        var factions = FactionRegistry.getAllFactions();
+        if (factions.isEmpty()) return;
         
-        // 如果没有死亡计数，不显示HUD
-        if (deathCounts.isEmpty()) {
-            return;
+        // 计算面板高度
+        int rowCount = (int) factions.stream().filter(Faction::isEnabled).count();
+        int panelHeight = Math.min(40 + rowCount * LINE_HEIGHT, PANEL_MAX_HEIGHT);
+        
+        // 面板位置：屏幕顶部居中
+        int panelX = (width - PANEL_WIDTH) / 2;
+        int panelY = PADDING;
+        
+        // 绘制背景
+        guiGraphics.fill(panelX, panelY, panelX + PANEL_WIDTH, panelY + panelHeight, BACKGROUND_COLOR);
+        
+        // 绘制标题
+        int titleY = panelY + 4;
+        guiGraphics.drawString(font, Component.literal("=== 阵营计分板 ==="), 
+            panelX + LEFT_MARGIN, titleY, TITLE_COLOR, false);
+        
+        // 绘制表头
+        int headerY = titleY + LINE_HEIGHT - 4;
+        guiGraphics.drawString(font, Component.literal("阵营"), 
+            panelX + LEFT_MARGIN, headerY, HEADER_COLOR, false);
+        guiGraphics.drawString(font, Component.literal("基地摧毁"), 
+            panelX + 120, headerY, HEADER_COLOR, false);
+        guiGraphics.drawString(font, Component.literal("实体击杀"), 
+            panelX + 220, headerY, HEADER_COLOR, false);
+        
+        // 绘制每个阵营的数据行
+        int rowY = headerY + LINE_HEIGHT - 4;
+        for (Faction faction : factions) {
+            if (!faction.isEnabled()) continue;
+            
+            String factionId = faction.getId();
+            int baseDeaths = deathCounts.getOrDefault(factionId, 0);
+            int entityDeaths = 0; // 暂未同步实体死亡数
+            
+            int factionColor = faction.getColorInt();
+            
+            // 阵营名称（带颜色）
+            guiGraphics.drawString(font, Component.literal(faction.getName()), 
+                panelX + LEFT_MARGIN + 4, rowY, factionColor, false);
+            
+            // 基地摧毁数（白色）
+            guiGraphics.drawString(font, Component.literal(String.valueOf(baseDeaths)), 
+                panelX + 120, rowY, TEXT_COLOR, false);
+            
+            // 实体击杀数（白色，暂为 0）
+            guiGraphics.drawString(font, Component.literal(String.valueOf(entityDeaths)), 
+                panelX + 220, rowY, TEXT_COLOR, false);
+            
+            rowY += LINE_HEIGHT;
         }
-        
-        // 计算总内容宽度（阵营名称: 数字）
-        int totalWidth = 0;
-        for (Map.Entry<String, Integer> entry : deathCounts.entrySet()) {
-            Faction faction = FactionRegistry.getFaction(entry.getKey());
-            String displayName = faction != null ? faction.getName() : entry.getKey();
-            int count = entry.getValue();
-            // 分开计算阵营名称部分（带冒号）和数字部分的宽度
-            String namePart = displayName + ": ";
-            String countPart = String.valueOf(count);
-            totalWidth += font.width(namePart) + font.width(countPart) + SPACING;
-        }
-        
-        // 减去最后一个间距
-        if (!deathCounts.isEmpty()) {
-            totalWidth -= SPACING;
-        }
-        
-        // 计算标题宽度
-        int titleWidth = font.width(TITLE);
-        
-        // 使用总宽度或标题宽度中较大的一个作为背景宽度
-        int backgroundWidth = Math.max(totalWidth, titleWidth) + PADDING * 2;
-        
-        // 计算背景高度（标题 + 内容 + 间距 + 边距）
-        int backgroundHeight = font.lineHeight * 2 + VERTICAL_SPACING + PADDING * 2;
-        
-        // 计算背景位置（顶部居中）
-        int backgroundX = (width - backgroundWidth) / 2;
-        int backgroundY = PADDING;
-        
-        // 绘制半透明黑色背景
-        guiGraphics.fill(backgroundX, backgroundY, 
-                        backgroundX + backgroundWidth, 
-                        backgroundY + backgroundHeight, 
-                        BACKGROUND_COLOR);
-        
-        // 绘制标题（居中）
-        int titleX = (width - titleWidth) / 2;
-        int titleY = backgroundY + PADDING;
-        guiGraphics.drawString(font, Component.literal(TITLE), titleX, titleY, TITLE_COLOR, false);
-        
-        // 绘制阵营死亡计数（横向排列）
-        int contentY = titleY + font.lineHeight + VERTICAL_SPACING;
-        int contentX = (width - totalWidth) / 2;
-        
-        for (Map.Entry<String, Integer> entry : deathCounts.entrySet()) {
-            Faction faction = FactionRegistry.getFaction(entry.getKey());
-            String displayName = faction != null ? faction.getName() : entry.getKey();
-            int count = entry.getValue();
-            
-            // 分开渲染阵营名称部分（带冒号）和数字部分
-            String namePart = displayName + ": ";
-            String countPart = String.valueOf(count);
-            
-            // 获取阵营颜色（如果可用），否则使用默认颜色
-            int factionColor = TEXT_COLOR;
-            if (faction != null) {
-                try {
-                    // 使用Faction类的getColorInt()方法获取颜色整数
-                    factionColor = faction.getColorInt();
-                } catch (Exception e) {
-                LOGGER.debug("Failed to parse color for faction {}: {}", entry.getKey(), faction.getColor());
-                }
-            }
-            
-            // 数字颜色固定为白色
-            int countColor = 0xFFFFFF;
-            
-            // 渲染阵营名称部分（带冒号）
-            guiGraphics.drawString(font, Component.literal(namePart), contentX, contentY, factionColor, false);
-            contentX += font.width(namePart);
-            
-            // 渲染数字部分
-            guiGraphics.drawString(font, Component.literal(countPart), contentX, contentY, countColor, false);
-            contentX += font.width(countPart) + SPACING;
-        }
-        LOGGER.trace("Rendered base death HUD with {} factions", deathCounts.size());
     };
     
-    /**
-     * 注册HUD渲染覆盖层
-     */
     @SubscribeEvent
     public static void onRegisterGuiOverlays(RegisterGuiOverlaysEvent event) {
-        // 在十字准心下方注册，确保始终可见
-        event.registerBelow(VanillaGuiOverlay.CROSSHAIR.id(), "bettereve_base_death", BASE_DEATH_OVERLAY);
-        LOGGER.info("Registered base death HUD overlay");
+        event.registerBelow(VanillaGuiOverlay.CROSSHAIR.id(), "bettereve_scoreboard", BASE_DEATH_OVERLAY);
+        LOGGER.info("Registered custom scoreboard HUD overlay");
     }
 }

@@ -2,6 +2,8 @@ package com.example.bettereve.faction;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.CompoundTag;
+import com.example.bettereve.faction.PlayerFactionData;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.util.LazyOptional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,6 +24,11 @@ public class FactionHelper {
             com.example.bettereve.entity.BaseEntity baseEntity = (com.example.bettereve.entity.BaseEntity) entity;
             String factionId = baseEntity.getFactionId();
             return factionId.isEmpty() ? "neutral" : factionId;
+        }
+
+        // 特殊处理 Player 类型 — 走 PlayerFactionData（使用独立的 NBT key）
+        if (entity instanceof Player player) {
+            return PlayerFactionData.getPlayerFaction(player);
         }
 
         // 其他实体使用 NBT 实现

@@ -9,6 +9,9 @@ import com.example.bettereve.level.LevelSystem;
 import com.example.bettereve.faction.PlayerFactionData;
 import com.example.bettereve.scenario.ScenarioIO;
 import com.example.bettereve.scenario.ScenarioManager;
+import com.example.bettereve.phase.PhaseManager;
+import com.example.bettereve.goal.GoalVisualizer;
+import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.network.FactionSyncHandler;
 import com.example.bettereve.scoreboard.ScoreboardManager;
 import com.mojang.brigadier.CommandDispatcher;
@@ -94,6 +97,16 @@ public class BetterEvECommands {
                         .executes(BetterEvECommands::executeScenarioLoad)))
                 .then(Commands.literal("info").executes(BetterEvECommands::executeScenarioInfo))
             )  // close scenario
+            .then(Commands.literal("phase")
+                .then(Commands.literal("list").executes(BetterEvECommands::executePhaseList))
+                .then(Commands.literal("switch")
+                    .then(Commands.argument("id", StringArgumentType.word())
+                        .executes(BetterEvECommands::executePhaseSwitch)))
+            )
+            .then(Commands.literal("goal")
+                .then(Commands.literal("visualize")
+                    .executes(BetterEvECommands::executeGoalVisualizeToggle))
+            )  // close goal
             .then(Commands.literal("base")
                 .then(Commands.literal("create")
                     .then(Commands.argument("factionId", StringArgumentType.word())
@@ -926,6 +939,34 @@ public class BetterEvECommands {
         Faction faction = FactionRegistry.getFaction(factionId);
         String name = faction != null ? faction.getName() : factionId;
         context.getSource().sendSuccess(() -> Component.literal("当前阵营: " + name + " (" + factionId + ")"), false);
+        return 1;
+    }
+
+    private static int executePhaseList(CommandContext<CommandSourceStack> context) {
+        var scenario = ScenarioManager.getActiveScenario();
+        if (scenario == null || scenario.getPhases() == null || scenario.getPhases().isEmpty()) {
+            context.getSource().sendFailure(Component.literal("当前剧本没有定义任何阶段"));
+            return 0;
+        }
+        var phaseIds = scenario.getPhases().stream().map(Scenario.PhaseDef::getId).collect(java.util.stream.Collectors.joining(", "));
+        String current = PhaseManager.getCurrentPhaseId();
+        context.getSource().sendSuccess(() -> 
+            Component.literal("阶段列表: " + phaseIds + " | 当前: " + (current != null ? current : "无")), false);
+        return 1;
+    }
+
+    private static int executePhaseSwitch(CommandContext<CommandSourceStack> context) {
+        String phaseId = StringArgumentType.getString(context, "id");
+        PhaseManager.switchTo(phaseId);
+        context.getSource().sendSuccess(() -> Component.literal("已切换到阶段: " + phaseId), true);
+        return 1;
+    }
+
+    private static int executeGoalVisualizeToggle(CommandContext<CommandSourceStack> context) {
+        boolean newState = !GoalVisualizer.isEnabled();
+        GoalVisualizer.setEnabled(newState);
+        context.getSource().sendSuccess(() -> 
+            Component.literal("Goal 可视化已" + (newState ? "启用" : "禁用")), true);
         return 1;
     }
 }
