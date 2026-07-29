@@ -2,78 +2,73 @@ package com.example.bettereve.goal;
 
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.client.event.RenderLevelStageEvent.Stage;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
-import java.util.Random;
-
-/**
- * Goal 区域粒子柱可视化（仅客户端）。
- * 在 Goal 区域的四个角渲染粒子柱，颜色 = 阵营颜色。
- */
 @OnlyIn(Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = "bettereve", value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class GoalVisualizer {
     private static boolean enabled = false;
-    private static final Random RANDOM = new Random();
 
-    /**
-     * 启用/禁用可视化。
-     */
-    public static void setEnabled(boolean enable) {
-        enabled = enable;
-    }
+    public static void setEnabled(boolean enable) { enabled = enable; }
+    public static boolean isEnabled() { return enabled; }
 
-    /**
-     * 是否启用。
-     */
-    public static boolean isEnabled() {
-        return enabled;
-    }
-
-    /**
-     * 渲染所有 Goal 区域的粒子柱。
-     * 应在客户端的 render tick 中调用。
-     */
-    public static void renderParticles() {
+    @SubscribeEvent
+    public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (event.getStage() != Stage.AFTER_PARTICLES) return;
         if (!enabled) return;
-        
+
         Minecraft mc = Minecraft.getInstance();
         Level level = mc.level;
-        if (level == null) return;
-        
-        // 只在玩家附近渲染
-        Vec3 playerPos = mc.player != null ? mc.player.position() : Vec3.ZERO;
-        
+        if (level == null || mc.player == null) return;
+
+        Camera camera = event.getCamera();
+        Vec3 cameraPos = camera.getPosition();
+        Vec3 playerPos = mc.player.position();
+
+        PoseStack poseStack = event.getPoseStack();
+        MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
+        VertexConsumer consumer = bufferSource.getBuffer(RenderType.LINES);
+
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+
         for (GoalRegion region : GoalManager.getAllGoals()) {
-            // 只在距离玩家 64 格内渲染
             double cx = region.getCenterX();
             double cz = region.getCenterZ();
             if (playerPos.distanceToSqr(new Vec3(cx, playerPos.y, cz)) > 64 * 64) continue;
-            
-            // 获取阵营颜色
+
             Faction faction = FactionRegistry.getFaction(region.getFactionId());
             int color = faction != null ? faction.getColorInt() : 0xFFFFFF;
-            
-            // 在四个角渲染粒子
-            renderColumn(level, region.getX1(), region.getZ1(), color);
-            renderColumn(level, region.getX2(), region.getZ1(), color);
-            renderColumn(level, region.getX1(), region.getZ2(), color);
-            renderColumn(level, region.getX2(), region.getZ2(), color);
+            float r = ((color >> 16) & 0xFF) / 255.0f;
+            float g = ((color >> 8) & 0xFF) / 255.0f;
+            float b = (color & 0xFF) / 255.0f;
+
+            renderCornerColumn(poseStack, consumer, region.getX1(), region.getZ1(), r, g, b);
+            renderCornerColumn(poseStack, consumer, region.getX2(), region.getZ1(), r, g, b);
+            renderCornerColumn(poseStack, consumer, region.getX1(), region.getZ2(), r, g, b);
+            renderCornerColumn(poseStack, consumer, region.getX2(), region.getZ2(), r, g, b);
         }
+
+        poseStack.popPose();
     }
 
-    private static void renderColumn(Level level, double x, double z, int color) {
-        // 每 5 tick 发射一个粒子
-        if (RANDOM.nextInt(5) != 0) return;
-        
-        double y = level.getMinBuildHeight() + RANDOM.nextDouble() * (level.getMaxBuildHeight() - level.getMinBuildHeight());
-        
-        // 使用火焰粒子（颜色无法直接控制，但火焰粒子可见性高）
-        level.addParticle(ParticleTypes.FLAME, x, y, z, 0.0, 0.0, 0.0);
+    private static void renderCornerColumn(PoseStack pose, VertexConsumer buffer, double x, double z, float r, float g, float b) {
+        AABB box = new AABB(x - 0.25, -64.0, z - 0.25, x + 0.25, 320.0, z + 0.25);
+        LevelRenderer.renderLineBox(pose, buffer, box, r, g, b, 1.0f);
     }
 }

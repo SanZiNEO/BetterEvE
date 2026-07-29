@@ -13,6 +13,7 @@ import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -79,11 +80,13 @@ public class TargetingHandler {
         // 添加阵营目标选择器（优先级最高）
         mob.targetSelector.addGoal(0, new FactionHostileTargetGoal(mob, true, true));
         
-        // 如果是被动生物（没有 MeleeAttackGoal），添加一个近战攻击 Goal（1 点基础伤害）
+        // 如果是被动生物（没有 RangedAttackGoal 也没有 MeleeAttackGoal），添加一个近战攻击 Goal
         if (mob instanceof PathfinderMob pathfinder) {
+            boolean hasRanged = pathfinder.goalSelector.getAvailableGoals().stream()
+                    .anyMatch(g -> g.getGoal() instanceof RangedAttackGoal);
             boolean hasMelee = pathfinder.goalSelector.getAvailableGoals().stream()
                     .anyMatch(g -> g.getGoal() instanceof MeleeAttackGoal);
-            if (!hasMelee) {
+            if (!hasRanged && !hasMelee) {
                 pathfinder.goalSelector.addGoal(2, new MeleeAttackGoal(pathfinder, 1.0, false));
             }
             // 对非 neutral 阵营生物添加寻路 AI（优先级 1，在战斗 Goal 0 之后）

@@ -13,7 +13,6 @@ public class Scenario {
     private List<RelationDef> relations;
     private List<GoalRegionDef> goals;
     private List<BaseTemplateDef> bases;
-    private List<MonitorDef> monitors;
     private List<PhaseDef> phases;
     private ScenarioOptions options;
 
@@ -31,8 +30,6 @@ public class Scenario {
     public void setGoals(List<GoalRegionDef> goals) { this.goals = goals; }
     public List<BaseTemplateDef> getBases() { return bases; }
     public void setBases(List<BaseTemplateDef> bases) { this.bases = bases; }
-    public List<MonitorDef> getMonitors() { return monitors; }
-    public void setMonitors(List<MonitorDef> monitors) { this.monitors = monitors; }
     public List<PhaseDef> getPhases() { return phases; }
     public void setPhases(List<PhaseDef> phases) { this.phases = phases; }
     public ScenarioOptions getOptions() { return options; }
@@ -52,6 +49,21 @@ public class Scenario {
         public void setName(String name) { this.name = name; }
         public String getColor() { return color; }
         public void setColor(String color) { this.color = color; }
+    private LevelConfig levelConfig = new LevelConfig();
+    public LevelConfig getLevelConfig() { return levelConfig; }
+    public void setLevelConfig(LevelConfig levelConfig) { this.levelConfig = levelConfig; }
+    }
+
+    public static class LevelConfig {
+        private int maxLevel = 500;
+        private double healthBonus = 10.0;
+        private double attackBonus = 10.0;
+        public int getMaxLevel() { return maxLevel; }
+        public void setMaxLevel(int maxLevel) { this.maxLevel = maxLevel; }
+        public double getHealthBonus() { return healthBonus; }
+        public void setHealthBonus(double healthBonus) { this.healthBonus = healthBonus; }
+        public double getAttackBonus() { return attackBonus; }
+        public void setAttackBonus(double attackBonus) { this.attackBonus = attackBonus; }
     }
 
     public static class RelationDef {
@@ -134,23 +146,6 @@ public class Scenario {
         public void setEnableDeathCount(boolean enableDeathCount) { this.enableDeathCount = enableDeathCount; }
     }
 
-    public static class MonitorDef {
-        private String id;
-        private String type;        // "all_bases_destroyed", "death_count_reached"
-        private String factionId;   // 监控哪个阵营
-        private int threshold;      // 阈值
-        private String targetPhase; // 触发后切换到哪个阶段
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
-        public String getType() { return type; }
-        public void setType(String type) { this.type = type; }
-        public String getFactionId() { return factionId; }
-        public void setFactionId(String factionId) { this.factionId = factionId; }
-        public int getThreshold() { return threshold; }
-        public void setThreshold(int threshold) { this.threshold = threshold; }
-        public String getTargetPhase() { return targetPhase; }
-        public void setTargetPhase(String targetPhase) { this.targetPhase = targetPhase; }
-    }
 
     public static class PhaseDef {
         private String id;
@@ -158,6 +153,9 @@ public class Scenario {
         private List<CommandDef> commands;
         private SpawnBasesDef spawnBases;
         private int resetAfter; // 秒，0=不重置
+    private List<TriggerDef> triggers;
+    public List<TriggerDef> getTriggers() { return triggers; }
+    public void setTriggers(List<TriggerDef> triggers) { this.triggers = triggers; }
         public String getId() { return id; }
         public void setId(String id) { this.id = id; }
         public AnnounceDef getAnnounce() { return announce; }
@@ -170,6 +168,24 @@ public class Scenario {
         public void setResetAfter(int resetAfter) { this.resetAfter = resetAfter; }
     }
 
+
+    public static class TriggerDef {
+        private String type;       // "base_destroyed" | "entity_death_count" | "timer" | "custom"
+        private String factionId;
+        private String targetId;
+        private int threshold;
+        private String targetPhase;
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+        public String getFactionId() { return factionId; }
+        public void setFactionId(String factionId) { this.factionId = factionId; }
+        public String getTargetId() { return targetId; }
+        public void setTargetId(String targetId) { this.targetId = targetId; }
+        public int getThreshold() { return threshold; }
+        public void setThreshold(int threshold) { this.threshold = threshold; }
+        public String getTargetPhase() { return targetPhase; }
+        public void setTargetPhase(String targetPhase) { this.targetPhase = targetPhase; }
+    }
     public static class AnnounceDef {
         private String message;
         private int duration;

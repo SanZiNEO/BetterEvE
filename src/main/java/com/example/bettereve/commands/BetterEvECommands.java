@@ -397,10 +397,7 @@ public class BetterEvECommands {
                         // 设置血条可见性
                         FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
                         
-                        MobAccessor mobAccessor = (MobAccessor) mob;
-                        mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
-                        mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
-                        
+                        // NBT 加载移到 equipment 初始化之前
                         if (nbt != null) {
                             mob.load(nbt);
                             mob.setPos(x + i, y, z);
@@ -410,6 +407,13 @@ public class BetterEvECommands {
                                 FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
                             }
                         }
+                        
+                        MobAccessor mobAccessor = (MobAccessor) mob;
+                        mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
+                        mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
+                        
+                        // 调用 finalizeSpawn 以确保生物正确初始化
+                        mob.finalizeSpawn(serverLevel, difficulty, MobSpawnType.COMMAND, null, null);
                         
                         if (mob.getType() == EntityType.WARDEN) {
                             net.minecraft.world.entity.monster.warden.Warden warden = (net.minecraft.world.entity.monster.warden.Warden) mob;
@@ -799,7 +803,7 @@ public class BetterEvECommands {
         // 调用 BaseSystem
         net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
         
-        com.example.bettereve.base.BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar, enableDeathClear, enableBroadcast, false);
+        com.example.bettereve.base.BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar, enableDeathClear, enableBroadcast, true);
         
         context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("基地创建成功: " + 
             com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() + 
@@ -869,8 +873,6 @@ public class BetterEvECommands {
         var scenarios = ScenarioManager.list();
         if (scenarios.isEmpty()) {
             context.getSource().sendSuccess(() -> Component.literal("没有找到剧本（检查 config/bettereve/scenarios/ 目录）"), false);
-            ScenarioIO.createDefaultScenario();
-            context.getSource().sendSuccess(() -> Component.literal("已创建默认示例剧本"), false);
         } else {
             context.getSource().sendSuccess(() -> Component.literal("可用剧本: " + String.join(", ", scenarios)), false);
         }

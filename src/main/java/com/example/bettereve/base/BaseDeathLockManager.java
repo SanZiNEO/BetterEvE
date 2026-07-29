@@ -61,15 +61,10 @@ public class BaseDeathLockManager {
         }
         
         long currentTime = System.currentTimeMillis();
-        
         // 检查是否超时
         if (currentTime > broadcastEndTime) {
-            LOGGER.debug("Broadcast lock for faction {} timed out (current={}, end={})", broadcastingFactionId, currentTime, broadcastEndTime);
-            
-            // 超时自动清理
-            isBroadcasting = false;
-            broadcastingFactionId = null;
-            broadcastEndTime = 0;
+            LOGGER.debug("Broadcast lock for faction {} timed out, calling endBroadcast()", broadcastingFactionId);
+            endBroadcast();
             return false;
         }
         

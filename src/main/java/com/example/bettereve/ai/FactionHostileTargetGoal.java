@@ -21,12 +21,11 @@ public class FactionHostileTargetGoal extends TargetGoal {
 
     // 构造方法
     public FactionHostileTargetGoal(Mob mob, boolean mustSee, boolean mustReach) {
-        super(mob, false, mustReach); // 关键：改为false，取消视线检查（穿墙寻敌）
+        super(mob, false, mustReach);
         this.mob = mob;
-        // 创建目标条件：取消可见性检查，只检查范围
+        // 创建目标条件：先不设置忽略视线，由 isValidTarget 根据目标类型决定
         this.targetingConditions = TargetingConditions.forCombat()
-                .range(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE))
-                .ignoreLineOfSight(); // 忽略视线阻挡
+                .range(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE));
         this.lastRefreshTime = 0;
     }
 
@@ -166,8 +165,14 @@ public class FactionHostileTargetGoal extends TargetGoal {
             return false;
         }
         
-
-
+        // 对非 BaseEntity 的目标检查视线（LOS）
+        // BaseEntity 是建筑，不需要 LOS；其他生物需要视线
+        if (!(target instanceof com.example.bettereve.entity.BaseEntity)) {
+            if (!mob.hasLineOfSight(target)) {
+                return false;
+            }
+        }
+        
         // 完全基于阵营判定：只攻击不同阵营的生物
         boolean isHostile = FactionHelper.isEntitiesHostile(this.mob, target);
         

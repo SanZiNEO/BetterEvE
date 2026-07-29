@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import com.example.bettereve.goal.GoalManager;
+import com.example.bettereve.phase.PhaseManager;
 
 /**
  * 剧本管理器 — 加载/切换/运行时查询。
@@ -20,6 +22,11 @@ public class ScenarioManager {
         Scenario scenario = ScenarioIO.readScenario(name);
         activeScenario = scenario;
         activeScenarioName = name;
+        
+        // 将加载的剧本同步到 PhaseManager 和 GoalManager
+        PhaseManager.loadFromScenario(scenario);
+        GoalManager.loadFromScenario(scenario);
+        
         LOGGER.info("Loaded scenario: {} ({})", name, scenario.getName());
     }
 

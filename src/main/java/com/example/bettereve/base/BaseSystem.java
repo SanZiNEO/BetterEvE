@@ -3,9 +3,9 @@ package com.example.bettereve.base;
 import com.example.bettereve.counter.DeathCounter;
 import com.example.bettereve.entity.BaseEntity;
 import com.example.bettereve.entity.BaseEntityType;
+import com.example.bettereve.phase.PhaseManager;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
-import com.example.bettereve.phase.MonitorManager;
 import com.example.bettereve.faction.FactionRegistry;
 import com.example.bettereve.network.NetworkManager;
 import net.minecraft.core.BlockPos;
@@ -59,11 +59,6 @@ public class BaseSystem {
     public static void onLivingDeath(LivingDeathEvent event) {
         Entity entity = event.getEntity();
         if (isBaseEntity(entity)) {
-            // 检查是否正在播报期间，如果是则跳过处理（防止连锁计数）
-            if (BaseDeathLockManager.isBroadcasting()) {
-                System.out.println("播报期间，跳过基地死亡逻辑: " + entity.getUUID());
-                return;
-            }
             
             // 获取基地实体和字段
             BaseEntity baseEntity = (BaseEntity) entity;
@@ -115,11 +110,11 @@ public class BaseSystem {
             }
 
             // 基地死亡后检查 Monitor 条件，触发阶段切换
-            MonitorManager.checkMonitors(factionId);
-        }
+            PhaseManager.checkTriggers("base_destroyed", factionId, 0);
     }
 
 
+    }
     public static boolean isBaseEntity(Entity entity) {
         return entity instanceof BaseEntity;
     }

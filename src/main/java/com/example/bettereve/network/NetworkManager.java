@@ -110,12 +110,19 @@ public class NetworkManager {
             BaseDeathLockPacket::decode,
             BaseDeathLockPacket::handle
         );
+        // 注册清除死亡计数数据包
+        CHANNEL.registerMessage(
+            packetId++,
+            ClearDeathCountPacket.class,
+            ClearDeathCountPacket::encode,
+            ClearDeathCountPacket::new,
+            ClearDeathCountPacket::handle
+        );
     }
     
     /**
      * 同步单个实体的血条可见性到客户端
      * @param entity 要同步的实体
-     * @param showHealthBar 是否显示血条
      * @param player 目标玩家（null表示所有玩家）
      */
     public static void syncEntityHealthBarVisibility(Entity entity, boolean showHealthBar, ServerPlayer player) {

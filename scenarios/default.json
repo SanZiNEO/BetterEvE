@@ -1,11 +1,11 @@
 {
   "id": "default",
   "name": "默认剧本",
-  "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方基地即为胜利。",
+  "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方核心即为胜利。",
   "factions": [
-    { "id": "neutral", "name": "中立", "color": "#FFFFFF" },
-    { "id": "red", "name": "红队", "color": "#FF0000" },
-    { "id": "blue", "name": "蓝队", "color": "#0000FF" }
+    { "id": "neutral", "name": "中立", "color": "#FFFFFF", "levelConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
+    { "id": "red", "name": "红队", "color": "#FF0000", "levelConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
+    { "id": "blue", "name": "蓝队", "color": "#0000FF", "levelConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } }
   ],
   "relations": [
     { "from": "red", "to": "blue", "type": "hostile" },
@@ -80,19 +80,18 @@
       "enableDeathCount": true
     }
   ],
-  "monitors": [
-    { "id": "monitor_red_core", "type": "all_bases_destroyed", "factionId": "red", "threshold": 1, "targetPhase": "blue_victory" },
-    { "id": "monitor_blue_core", "type": "all_bases_destroyed", "factionId": "blue", "threshold": 1, "targetPhase": "red_victory" }
-  ],
   "phases": [
     {
       "id": "match_start",
-      "announce": { "message": "§e§l战斗开始！摧毁敌方基地以获得胜利！", "duration": 5 },
+      "announce": { "message": "§e§l战斗开始！摧毁敌方核心以获得胜利！", "duration": 5 },
       "commands": [
         { "delay": 0, "command": "say 比赛开始！" },
         { "delay": 5, "command": "time set day && weather clear" }
       ],
-      "resetAfter": 0
+      "triggers": [
+        { "type": "base_destroyed", "factionId": "red", "targetPhase": "blue_victory" },
+        { "type": "base_destroyed", "factionId": "blue", "targetPhase": "red_victory" }
+      ]
     },
     {
       "id": "blue_victory",
@@ -100,7 +99,9 @@
       "commands": [
         { "delay": 0, "command": "say 蓝队获胜！" }
       ],
-      "resetAfter": 30
+      "triggers": [
+        { "type": "timer", "threshold": 30, "targetPhase": "match_start" }
+      ]
     },
     {
       "id": "red_victory",
@@ -108,7 +109,9 @@
       "commands": [
         { "delay": 0, "command": "say 红队获胜！" }
       ],
-      "resetAfter": 30
+      "triggers": [
+        { "type": "timer", "threshold": 30, "targetPhase": "match_start" }
+      ]
     }
   ],
   "options": {

@@ -1,6 +1,8 @@
 package com.example.bettereve.level;
 
 import com.example.bettereve.config.BetterEvEConfig;
+import com.example.bettereve.scenario.Scenario;
+import com.example.bettereve.scenario.ScenarioManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -44,7 +46,8 @@ public class LevelSystem {
      */
     public static void setEntityLevel(Entity entity, int level) {
         if (level < 0) level = 0;
-        int maxLevel = BetterEvEConfig.INSTANCE.level_maxLevel.get();
+        Scenario.LevelConfig levelCfg = getLevelConfig(entity);
+        int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.level_maxLevel.get();
         if (level > maxLevel) level = maxLevel;
         
         // 同时存储到内存和 NBT 中，确保持久性
@@ -128,16 +131,30 @@ public class LevelSystem {
     /**
      * 应用召唤等级属性（非线性增长，支持NBT属性突破上限）
      */
+    /**
+     * 获取实体的等级配置（优先从剧本读取，fallback 到全局配置）。
+     */
+    private static Scenario.LevelConfig getLevelConfig(Entity entity) {
+        Scenario scenario = ScenarioManager.getActiveScenario();
+        if (scenario == null || scenario.getFactions() == null || entity == null) return null;
+        String factionId = com.example.bettereve.faction.FactionHelper.getEntityFactionId(entity);
+        for (Scenario.FactionDef faction : scenario.getFactions()) {
+            if (faction.getId().equals(factionId)) {
+                return faction.getLevelConfig();
+            }
+        }
+        return null;
+    }
     public static void applySpawnLevel(LivingEntity entity, int level) {
         if (level <= 0) return;
 
         // 检查实体是否有NBT属性（用于判断是否可以突破上限）
         boolean hasNbtAttributes = hasCustomNbtAttributes(entity);
 
-        // 获取配置的属性加成百分比
-        double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get() / 100;
-        double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get() / 100;
-        int maxLevel = BetterEvEConfig.INSTANCE.level_maxLevel.get();
+        Scenario.LevelConfig levelCfg = getLevelConfig(entity);
+        double healthBonus = (levelCfg != null ? levelCfg.getHealthBonus() : BetterEvEConfig.INSTANCE.level_healthBonus.get()) / 100;
+        double attackBonus = (levelCfg != null ? levelCfg.getAttackBonus() : BetterEvEConfig.INSTANCE.level_attackBonus.get()) / 100;
+        int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.level_maxLevel.get();
 
         // 生命值
         if (entity.getAttribute(Attributes.MAX_HEALTH) != null) {
