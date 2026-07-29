@@ -19,6 +19,7 @@ public class BaseDeathCounter {
     
     // 使用ConcurrentHashMap确保线程安全
     private static final ConcurrentHashMap<String, Integer> deathCounts = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Integer> entityKillCounts = new ConcurrentHashMap<>();
     
     /**
      * 为指定阵营增加死亡计数
@@ -46,6 +47,31 @@ public class BaseDeathCounter {
         
         return deathCounts.getOrDefault(factionId, 0);
     }
+    
+    public static void addEntityKill(String factionId) {
+        if (factionId == null || factionId.isEmpty()) {
+            factionId = "neutral";
+        }
+        entityKillCounts.merge(factionId, 1, Integer::sum);
+    }
+    
+    public static int getEntityKills(String factionId) {
+        if (factionId == null || factionId.isEmpty()) {
+            factionId = "neutral";
+        }
+        return entityKillCounts.getOrDefault(factionId, 0);
+    }
+    
+    public static Map<String, Integer> getAllEntityKillCounts() {
+        Map<String, Integer> allCounts = new HashMap<>();
+        for (Faction faction : FactionRegistry.getAllFactions()) {
+            if (faction.isEnabled()) {
+                allCounts.put(faction.getId(), getEntityKills(faction.getId()));
+            }
+        }
+        return allCounts;
+    }
+    
     
     /**
      * 获取所有阵营的死亡计数
@@ -86,6 +112,7 @@ public class BaseDeathCounter {
      */
     public static void clearAll() {
         deathCounts.clear();
+        entityKillCounts.clear();
         LOGGER.debug("Cleared all base death counts");
     }
     
@@ -104,16 +131,17 @@ public class BaseDeathCounter {
      * 重置所有计数为0
      */
     public static void resetAll() {
-        // 重置所有现有条目的计数为0
         for (String factionId : deathCounts.keySet()) {
             deathCounts.put(factionId, 0);
+        }
+        for (String factionId : entityKillCounts.keySet()) {
+            entityKillCounts.put(factionId, 0);
         }
         LOGGER.debug("Reset all base death counts to 0");
     }
     
     /**
      * 获取总死亡计数
-     * @return 所有阵营的总死亡数
      */
     public static int getTotalDeathCount() {
         return deathCounts.values().stream()

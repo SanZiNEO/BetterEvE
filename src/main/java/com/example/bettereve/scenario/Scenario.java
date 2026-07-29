@@ -114,9 +114,6 @@ public class Scenario {
         private String sizeKey;
         private double modelScale;
         private boolean showHealthBar;
-        private boolean enableDeathClear;
-        private boolean enableBroadcast;
-        private boolean enableDeathCount;
         // getters/setters
         public String getId() { return id; }
         public void setId(String id) { this.id = id; }
@@ -138,12 +135,6 @@ public class Scenario {
         public void setModelScale(double modelScale) { this.modelScale = modelScale; }
         public boolean isShowHealthBar() { return showHealthBar; }
         public void setShowHealthBar(boolean showHealthBar) { this.showHealthBar = showHealthBar; }
-        public boolean isEnableDeathClear() { return enableDeathClear; }
-        public void setEnableDeathClear(boolean enableDeathClear) { this.enableDeathClear = enableDeathClear; }
-        public boolean isEnableBroadcast() { return enableBroadcast; }
-        public void setEnableBroadcast(boolean enableBroadcast) { this.enableBroadcast = enableBroadcast; }
-        public boolean isEnableDeathCount() { return enableDeathCount; }
-        public void setEnableDeathCount(boolean enableDeathCount) { this.enableDeathCount = enableDeathCount; }
     }
 
 

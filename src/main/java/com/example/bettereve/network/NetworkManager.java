@@ -102,14 +102,6 @@ public class NetworkManager {
             BaseDeathPacket::handle
         );
         
-        // 注册基地死亡播报锁定确认包（客户端→服务器）
-        CHANNEL.registerMessage(
-            packetId++,
-            BaseDeathLockPacket.class,
-            BaseDeathLockPacket::encode,
-            BaseDeathLockPacket::decode,
-            BaseDeathLockPacket::handle
-        );
         // 注册清除死亡计数数据包
         CHANNEL.registerMessage(
             packetId++,
@@ -118,8 +110,15 @@ public class NetworkManager {
             ClearDeathCountPacket::new,
             ClearDeathCountPacket::handle
         );
+        // 注册实体击杀数据包
+        CHANNEL.registerMessage(
+            packetId++,
+            EntityKillPacket.class,
+            EntityKillPacket::encode,
+            EntityKillPacket::new,
+            EntityKillPacket::handle
+        );
     }
-    
     /**
      * 同步单个实体的血条可见性到客户端
      * @param entity 要同步的实体
@@ -374,48 +373,28 @@ public class NetworkManager {
      * @param factionId 死亡的基地所属阵营ID
      */
     public static void sendBaseDeathToAll(String factionId) {
-        sendBaseDeathToAll(factionId, true, true);
-    }
-    
-    /**
-     * 发送基地死亡事件到所有客户端，带独立控制字段
-     * @param factionId 死亡的基地所属阵营ID
-     * @param shouldCountDeath 是否增加死亡计数
-     * @param shouldShowAnnounce 是否显示播报
-     */
-    public static void sendBaseDeathToAll(String factionId, boolean shouldCountDeath, boolean shouldShowAnnounce) {
         if (factionId == null || factionId.isEmpty()) {
             factionId = "neutral";
         }
-        
-        // 创建数据包
-        BaseDeathPacket packet = new BaseDeathPacket(factionId, shouldCountDeath, shouldShowAnnounce);
-        
-        // 发送给所有玩家
+        BaseDeathPacket packet = new BaseDeathPacket(factionId);
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
-        LOGGER.debug("Sent base death packet for faction {} to all clients, count={}, announce={}", factionId, shouldCountDeath, shouldShowAnnounce);
     }
     
-    /**
-     * 发送基地死亡事件到指定玩家
-     * @param factionId 死亡的基地所属阵营ID
-     * @param player 目标玩家
-     */
+    public static void sendEntityKillToAll(String factionId) {
+        if (factionId == null || factionId.isEmpty()) {
+            factionId = "neutral";
+        }
+        EntityKillPacket packet = new EntityKillPacket(factionId);
+        CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+    }
+    
     public static void sendBaseDeathToPlayer(String factionId, ServerPlayer player) {
         if (factionId == null || factionId.isEmpty()) {
             factionId = "neutral";
         }
-        
-        if (player == null) {
-            return;
-        }
-        
-        // 创建数据包
+        if (player == null) return;
         BaseDeathPacket packet = new BaseDeathPacket(factionId);
-        
-        // 发送给指定玩家
         CHANNEL.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
-        LOGGER.debug("Sent base death packet for faction {} to player {}", factionId, player.getName().getString());
     }
     
     /**

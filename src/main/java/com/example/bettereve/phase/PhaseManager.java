@@ -1,6 +1,5 @@
 package com.example.bettereve.phase;
 
-import com.example.bettereve.base.CommandQueue;
 import com.example.bettereve.base.BaseSystem;
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioManager;
@@ -161,8 +160,7 @@ public class PhaseManager {
                 template.getAttackDamage(), template.getArmor(),
                 template.getAttackRange(), template.getAttackCooldown(),
                 template.getSizeKey(), template.getModelScale(),
-                template.isShowHealthBar(), template.isEnableDeathClear(),
-                template.isEnableBroadcast(), template.isEnableDeathCount()
+                template.isShowHealthBar()
             );
         }
     }

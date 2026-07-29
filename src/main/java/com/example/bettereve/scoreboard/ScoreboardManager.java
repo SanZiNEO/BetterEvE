@@ -23,7 +23,7 @@ public class ScoreboardManager {
 
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        // 已禁用 — 使用自定义 HUD 计分板 BaseDeathHudRenderer
+        // 已禁用 — 使用自定义 HUD 计分板 ScoreboardOverlay
         // 保留 clearScoreboard/refreshScoreboardImmediately 供指令使用
     }
 

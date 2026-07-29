@@ -111,22 +111,10 @@ public class BaseEntity extends Mob {
     private static final int BASE_ATTACK_COOLDOWN = 40; // 基础攻击冷却时间（ticks，2秒）
     private static final int BASE_TOTAL_CYCLE = 120; // 基础总攻击周期（ticks，6秒）
     
-    // 死亡清场控制
-    private boolean enableDeathClear = false; // 默认不触发自动清场
-    
-    // 播报控制
-    private boolean enableBroadcast = false; // 默认不发送播报
-    
-    // 死亡计数控制
-    private boolean enableDeathCount = false; // 默认不加入计数
 
     public BaseEntity(EntityType<? extends BaseEntity> type, Level level) {
         super(type, level);
         this.attackTimer = 0;
-        this.animationTimer = 0;
-        this.enableDeathClear = false; // 默认不触发自动清场
-        this.enableBroadcast = false; // 默认不发送播报
-        this.enableDeathCount = false; // 默认不加入计数
     }
     
     // 计算实际攻击动画持续时间（基于攻击周期比例）
@@ -210,50 +198,6 @@ public class BaseEntity extends Mob {
         return true; // 默认显示血条
     }
     
-    // 死亡清场控制属性
-    public void setEnableDeathClear(boolean enableDeathClear) {
-        this.enableDeathClear = enableDeathClear;
-        CompoundTag nbt = this.getPersistentData();
-        nbt.putBoolean("BetterEvE:EnableDeathClear", enableDeathClear);
-    }
-    
-    public boolean getEnableDeathClear() {
-        CompoundTag nbt = this.getPersistentData();
-        if (nbt.contains("BetterEvE:EnableDeathClear")) {
-            return nbt.getBoolean("BetterEvE:EnableDeathClear");
-        }
-        return false; // 默认不触发自动清场
-    }
-    
-    // 播报控制属性
-    public void setEnableBroadcast(boolean enableBroadcast) {
-        this.enableBroadcast = enableBroadcast;
-        CompoundTag nbt = this.getPersistentData();
-        nbt.putBoolean("BetterEvE:EnableBroadcast", enableBroadcast);
-    }
-    
-    public boolean getEnableBroadcast() {
-        CompoundTag nbt = this.getPersistentData();
-        if (nbt.contains("BetterEvE:EnableBroadcast")) {
-            return nbt.getBoolean("BetterEvE:EnableBroadcast");
-        }
-        return false; // 默认不发送播报
-    }
-    
-    // 死亡计数控制属性
-    public void setEnableDeathCount(boolean enableDeathCount) {
-        this.enableDeathCount = enableDeathCount;
-        CompoundTag nbt = this.getPersistentData();
-        nbt.putBoolean("BetterEvE:EnableDeathCount", enableDeathCount);
-    }
-    
-    public boolean getEnableDeathCount() {
-        CompoundTag nbt = this.getPersistentData();
-        if (nbt.contains("BetterEvE:EnableDeathCount")) {
-            return nbt.getBoolean("BetterEvE:EnableDeathCount");
-        }
-        return false; // 默认不加入计数
-    }
     
     // 注意：不需要缓存尺寸，原版Minecraft会自动处理碰撞箱尺寸
 
@@ -635,17 +579,18 @@ public class BaseEntity extends Mob {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        
         if (tag.contains("BetterEvE:FactionId")) {
             this.setFactionId(tag.getString("BetterEvE:FactionId"));
         }
         if (tag.contains("BetterEvE:MaxHealth")) {
             this.setMaxHealth(tag.getInt("BetterEvE:MaxHealth"));
         }
-        if (tag.contains("BetterEvE:Armor")) {
-            this.setArmor(tag.getInt("BetterEvE:Armor"));
-        }
         if (tag.contains("BetterEvE:AttackDamage")) {
             this.setAttackDamage(tag.getInt("BetterEvE:AttackDamage"));
+        }
+        if (tag.contains("BetterEvE:Armor")) {
+            this.setArmor(tag.getInt("BetterEvE:Armor"));
         }
         if (tag.contains("BetterEvE:AttackRange")) {
             this.setAttackRange(tag.getDouble("BetterEvE:AttackRange"));
@@ -656,44 +601,10 @@ public class BaseEntity extends Mob {
         if (tag.contains("BetterEvE:ModelScale")) {
             this.setModelScale(tag.getDouble("BetterEvE:ModelScale"));
         }
-        if (tag.contains("BetterEvE:AnimationState")) {
-            int stateOrdinal = tag.getInt("BetterEvE:AnimationState");
-            if (stateOrdinal >= 0 && stateOrdinal < AnimationState.values().length) {
-                this.setAnimationState(AnimationState.values()[stateOrdinal]);
-            }
-        }
         if (tag.contains("BetterEvE:ShowHealthBar")) {
             this.setShowHealthBar(tag.getBoolean("BetterEvE:ShowHealthBar"));
         }
-        if (tag.contains("BetterEvE:EnableDeathClear")) {
-            this.setEnableDeathClear(tag.getBoolean("BetterEvE:EnableDeathClear"));
-        }
-        if (tag.contains("BetterEvE:EnableBroadcast")) {
-            this.setEnableBroadcast(tag.getBoolean("BetterEvE:EnableBroadcast"));
-        }
-        if (tag.contains("BetterEvE:EnableDeathCount")) {
-            this.setEnableDeathCount(tag.getBoolean("BetterEvE:EnableDeathCount"));
-        }
     }
-
-    // 写入 NBT 数据
-    @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
-        tag.putString("BetterEvE:FactionId", this.getFactionId());
-        tag.putInt("BetterEvE:MaxHealth", this.getMaxHealthValue());
-        tag.putInt("BetterEvE:Armor", this.getArmorValue());
-        tag.putInt("BetterEvE:AttackDamage", this.getAttackDamageValue());
-        tag.putDouble("BetterEvE:AttackRange", this.getAttackRange());
-        tag.putDouble("BetterEvE:AttackCooldown", this.getAttackCooldown());
-        tag.putDouble("BetterEvE:ModelScale", this.getModelScale());
-        tag.putInt("BetterEvE:AnimationState", this.currentAnimationState.ordinal());
-        tag.putBoolean("BetterEvE:ShowHealthBar", this.getShowHealthBar());
-        tag.putBoolean("BetterEvE:EnableDeathClear", this.getEnableDeathClear());
-        tag.putBoolean("BetterEvE:EnableBroadcast", this.getEnableBroadcast());
-        tag.putBoolean("BetterEvE:EnableDeathCount", this.getEnableDeathCount());
-    }
-
     // 初始化时设置属性
     @Nullable
     @Override

@@ -1,6 +1,5 @@
 package com.example.bettereve.phase;
 
-import com.example.bettereve.base.CommandQueue;
 import com.example.bettereve.scenario.Scenario;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.server.ServerLifecycleHooks;

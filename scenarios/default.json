@@ -29,10 +29,7 @@
       "attackCooldown": 2.0,
       "sizeKey": "5x10",
       "modelScale": 1.0,
-      "showHealthBar": true,
-      "enableDeathClear": true,
-      "enableBroadcast": true,
-      "enableDeathCount": true
+      "showHealthBar": true
     },
     {
       "id": "red_core",
@@ -44,10 +41,7 @@
       "attackCooldown": 3.0,
       "sizeKey": "8x12",
       "modelScale": 1.2,
-      "showHealthBar": true,
-      "enableDeathClear": true,
-      "enableBroadcast": true,
-      "enableDeathCount": true
+      "showHealthBar": true
     },
     {
       "id": "blue_tower_1",
@@ -59,10 +53,7 @@
       "attackCooldown": 2.0,
       "sizeKey": "5x10",
       "modelScale": 1.0,
-      "showHealthBar": true,
-      "enableDeathClear": true,
-      "enableBroadcast": true,
-      "enableDeathCount": true
+      "showHealthBar": true
     },
     {
       "id": "blue_core",
@@ -74,10 +65,7 @@
       "attackCooldown": 3.0,
       "sizeKey": "8x12",
       "modelScale": 1.2,
-      "showHealthBar": true,
-      "enableDeathClear": true,
-      "enableBroadcast": true,
-      "enableDeathCount": true
+      "showHealthBar": true
     }
   ],
   "phases": [

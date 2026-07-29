@@ -57,63 +57,32 @@ public class BaseSystem {
 
     @SubscribeEvent
     public static void onLivingDeath(LivingDeathEvent event) {
-        Entity entity = event.getEntity();
-        if (isBaseEntity(entity)) {
+        Entity victim = event.getEntity();
+        if (victim.level().isClientSide()) return;
+        
+        net.minecraft.world.damagesource.DamageSource source = event.getSource();
+        Entity attacker = source.getEntity();
+        if (attacker == null) return;
+        
+        String attackerFaction = FactionHelper.getEntityFactionId(attacker);
+        if (attackerFaction == null) return;
+        
+        if (victim instanceof BaseEntity) {
+            NetworkManager.sendBaseDeathToAll(attackerFaction);
             
-            // 获取基地实体和字段
-            BaseEntity baseEntity = (BaseEntity) entity;
-            String factionId = baseEntity.getFactionId();
-            Faction faction = FactionRegistry.getFaction(factionId);
-
-            // 播放爆炸特效
-            if (!entity.level().isClientSide()) {
-                ServerLevel level = (ServerLevel) entity.level();
-                level.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
-                        entity.getX(), entity.getY(), entity.getZ(),
-                        100, 0.5, 0.5, 0.5, 0.1);
-                
-                // 检查是否需要播报和死亡计数
-                boolean shouldBroadcast = baseEntity.getEnableBroadcast();
-                boolean shouldCountDeath = baseEntity.getEnableDeathCount();
-                
-                if (shouldBroadcast || shouldCountDeath) {
-                    // 发送基地死亡事件到所有客户端，包含两个控制字段
-                    NetworkManager.sendBaseDeathToAll(factionId, shouldCountDeath, shouldBroadcast);
-                    System.out.println("BaseEntity死亡，阵营: " + factionId + 
-                        "，死亡计数: " + (shouldCountDeath ? "启用" : "禁用") +
-                        "，播报: " + (shouldBroadcast ? "启用" : "禁用"));
-                    
-                    // 如果启用了播报，服务器端开始播报锁定（等待客户端确认）
-                    if (shouldBroadcast) {
-                        BaseDeathLockManager.startBroadcast(factionId);
-                    }
-                } else {
-                    System.out.println("BaseEntity死亡，阵营: " + factionId + "，播报和死亡计数均已禁用");
-                }
-                
-                // 检查是否需要执行清场指令
-                if (baseEntity.getEnableDeathClear()) {
-                    // 创建指令队列并执行三次 kill 命令，延迟1秒后开始，间隔0.5秒
-                    CommandQueue commandQueue = new CommandQueue(entity, level);
-                    
-                    // 添加三次 kill 命令，分别在1.0s, 1.5s, 2.0s后执行
-                    commandQueue.addCommand("/kill @e[type=!minecraft:player]", 1000);  // 第1次在1秒后
-                    commandQueue.addCommand("/kill @e[type=!minecraft:player]", 1500);  // 第2次在1.5秒后
-                    commandQueue.addCommand("/kill @e[type=!minecraft:player]", 2000);  // 第3次在2秒后
-                    
-                    // 执行所有指令
-                    commandQueue.executeAll();
-                    System.out.println("已启动指令队列，将在2秒内执行3次清除命令（1秒延迟）");
-                } else {
-                    System.out.println("基地死亡清场已禁用，跳过指令队列执行");
-                }
+            ServerLevel level = (ServerLevel) victim.level();
+            level.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
+                    victim.getX(), victim.getY(), victim.getZ(),
+                    100, 0.5, 0.5, 0.5, 0.1);
+            
+            PhaseManager.checkTriggers("base_destroyed", attackerFaction, 0);
+            
+        } else {
+            String victimFaction = FactionHelper.getEntityFactionId(victim);
+            if (!attackerFaction.equals(victimFaction)) {
+                NetworkManager.sendEntityKillToAll(attackerFaction);
             }
-
-            // 基地死亡后检查 Monitor 条件，触发阶段切换
-            PhaseManager.checkTriggers("base_destroyed", factionId, 0);
-    }
-
-
+        }
     }
     public static boolean isBaseEntity(Entity entity) {
         return entity instanceof BaseEntity;
@@ -203,9 +172,6 @@ public class BaseSystem {
                 baseEntity.setAttackCooldown(attackCooldown);
                 baseEntity.setModelScale(modelScale);
                 baseEntity.setShowHealthBar(showHealthBar); // 设置血条可见性
-                baseEntity.setEnableDeathClear(enableDeathClear); // 设置死亡清场控制
-                baseEntity.setEnableBroadcast(enableBroadcast); // 设置播报控制
-                baseEntity.setEnableDeathCount(enableDeathCount); // 设置死亡计数控制
 
                 // 生成实体
                 serverLevel.addFreshEntity(baseEntity);
