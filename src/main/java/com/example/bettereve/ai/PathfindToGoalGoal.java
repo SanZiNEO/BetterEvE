@@ -105,10 +105,11 @@ public class PathfindToGoalGoal extends Goal {
     }
 
     private void selectNextTarget() {
+        arrived = false;
         String factionId = FactionHelper.getEntityFactionId(mob);
         List<GoalRegion> goals = GoalManager.getGoalRegionsByFaction(factionId);
         
-        // 先走自己阵营的 Goal
+        // 先走自己阵营的 Goal（从小到大）
         if (!goals.isEmpty()) {
             if (currentOrder < goals.size()) {
                 currentTarget = goals.get(Math.min(currentOrder, goals.size() - 1));
@@ -117,31 +118,30 @@ public class PathfindToGoalGoal extends Goal {
             }
         }
         
-        // 已走完所有自己阵营的 Goal，走向敌方
+        // 已走完所有自己阵营的 Goal，走向敌方（从大到小 = 最前沿）
         findEnemyGoal();
     }
     
     private boolean findEnemyGoal() {
-        // 简化：走向最近的敌方 Goal
+        arrived = false;
         List<GoalRegion> allGoals = GoalManager.getAllGoals();
-        GoalRegion nearest = null;
-        double nearestDist = Double.MAX_VALUE;
+        GoalRegion best = null;
+        int bestOrder = -1;
         
         for (GoalRegion goal : allGoals) {
             String goalFaction = goal.getFactionId();
             String mobFaction = FactionHelper.getEntityFactionId(mob);
             if (goalFaction != null && !goalFaction.equals(mobFaction)) {
-                double dist = mob.distanceToSqr(goal.getCenterX(), mob.getY(), goal.getCenterZ());
-                if (dist < nearestDist) {
-                    nearestDist = dist;
-                    nearest = goal;
+                if (goal.getOrder() > bestOrder) {
+                    bestOrder = goal.getOrder();
+                    best = goal;
                 }
             }
         }
         
-        if (nearest != null) {
-            currentTarget = nearest;
-            navigation.moveTo(nearest.getCenterX(), mob.getY(), nearest.getCenterZ(), 1.0);
+        if (best != null) {
+            currentTarget = best;
+            navigation.moveTo(best.getCenterX(), mob.getY(), best.getCenterZ(), 1.0);
             return true;
         }
         return false;
