@@ -46,8 +46,6 @@ public class TargetingHandler {
                         .filter(goal -> goal.getGoal() instanceof FactionHostileTargetGoal)
                         .forEach(goal -> ((FactionHostileTargetGoal) goal.getGoal()).forceRefreshTarget());
                 
-                // 同时强制刷新目标选择器，确保目标不会丢失
-                mob.targetSelector.tick();
             }
         }
     }

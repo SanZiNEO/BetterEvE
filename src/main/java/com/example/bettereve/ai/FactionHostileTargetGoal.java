@@ -32,22 +32,28 @@ public class FactionHostileTargetGoal extends TargetGoal {
     // 判断是否应该开始执行该目标
     @Override
     public boolean canUse() {
-        // 如果有已有的目标，长期保留，不频繁清除
-        if (target != null && target.isAlive() && isValidTarget(target)) {
+        double followRange = mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
+        double rangeSqr = followRange * followRange;
+
+        // 如果有已有的目标，检查距离和有效性
+        if (target != null && target.isAlive() && mob.distanceToSqr(target) <= rangeSqr && isValidTarget(target)) {
             return true;
         }
+        // 旧目标失效或超出范围，清除
+        if (target != null) {
+            target = null;
+            mob.setTarget(null);
+        }
 
-        // 在周围找到符合条件的目标，完全排除玩家
+        // 在周围找到符合条件的目标
         List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
                 LivingEntity.class,
-                mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
+                mob.getBoundingBox().inflate(followRange),
                 entity -> isValidTarget(entity)
         );
 
         if (nearbyEntities.isEmpty()) {
-            // 如果没有找到敌对目标，保留当前目标（长期保留）
-            // 不清除目标，避免频繁设置/清除导致的开销
-            return target != null;
+            return false;
         }
 
         // 找到最近的目标
@@ -154,37 +160,18 @@ public class FactionHostileTargetGoal extends TargetGoal {
                 nearest = entity;
             }
         }
-
         return nearest;
     }
-
-    // 检查目标是否有效 - 增强版友军判定
     private boolean isValidTarget(LivingEntity target) {
-        // 不能攻击自己
-        if (target == mob) {
-            return false;
-        }
-        
-        // 对非 CrystalEntity 的目标检查视线（LOS）
-        // CrystalEntity 是建筑，不需要 LOS；其他生物需要视线
-        if (!(target instanceof com.example.bettereve.entity.CrystalEntity)) {
-            if (!mob.hasLineOfSight(target)) {
-                return false;
-            }
-        }
-        
-        // 完全基于阵营判定：只攻击不同阵营的生物
+        if (target == mob) return false;
+        // 完全基于阵营判定，不检查视线（避免战斗中 LOS 短暂失效导致丢失目标）
         boolean isHostile = FactionHelper.isEntitiesHostile(this.mob, target);
-        
-        // 如果是友军，我们需要额外处理：取消敌对目标
         if (!isHostile) {
-            // 如果当前目标是友军，直接清除目标
             if (mob.getTarget() == target) {
                 mob.setTarget(null);
             }
             return false;
         }
-        
         return true;
     }
 }

@@ -50,7 +50,7 @@ public class PathfindToWaypointGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        if (arrived) {
+        if (arrived || mob.getTarget() != null) {
             return false;
         }
         return currentTarget != null && !navigation.isDone();
@@ -60,6 +60,7 @@ public class PathfindToWaypointGoal extends Goal {
     public void start() {
         currentOrder = mob.getPersistentData().getInt(WAYPOINT_ORDER_KEY);
         arrived = false;
+        checkCurrentPositionForWaypoint();
         selectNextTarget();
     }
 
@@ -76,11 +77,16 @@ public class PathfindToWaypointGoal extends Goal {
             return;
         }
 
-        // 检查是否到达当前目标
+        // 检查是否到达当前目标（只要踏入区域边界就算到达）
         if (currentTarget.isInside(mob.getX(), mob.getZ())) {
             currentOrder = currentTarget.getOrder();
             mob.getPersistentData().putInt(WAYPOINT_ORDER_KEY, currentOrder);
             selectNextTarget();
+            // 立即导航到下一个目标，不等重路由周期
+            if (currentTarget != null) {
+                navigation.moveTo(currentTarget.getCenterX(), mob.getY(), currentTarget.getCenterZ(), 1.0);
+                repathTimer = 0;
+            }
             return;
         }
 
@@ -91,6 +97,20 @@ public class PathfindToWaypointGoal extends Goal {
             double cx = currentTarget.getCenterX();
             double cz = currentTarget.getCenterZ();
             navigation.moveTo(cx, mob.getY(), cz, 1.0);
+        }
+    }
+
+    /**
+     * 检查实体当前位置是否在某个更远的路径点区域内（战斗中可能被推进去）。
+     * 如果是则跳过该点，避免战斗结束后往回走。
+     */
+    private void checkCurrentPositionForWaypoint() {
+        List<WaypointRegion> all = WaypointManager.getAllWaypoints();
+        for (WaypointRegion r : all) {
+            if (r.getOrder() > currentOrder && r.isInside(mob.getX(), mob.getZ())) {
+                currentOrder = r.getOrder();
+                mob.getPersistentData().putInt(WAYPOINT_ORDER_KEY, currentOrder);
+            }
         }
     }
 
