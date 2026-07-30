@@ -1,4 +1,6 @@
 package com.example.bettereve.phase;
+import com.example.bettereve.Bettereve;
+import net.minecraftforge.fml.common.Mod;
 
 import com.example.bettereve.crystal.CrystalSystem;
 
@@ -12,6 +14,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+@Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 
 public class PhaseManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(PhaseManager.class);
