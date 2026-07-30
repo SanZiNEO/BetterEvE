@@ -1,11 +1,21 @@
 {
   "id": "default",
   "name": "默认剧本",
-  "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方内塔即为胜利。",
+  "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方基地即为胜利。",
+  "keepAliveZone": { "x1": -60, "z1": -20, "x2": 60, "z2": 20 },
   "factions": [
-    { "id": "neutral", "name": "中立", "color": "#FFFFFF", "showOnScoreboard": false, "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
-    { "id": "red", "name": "红队", "color": "#FF0000", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
-    { "id": "blue", "name": "蓝队", "color": "#0000FF", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } }
+    {
+      "id": "neutral", "name": "中立", "color": "#FFFFFF", "showOnScoreboard": false,
+      "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0, "armorBonus": 7.0, "knockbackBonus": 1.2, "healthExponent": 1.4, "attackExponent": 1.42, "armorExponent": 0.9, "knockbackExponent": 0.95 }
+    },
+    {
+      "id": "red", "name": "红队", "color": "#FF0000",
+      "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0, "armorBonus": 7.0, "knockbackBonus": 1.2, "healthExponent": 1.4, "attackExponent": 1.42, "armorExponent": 0.9, "knockbackExponent": 0.95 }
+    },
+    {
+      "id": "blue", "name": "蓝队", "color": "#0000FF",
+      "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0, "armorBonus": 7.0, "knockbackBonus": 1.2, "healthExponent": 1.4, "attackExponent": 1.42, "armorExponent": 0.9, "knockbackExponent": 0.95 }
+    }
   ],
   "relations": [
     { "from": "red", "to": "blue", "type": "hostile" },
@@ -22,56 +32,37 @@
     {
       "id": "red_base",
       "factionId": "red",
-      "health": 8000,
-      "attackDamage": 20,
-      "armor": 8,
-      "attackRange": 15.0,
-      "attackCooldown": 2.0,
-      "sizeKey": "5x10",
-      "modelScale": 1.0,
-      "showHealthBar": true
+      "health": 8000, "attackDamage": 20, "armor": 8,
+      "attackRange": 15.0, "attackCooldown": 2.0,
+      "sizeKey": "5x10", "modelScale": 1.0, "showHealthBar": true
     },
     {
       "id": "red_normal_tower",
       "factionId": "red",
-      "health": 3000,
-      "attackDamage": 10,
-      "armor": 3,
-      "attackRange": 12.0,
-      "attackCooldown": 2.0,
-      "sizeKey": "3x10",
-      "modelScale": 1.0,
-      "showHealthBar": true
+      "health": 3000, "attackDamage": 10, "armor": 3,
+      "attackRange": 12.0, "attackCooldown": 2.0,
+      "sizeKey": "3x10", "modelScale": 1.0, "showHealthBar": true
     },
     {
       "id": "blue_base",
       "factionId": "blue",
-      "health": 8000,
-      "attackDamage": 20,
-      "armor": 8,
-      "attackRange": 15.0,
-      "attackCooldown": 2.0,
-      "sizeKey": "5x10",
-      "modelScale": 1.0,
-      "showHealthBar": true
+      "health": 8000, "attackDamage": 20, "armor": 8,
+      "attackRange": 15.0, "attackCooldown": 2.0,
+      "sizeKey": "5x10", "modelScale": 1.0, "showHealthBar": true
     },
     {
       "id": "blue_normal_tower",
       "factionId": "blue",
-      "health": 3000,
-      "attackDamage": 10,
-      "armor": 3,
-      "attackRange": 12.0,
-      "attackCooldown": 2.0,
-      "sizeKey": "3x10",
-      "modelScale": 1.0,
-      "showHealthBar": true
+      "health": 3000, "attackDamage": 10, "armor": 3,
+      "attackRange": 12.0, "attackCooldown": 2.0,
+      "sizeKey": "3x10", "modelScale": 1.0, "showHealthBar": true
     }
   ],
   "phases": [
     {
       "id": "match_start",
-      "announce": { "message": "§e§l战斗开始！摧毁敌方基地以获得胜利！", "duration": 5 },
+      "phaseType": "loop",
+      "description": "主游戏循环：放置防御塔，等待基地被摧毁",
       "commands": [
         { "delay": 0, "command": "title @a title \"§e§l比赛开始！\"" },
         { "delay": 5, "command": "time set day && weather clear" },
@@ -81,34 +72,20 @@
         { "delay": 0, "command": "bettereve crystal create blue 15 -60 0 3000 10 3 12 2 3x10 1 true blue_normal_tower" }
       ],
       "triggers": [
-        { "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "red_base_down" },
-        { "type": "crystal_destroyed", "targetId": "blue_base", "targetPhase": "blue_base_down" }
-      ]
-    },
-    {
-      "id": "red_base_down",
-      "commands": [
-        { "delay": 0, "command": "title @a title \"§c§l红方基地被摧毁！蓝队获得最终胜利！\"" }
-      ],
-      "triggers": [
-        { "type": "timer", "threshold": 3, "targetPhase": "blue_victory" }
-      ]
-    },
-    {
-      "id": "blue_base_down",
-      "commands": [
-        { "delay": 0, "command": "title @a title \"§9§l蓝方基地被摧毁！红队获得最终胜利！\"" }
-      ],
-      "triggers": [
-        { "type": "timer", "threshold": 3, "targetPhase": "red_victory" }
+        { "_comment": "红方基地被摧毁 → 蓝队胜利", "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "blue_victory" },
+        { "_comment": "蓝方基地被摧毁 → 红队胜利", "type": "crystal_destroyed", "targetId": "blue_base", "targetPhase": "red_victory" }
       ]
     },
     {
       "id": "blue_victory",
+      "phaseType": "branch",
+      "description": "蓝队胜利：显示胜利信息→清场→10秒倒计时→回到主循环",
+      "_comment": "只会在红方基地被摧毁时触发，与 red_victory 互斥",
       "commands": [
+        { "delay": 0, "command": "title @a title \"§c§l红方基地被摧毁！蓝队获得最终胜利！\"" },
+        { "delay": 0, "command": "title @a subtitle \"§7即将开始新的一局\"" },
         { "delay": 0, "command": "kill @e[type=!player]" },
         { "delay": 0, "command": "kill @e[type=!player]" },
-        { "delay": 0, "command": "title @a subtitle \"§7新的一局即将开始\"" },
         { "delay": 0, "command": "title @a title \"§e10\"" },
         { "delay": 1, "command": "title @a title \"§e9\"" },
         { "delay": 2, "command": "title @a title \"§e8\"" },
@@ -122,15 +99,18 @@
         { "delay": 10, "command": "title @a title \"§a§l重新开战！\"" }
       ],
       "triggers": [
-        { "type": "timer", "threshold": 12, "targetPhase": "phase_1" }
+        { "type": "timer", "threshold": 12, "targetPhase": "match_start" }
       ]
     },
     {
       "id": "red_victory",
+      "phaseType": "branch",
+      "description": "红队胜利：显示胜利信息→清场→10秒倒计时→回到主循环",
       "commands": [
+        { "delay": 0, "command": "title @a title \"§9§l蓝方基地被摧毁！红队获得最终胜利！\"" },
+        { "delay": 0, "command": "title @a subtitle \"§7即将开始新的一局\"" },
         { "delay": 0, "command": "kill @e[type=!player]" },
         { "delay": 0, "command": "kill @e[type=!player]" },
-        { "delay": 0, "command": "title @a subtitle \"§7新的一局即将开始\"" },
         { "delay": 0, "command": "title @a title \"§e10\"" },
         { "delay": 1, "command": "title @a title \"§e9\"" },
         { "delay": 2, "command": "title @a title \"§e8\"" },
@@ -144,22 +124,7 @@
         { "delay": 10, "command": "title @a title \"§a§l重新开战！\"" }
       ],
       "triggers": [
-        { "type": "timer", "threshold": 12, "targetPhase": "phase_1" }
-      ]
-    },
-    {
-      "id": "phase_1",
-      "announce": { "message": "§e§l新的一局开始！", "duration": 5 },
-      "commands": [
-        { "delay": 0, "command": "title @a title \"§e§l新的一局开始！\"" },
-        { "delay": 0, "command": "bettereve crystal create red -40 -60 0 8000 20 8 15 2 5x10 1 true red_base" },
-        { "delay": 0, "command": "bettereve crystal create red -15 -60 0 3000 10 3 12 2 3x10 1 true red_normal_tower" },
-        { "delay": 0, "command": "bettereve crystal create blue 40 -60 0 8000 20 8 15 2 5x10 1 true blue_base" },
-        { "delay": 0, "command": "bettereve crystal create blue 15 -60 0 3000 10 3 12 2 3x10 1 true blue_normal_tower" }
-      ],
-      "triggers": [
-        { "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "red_base_down" },
-        { "type": "crystal_destroyed", "targetId": "blue_base", "targetPhase": "blue_base_down" }
+        { "type": "timer", "threshold": 12, "targetPhase": "match_start" }
       ]
     }
   ],

@@ -142,6 +142,9 @@ public class PhaseManager {
                 if (trigger.getTargetPhase() == null) continue;
                 if (trigger.getThreshold() > 0) {
                     timerTicks++;
+                    if (timerTicks % 100 == 0) {
+                        LOGGER.debug("Timer tick: phase={}, timerTicks={}/{}", currentPhaseId, timerTicks, trigger.getThreshold() * 20);
+                    }
                     if (timerTicks >= trigger.getThreshold() * 20) {
                         LOGGER.info("Timer trigger fired: -> phase {}", trigger.getTargetPhase());
                         timerTicks = 0;

@@ -107,16 +107,6 @@ public class BetterEvEConfigScreen extends Screen {
             entries.add(new ConfigEntry("水晶基地清空地图范围（格）",
                     String.valueOf(BetterEvEConfig.INSTANCE.crystal_clearRadius.get()),
                     "int", this.parent));
-            // 实体等级系统配置
-            entries.add(new ConfigEntry("每级生命值加成比例（%）",
-                    String.valueOf(BetterEvEConfig.INSTANCE.entitylv_healthBonus.get()),
-                    "double", this.parent));
-            entries.add(new ConfigEntry("每级攻击力加成比例（%）",
-                    String.valueOf(BetterEvEConfig.INSTANCE.entitylv_attackBonus.get()),
-                    "double", this.parent));
-            entries.add(new ConfigEntry("等级上限",
-                    String.valueOf(BetterEvEConfig.INSTANCE.entitylv_maxLevel.get()),
-                    "int", this.parent));
 
 
             // 全局开关配置
@@ -227,15 +217,6 @@ public class BetterEvEConfigScreen extends Screen {
                     break;
                 case "水晶基地清空地图范围（格）":
                     BetterEvEConfig.INSTANCE.crystal_clearRadius.set(Integer.parseInt(value));
-                    break;
-                case "每级生命值加成比例（%）":
-                    BetterEvEConfig.INSTANCE.entitylv_healthBonus.set(Double.parseDouble(value));
-                    break;
-                case "每级攻击力加成比例（%）":
-                    BetterEvEConfig.INSTANCE.entitylv_attackBonus.set(Double.parseDouble(value));
-                    break;
-                case "等级上限":
-                    BetterEvEConfig.INSTANCE.entitylv_maxLevel.set(Integer.parseInt(value));
                     break;
 
             }

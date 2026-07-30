@@ -29,10 +29,6 @@ public class BetterEvEConfig {
     public final ForgeConfigSpec.IntValue crystal_clearRadius;
     
 
-    // ===================== 5. 实体等级系统配置 =====================
-    public final ForgeConfigSpec.DoubleValue entitylv_healthBonus;
-    public final ForgeConfigSpec.DoubleValue entitylv_attackBonus;
-    public final ForgeConfigSpec.IntValue entitylv_maxLevel;
 
     // ===================== 6. 全局开关配置 =====================
     public final ForgeConfigSpec.ConfigValue<Boolean> global_hudEnabled;
@@ -87,19 +83,6 @@ public class BetterEvEConfig {
                 .comment("水晶基地清空地图范围（以基地为中心的半径，格）[当前未使用]")
                 .defineInRange("clearRadius", 50, 10, 200);
         builder.pop();
-        // ---------- 5. 等级系统配置 ----------
-        builder.push("entitylv");
-        entitylv_healthBonus = builder
-                .comment("每级生命值加成比例（%）默认10%")
-                .defineInRange("healthBonus", 10.0D, 0.0D, 100.0D);
-        entitylv_attackBonus = builder
-                .comment("每级攻击力加成比例（%）默认10%")
-                .defineInRange("attackBonus", 10.0D, 0.0D, 100.0D);
-        entitylv_maxLevel = builder
-                .comment("等级上限")
-                .defineInRange("maxLevel", 500, 1, 1000);
-        builder.pop();
-
 
         // ---------- 6. 全局开关配置 ----------
         builder.push("global");

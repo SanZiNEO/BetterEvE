@@ -47,8 +47,7 @@ public class EntityLevelSystem {
     public static void setEntityLevel(Entity entity, int level) {
         if (level < 0) level = 0;
         Scenario.EntityLevelConfig levelCfg = getEntityLevelConfig(entity);
-        int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.entitylv_maxLevel.get();
-        if (level > maxLevel) level = maxLevel;
+        if (levelCfg != null && level > levelCfg.getMaxLevel()) level = levelCfg.getMaxLevel();
         
         // 同时存储到内存和 NBT 中，确保持久性
         entityLevels.put(entity.getUUID(), level);
@@ -148,23 +147,27 @@ public class EntityLevelSystem {
     public static void applySpawnLevel(LivingEntity entity, int level) {
         if (level <= 0) return;
 
-        // 检查实体是否有NBT属性（用于判断是否可以突破上限）
         boolean hasNbtAttributes = hasCustomNbtAttributes(entity);
 
-        Scenario.EntityLevelConfig levelCfg = getEntityLevelConfig(entity);
-        double healthBonus = (levelCfg != null ? levelCfg.getHealthBonus() : BetterEvEConfig.INSTANCE.entitylv_healthBonus.get()) / 100;
-        double attackBonus = (levelCfg != null ? levelCfg.getAttackBonus() : BetterEvEConfig.INSTANCE.entitylv_attackBonus.get()) / 100;
-        int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.entitylv_maxLevel.get();
+        Scenario.EntityLevelConfig cfg = getEntityLevelConfig(entity);
+        if (cfg == null) return;
+        double healthBonus = cfg.getHealthBonus() / 100;
+        double attackBonus = cfg.getAttackBonus() / 100;
+        double armorBonus = cfg.getArmorBonus() / 100;
+        double knockbackBonus = cfg.getKnockbackBonus() / 100;
+        double healthExp = cfg.getHealthExponent();
+        double attackExp = cfg.getAttackExponent();
+        double armorExp = cfg.getArmorExponent();
+        double knockbackExp = cfg.getKnockbackExponent();
 
         // 生命值
         if (entity.getAttribute(Attributes.MAX_HEALTH) != null) {
-            double healthMultiplier = 1 + healthBonus * Math.pow(level, 1.4);
-            double maxHealth = hasNbtAttributes ? Double.MAX_VALUE : 200.0; // NBT属性突破上限
+            double healthMultiplier = 1 + healthBonus * Math.pow(level, healthExp);
+            double maxHealth = hasNbtAttributes ? Double.MAX_VALUE : 200.0;
             double finalHealth = Math.min(healthMultiplier, maxHealth);
             double baseHealth = entity.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
             double newHealth = baseHealth * finalHealth;
             entity.getAttribute(Attributes.MAX_HEALTH).setBaseValue(newHealth);
-            
             if (entity.getHealth() == baseHealth) {
                 entity.setHealth((float)newHealth);
             } else {
@@ -176,8 +179,8 @@ public class EntityLevelSystem {
 
         // 攻击力
         if (entity.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
-            double attackMultiplier = 1 + attackBonus * Math.pow(level, 1.42);
-            double maxAttack = hasNbtAttributes ? Double.MAX_VALUE : 200.0; // NBT属性突破上限
+            double attackMultiplier = 1 + attackBonus * Math.pow(level, attackExp);
+            double maxAttack = hasNbtAttributes ? Double.MAX_VALUE : 200.0;
             double finalAttack = Math.min(attackMultiplier, maxAttack);
             double baseDamage = entity.getAttribute(Attributes.ATTACK_DAMAGE).getBaseValue();
             double newDamage = baseDamage * finalAttack;
@@ -186,8 +189,8 @@ public class EntityLevelSystem {
 
         // 护甲值
         if (entity.getAttribute(Attributes.ARMOR) != null) {
-            double armorMultiplier = 1 + 0.07 * Math.pow(level, 0.9);
-            double maxArmor = hasNbtAttributes ? Double.MAX_VALUE : 2.0; // NBT属性突破上限
+            double armorMultiplier = 1 + armorBonus * Math.pow(level, armorExp);
+            double maxArmor = hasNbtAttributes ? Double.MAX_VALUE : 2.0;
             double finalArmor = Math.min(armorMultiplier, maxArmor);
             double baseArmor = entity.getAttribute(Attributes.ARMOR).getBaseValue();
             double newArmor = baseArmor * finalArmor;
@@ -196,43 +199,36 @@ public class EntityLevelSystem {
 
         // 击退抗性
         if (entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE) != null) {
-            double knockbackResistance = 0.012 * Math.pow(level, 0.95);
-            double maxKnockback = hasNbtAttributes ? Double.MAX_VALUE : 1.0; // NBT属性突破上限
+            double knockbackResistance = knockbackBonus * Math.pow(level, knockbackExp);
+            double maxKnockback = hasNbtAttributes ? Double.MAX_VALUE : 1.0;
             double finalKnockback = Math.min(knockbackResistance, maxKnockback);
             entity.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(finalKnockback);
         }
     }
-
     /**
      * 应用投掷物等级属性
      */
     public static void applyProjectileLevel(AbstractArrow projectile, int level) {
         if (level <= 0) return;
 
-        // 获取配置的属性加成百分比
-        double attackBonus = BetterEvEConfig.INSTANCE.entitylv_attackBonus.get() / 100;
-        
-        // 伤害加成（与 EntityLevelSystem 相同的非线性增长公式）
-        double damageMultiplier = 1 + attackBonus * Math.pow(level, 1.42);
-        double maxDamage = 200.0; // 限制最大伤害倍数为 200 倍
-        double finalDamage = Math.min(damageMultiplier, maxDamage);
-        
-        // 设置新的基础伤害
-        double currentDamage = projectile.getBaseDamage();
-        double newDamage = currentDamage * finalDamage;
-        projectile.setBaseDamage(newDamage);
-        
-        // 穿透加成（非线性增长，限制最大值为 20 倍穿透）
-        double pierceBonus = 0.05 * Math.pow(level, 1.2);
-        double maxPierce = 20.0; // 限制最大穿透倍数为 20 倍
-        double finalPierce = Math.min(pierceBonus, maxPierce);
-        
-        // 设置新的穿透等级（确保至少为 0）
-        byte currentPierce = projectile.getPierceLevel();
-        byte newPierce = (byte) Math.max((int) finalPierce, currentPierce);
-        projectile.setPierceLevel(newPierce);
-    }
+        // 尝试获取发射者的阵营等级配置
+        Entity owner = projectile.getOwner();
+        Scenario.EntityLevelConfig cfg = owner != null ? getEntityLevelConfig(owner) : null;
+        double attackBonus = cfg != null ? cfg.getAttackBonus() / 100 : 0.1; // 默认10%
+        double attackExp = cfg != null ? cfg.getAttackExponent() : 1.42;
 
+        double damageMultiplier = 1 + attackBonus * Math.pow(level, attackExp);
+        double maxDamage = 200.0;
+        double finalDamage = Math.min(damageMultiplier, maxDamage);
+        double currentDamage = projectile.getBaseDamage();
+        projectile.setBaseDamage(currentDamage * finalDamage);
+
+        double pierceBonus = 0.05 * Math.pow(level, 1.2);
+        double maxPierce = 20.0;
+        double finalPierce = Math.min(pierceBonus, maxPierce);
+        byte currentPierce = projectile.getPierceLevel();
+        projectile.setPierceLevel((byte) Math.max((int) finalPierce, currentPierce));
+    }
     /**
      * 检查实体是否有自定义NBT属性
      */
@@ -245,71 +241,39 @@ public class EntityLevelSystem {
     /**
      * 获取等级数值表（用于显示，根据配置动态生成）
      */
-    public static String getLevelTable() {
-        int maxLevel = BetterEvEConfig.INSTANCE.entitylv_maxLevel.get();
+    public static String getLevelTable(Scenario.EntityLevelConfig cfg) {
+        if (cfg == null) return "未加载剧本或未配置等级参数";
+        int maxLevel = cfg.getMaxLevel();
+        double healthBonus = cfg.getHealthBonus() / 100;
+        double attackBonus = cfg.getAttackBonus() / 100;
+        double armorBonus = cfg.getArmorBonus() / 100;
+        double knockbackBonus = cfg.getKnockbackBonus() / 100;
+        double healthExp = cfg.getHealthExponent();
+        double attackExp = cfg.getAttackExponent();
+        double armorExp = cfg.getArmorExponent();
+        double knockbackExp = cfg.getKnockbackExponent();
+
         StringBuilder sb = new StringBuilder(String.format("等级属性表 (0-%d级):\n", maxLevel));
         sb.append("等级 | 生命值 | 攻击力 | 护甲 | 击退抗性\n");
         sb.append("-----|--------|--------|------|----------\n");
-        
-        // 计算显示的等级间隔
+
         int step = 1;
         if (maxLevel > 100) step = maxLevel / 10;
         else if (maxLevel > 50) step = 10;
         else if (maxLevel > 20) step = 5;
-        
-        // 添加0级到最大级的属性表
+
         for (int level = 0; level <= maxLevel; level += step) {
-            // 计算属性加成
-            double healthBonus = BetterEvEConfig.INSTANCE.entitylv_healthBonus.get() / 100;
-            double attackBonus = BetterEvEConfig.INSTANCE.entitylv_attackBonus.get() / 100;
-            
-            double healthMultiplier = 1 + healthBonus * Math.pow(level, 1.4);
+            double healthMultiplier = 1 + healthBonus * Math.pow(level, healthExp);
             double finalHealth = Math.min(healthMultiplier, 200.0);
-            
-            double attackMultiplier = 1 + attackBonus * Math.pow(level, 1.42);
+            double attackMultiplier = 1 + attackBonus * Math.pow(level, attackExp);
             double finalAttack = Math.min(attackMultiplier, 200.0);
-            
-            double armorMultiplier = 1 + 0.07 * Math.pow(level, 0.9);
+            double armorMultiplier = 1 + armorBonus * Math.pow(level, armorExp);
             double finalArmor = Math.min(armorMultiplier, 2.0);
-            
-            double knockbackResistance = 0.012 * Math.pow(level, 0.95);
+            double knockbackResistance = knockbackBonus * Math.pow(level, knockbackExp);
             double finalKnockback = Math.min(knockbackResistance, 1.0);
-            
-            sb.append(String.format("%3d  | %4.0f倍 | %4.0f倍 | %3.1f倍 | %3.0f%%\n", 
-                level, 
-                finalHealth,
-                finalAttack,
-                finalArmor,
-                finalKnockback * 100));
+            sb.append(String.format("%3d  | %4.0f倍 | %4.0f倍 | %3.1f倍 | %3.0f%%\n",
+                level, finalHealth, finalAttack, finalArmor, finalKnockback * 100));
         }
-        
-        // 添加最大级的属性
-        if (maxLevel % step != 0) {
-            double healthBonus = BetterEvEConfig.INSTANCE.entitylv_healthBonus.get() / 100;
-            double attackBonus = BetterEvEConfig.INSTANCE.entitylv_attackBonus.get() / 100;
-            
-            double healthMultiplier = 1 + healthBonus * Math.pow(maxLevel, 1.4);
-            double finalHealth = Math.min(healthMultiplier, 200.0);
-            
-            double attackMultiplier = 1 + attackBonus * Math.pow(maxLevel, 1.42);
-            double finalAttack = Math.min(attackMultiplier, 200.0);
-            
-            double armorMultiplier = 1 + 0.07 * Math.pow(maxLevel, 0.9);
-            double finalArmor = Math.min(armorMultiplier, 2.0);
-            
-            double knockbackResistance = 0.012 * Math.pow(maxLevel, 0.95);
-            double finalKnockback = Math.min(knockbackResistance, 1.0);
-            
-            sb.append(String.format("%3d  | %4.0f倍 | %4.0f倍 | %3.1f倍 | %3.0f%%\n", 
-                maxLevel, 
-                finalHealth,
-                finalAttack,
-                finalArmor,
-                finalKnockback * 100));
-        }
-        
-        sb.append("\n注意：使用NBT属性的实体可以突破属性上限！");
-        
         return sb.toString();
     }
 }

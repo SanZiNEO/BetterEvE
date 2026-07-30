@@ -1,6 +1,8 @@
 package com.example.bettereve.entity;
 
 import com.example.bettereve.faction.FactionHelper;
+import com.example.bettereve.scenario.Scenario;
+import com.example.bettereve.scenario.ScenarioManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -649,6 +651,16 @@ public class CrystalEntity extends Mob {
         return SoundEvents.GENERIC_EXPLODE;
     }
 
+    // 处理客户端实体事件（字节100 = 攻击音效）
+    @Override
+    public void handleEntityEvent(byte b) {
+        if (b == 100) {
+            this.playSound(this.getAttackSound(), 1.0F, 1.0F);
+        } else {
+            super.handleEntityEvent(b);
+        }
+    }
+
     // 重写视线检查方法，实现视线穿墙
     @Override
     public boolean hasLineOfSight(Entity entity) {
@@ -673,6 +685,26 @@ public class CrystalEntity extends Mob {
     @Override
     public boolean isInvisibleTo(Player player) {
         return false;
+    }
+
+    // 防止实体被原版清除机制移除（在keepAliveZone内时禁用消失检查）
+    @Override
+    public void checkDespawn() {
+        Scenario scenario = ScenarioManager.getActiveScenario();
+        if (scenario != null) {
+            var zone = scenario.getKeepAliveZone();
+            if (zone != null && isWithinKeepAlive(zone)) {
+                this.noActionTime = 0;
+                return;
+            }
+        }
+        super.checkDespawn();
+    }
+
+    private boolean isWithinKeepAlive(Scenario.KeepAliveZone zone) {
+        double x = this.getX(), z = this.getZ();
+        return x >= Math.min(zone.getX1(), zone.getX2()) && x <= Math.max(zone.getX1(), zone.getX2())
+            && z >= Math.min(zone.getZ1(), zone.getZ2()) && z <= Math.max(zone.getZ1(), zone.getZ2());
     }
 
     // 攻击目标选择器 - 参考 Minecraft 原版 Guardian 类实现
@@ -780,7 +812,7 @@ public class CrystalEntity extends Mob {
                 if (this.attackTime == 0) {
                     this.entity.setActiveAttackTarget(this.target.getId());
                     if (!this.entity.isSilent()) {
-                        this.entity.level().broadcastEntityEvent(this.entity, (byte)21);
+                        this.entity.level().broadcastEntityEvent(this.entity, (byte)100);
                     }
                 } else if (this.attackTime >= this.entity.getAttackDuration()) {
                     // 攻击完成，造成伤害

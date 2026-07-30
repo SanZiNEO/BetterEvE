@@ -15,6 +15,7 @@ public class Scenario {
     private List<CrystalTemplateDef> crystals;
     private List<PhaseDef> phases;
     private ScenarioOptions options;
+    private KeepAliveZone keepAliveZone;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -33,6 +34,8 @@ public class Scenario {
     public List<PhaseDef> getPhases() { return phases; }
     public void setPhases(List<PhaseDef> phases) { this.phases = phases; }
     public ScenarioOptions getOptions() { return options; }
+    public KeepAliveZone getKeepAliveZone() { return keepAliveZone; }
+    public void setKeepAliveZone(KeepAliveZone keepAliveZone) { this.keepAliveZone = keepAliveZone; }
     public void setOptions(ScenarioOptions options) { this.options = options; }
 
     public static class FactionDef {
@@ -40,7 +43,7 @@ public class Scenario {
         private String name;
         private String color;
         private boolean showOnScoreboard = true;
-        private EntityLevelConfig entityLevelConfig = new EntityLevelConfig();
+        private EntityLevelConfig entitylvConfig = new EntityLevelConfig();
         
         public FactionDef() {}
         public FactionDef(String id, String name, String color) {
@@ -59,30 +62,55 @@ public class Scenario {
         }
         public boolean isShowOnScoreboard() { return showOnScoreboard; }
         public void setShowOnScoreboard(boolean showOnScoreboard) { this.showOnScoreboard = showOnScoreboard; }
-        public EntityLevelConfig getEntityLevelConfig() { return entityLevelConfig; }
-        public void setEntityLevelConfig(EntityLevelConfig entityLevelConfig) { this.entityLevelConfig = entityLevelConfig; }
+        public EntityLevelConfig getEntityLevelConfig() { return entitylvConfig; }
+        public void setEntityLevelConfig(EntityLevelConfig config) { this.entitylvConfig = config; }
     }
 
     public static class EntityLevelConfig {
         private int maxLevel = 500;
         private double healthBonus = 10.0;
         private double attackBonus = 10.0;
+        private double armorBonus = 7.0;
+        private double knockbackBonus = 1.2;
+        private double healthExponent = 1.4;
+        private double attackExponent = 1.42;
+        private double armorExponent = 0.9;
+        private double knockbackExponent = 0.95;
         public int getMaxLevel() { return maxLevel; }
         public void setMaxLevel(int maxLevel) { this.maxLevel = maxLevel; }
         public double getHealthBonus() { return healthBonus; }
         public void setHealthBonus(double healthBonus) { this.healthBonus = healthBonus; }
         public double getAttackBonus() { return attackBonus; }
         public void setAttackBonus(double attackBonus) { this.attackBonus = attackBonus; }
+        public double getArmorBonus() { return armorBonus; }
+        public void setArmorBonus(double armorBonus) { this.armorBonus = armorBonus; }
+        public double getKnockbackBonus() { return knockbackBonus; }
+        public void setKnockbackBonus(double knockbackBonus) { this.knockbackBonus = knockbackBonus; }
+        public double getHealthExponent() { return healthExponent; }
+        public void setHealthExponent(double healthExponent) { this.healthExponent = healthExponent; }
+        public double getAttackExponent() { return attackExponent; }
+        public void setAttackExponent(double attackExponent) { this.attackExponent = attackExponent; }
+        public double getArmorExponent() { return armorExponent; }
+        public void setArmorExponent(double armorExponent) { this.armorExponent = armorExponent; }
+        public double getKnockbackExponent() { return knockbackExponent; }
+        public void setKnockbackExponent(double knockbackExponent) { this.knockbackExponent = knockbackExponent; }
     }
 
+    public static class KeepAliveZone {
+        private double x1, z1, x2, z2;
+        public double getX1() { return x1; }
+        public void setX1(double x1) { this.x1 = x1; }
+        public double getZ1() { return z1; }
+        public void setZ1(double z1) { this.z1 = z1; }
+        public double getX2() { return x2; }
+        public void setX2(double x2) { this.x2 = x2; }
+        public double getZ2() { return z2; }
+        public void setZ2(double z2) { this.z2 = z2; }
+    }
     public static class RelationDef {
         private String from;
         private String to;
-        private String type; // "hostile" 或 "neutral"
-        public RelationDef() {}
-        public RelationDef(String from, String to, String type) {
-            this.from = from; this.to = to; this.type = type;
-        }
+        private String type;
         public String getFrom() { return from; }
         public void setFrom(String from) { this.from = from; }
         public String getTo() { return to; }
@@ -144,23 +172,27 @@ public class Scenario {
         public boolean isShowHealthBar() { return showHealthBar; }
         public void setShowHealthBar(boolean showHealthBar) { this.showHealthBar = showHealthBar; }
     }
-
-
     public static class PhaseDef {
         private String id;
+        private String phaseType = "point"; // "loop" | "branch" | "point"
+        private String description;
         private AnnounceDef announce;
         private List<CommandDef> commands;
+        private List<TriggerDef> triggers;
         private SpawnBasesDef spawnBases;
-        private int resetAfter; // 秒，0=不重置
-    private List<TriggerDef> triggers;
-    public List<TriggerDef> getTriggers() { return triggers; }
-    public void setTriggers(List<TriggerDef> triggers) { this.triggers = triggers; }
+        private int resetAfter;
         public String getId() { return id; }
         public void setId(String id) { this.id = id; }
+        public String getPhaseType() { return phaseType; }
+        public void setPhaseType(String phaseType) { this.phaseType = phaseType; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
         public AnnounceDef getAnnounce() { return announce; }
         public void setAnnounce(AnnounceDef announce) { this.announce = announce; }
         public List<CommandDef> getCommands() { return commands; }
         public void setCommands(List<CommandDef> commands) { this.commands = commands; }
+        public List<TriggerDef> getTriggers() { return triggers; }
+        public void setTriggers(List<TriggerDef> triggers) { this.triggers = triggers; }
         public SpawnBasesDef getSpawnBases() { return spawnBases; }
         public void setSpawnBases(SpawnBasesDef spawnBases) { this.spawnBases = spawnBases; }
         public int getResetAfter() { return resetAfter; }
