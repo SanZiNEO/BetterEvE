@@ -3,7 +3,7 @@
   "name": "默认剧本",
   "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方核心即为胜利。",
   "factions": [
-    { "id": "neutral", "name": "中立", "color": "#FFFFFF", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
+    { "id": "neutral", "name": "中立", "color": "#FFFFFF", "showOnScoreboard": false, "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
     { "id": "red", "name": "红队", "color": "#FF0000", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
     { "id": "blue", "name": "蓝队", "color": "#0000FF", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } }
   ],
@@ -73,8 +73,8 @@
       "id": "match_start",
       "announce": { "message": "§e§l战斗开始！摧毁敌方核心以获得胜利！", "duration": 5 },
       "commands": [
-        { "delay": 0, "command": "say 比赛开始！" },
-        { "delay": 5, "command": "time set day && weather clear" }
+        { "delay": 0, "command": "title @a title §e§l比赛开始！" },
+        { "delay": 5, "command": "time set day && weather clear" },
       ],
       "triggers": [
         { "type": "base_destroyed", "factionId": "red", "targetPhase": "blue_victory" },
@@ -85,7 +85,7 @@
       "id": "blue_victory",
       "announce": { "message": "§9§l蓝队胜利！红队核心已被摧毁！", "duration": 10 },
       "commands": [
-        { "delay": 0, "command": "say 蓝队获胜！" }
+        { "delay": 0, "command": "title @a title §9§l蓝队胜利！红队核心已被摧毁！" },
       ],
       "triggers": [
         { "type": "timer", "threshold": 30, "targetPhase": "match_start" }
@@ -95,7 +95,7 @@
       "id": "red_victory",
       "announce": { "message": "§c§l红队胜利！蓝队核心已被摧毁！", "duration": 10 },
       "commands": [
-        { "delay": 0, "command": "say 红队获胜！" }
+        { "delay": 0, "command": "title @a title §c§l红队胜利！蓝队核心已被摧毁！" },
       ],
       "triggers": [
         { "type": "timer", "threshold": 30, "targetPhase": "match_start" }

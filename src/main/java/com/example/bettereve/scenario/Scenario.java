@@ -39,6 +39,9 @@ public class Scenario {
         private String id;
         private String name;
         private String color;
+        private boolean showOnScoreboard = true;
+        private EntityLevelConfig entityLevelConfig = new EntityLevelConfig();
+        
         public FactionDef() {}
         public FactionDef(String id, String name, String color) {
             this.id = id; this.name = name; this.color = color;
@@ -49,9 +52,15 @@ public class Scenario {
         public void setName(String name) { this.name = name; }
         public String getColor() { return color; }
         public void setColor(String color) { this.color = color; }
-    private EntityLevelConfig entityLevelConfig = new EntityLevelConfig();
-    public EntityLevelConfig getEntityLevelConfig() { return entityLevelConfig; }
-    public void setEntityLevelConfig(EntityLevelConfig entityLevelConfig) { this.entityLevelConfig = entityLevelConfig; }
+        public int getColorInt() {
+            if (color == null || !color.startsWith("#")) return 0xFFFFFF;
+            try { return Integer.parseInt(color.substring(1), 16); }
+            catch (NumberFormatException e) { return 0xFFFFFF; }
+        }
+        public boolean isShowOnScoreboard() { return showOnScoreboard; }
+        public void setShowOnScoreboard(boolean showOnScoreboard) { this.showOnScoreboard = showOnScoreboard; }
+        public EntityLevelConfig getEntityLevelConfig() { return entityLevelConfig; }
+        public void setEntityLevelConfig(EntityLevelConfig entityLevelConfig) { this.entityLevelConfig = entityLevelConfig; }
     }
 
     public static class EntityLevelConfig {

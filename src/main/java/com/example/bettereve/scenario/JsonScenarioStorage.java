@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,16 +43,13 @@ public class JsonScenarioStorage implements ScenarioStorage {
     
     @Override
     public Scenario readScenario(String name) throws ScenarioLoadException {
-        // 先尝试运行时目录
+        // 始终从预设同步到运行时
+        copyPresetToRuntime(name);
+        
+        // 从运行时读取
         Path runtimeFile = runtimeDir.resolve(name + ".json");
         if (Files.exists(runtimeFile)) {
             return readFromPath(runtimeFile, name);
-        }
-        // 再尝试预设目录
-        Path presetFile = presetDir.resolve(name + ".json");
-        if (Files.exists(presetFile)) {
-            copyPresetToRuntime(name);
-            return readFromPath(presetFile, name);
         }
         throw new ScenarioLoadException("Scenario file not found: " + name);
     }
@@ -88,13 +86,12 @@ public class JsonScenarioStorage implements ScenarioStorage {
             throw new ScenarioLoadException("Failed to read scenario file " + file + ": " + e.getMessage());
         }
     }
-    
     private void copyPresetToRuntime(String name) {
         Path presetFile = presetDir.resolve(name + ".json");
         Path runtimeFile = getOrCreateRuntimeDir().resolve(name + ".json");
-        if (Files.exists(presetFile) && !Files.exists(runtimeFile)) {
+        if (Files.exists(presetFile)) {
             try {
-                Files.copy(presetFile, runtimeFile);
+                Files.copy(presetFile, runtimeFile, StandardCopyOption.REPLACE_EXISTING);
                 LOGGER.info("Copied preset scenario {} to runtime directory", name);
             } catch (IOException e) {
                 LOGGER.error("Failed to copy preset scenario {}", name, e);

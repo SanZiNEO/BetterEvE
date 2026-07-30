@@ -17,6 +17,7 @@ public class CommandExecutor {
 
     /**
      * 执行指令列表，每个指令支持 delay 延迟（tick）。
+     * 支持 && 链式指令（如 "time set day && weather clear"）。
      */
     public static void executeCommands(List<Scenario.CommandDef> commands) {
         if (commands == null || commands.isEmpty()) return;
@@ -31,22 +32,28 @@ public class CommandExecutor {
                 // 带延迟执行
                 int delay = cmd.getDelay() * 20; // 秒转 tick
                 String command = cmd.getCommand();
-                server.execute(() -> {
-                    try {
-                        server.getCommands().performPrefixedCommand(
-                                server.createCommandSourceStack(), command);
-                    } catch (Exception e) {
-                        LOGGER.error("Failed to execute delayed command: {}", command, e);
-                    }
-                });
+                server.execute(() -> executeCommandChain(server, command));
             } else {
                 // 立即执行
-                try {
-                    server.getCommands().performPrefixedCommand(
-                            server.createCommandSourceStack(), cmd.getCommand());
-                } catch (Exception e) {
-                    LOGGER.error("Failed to execute command: {}", cmd.getCommand(), e);
-                }
+                executeCommandChain(server, cmd.getCommand());
+            }
+        }
+    }
+
+    /**
+     * 执行一条指令，支持 && 链式拆分。
+     * 如 "time set day && weather clear" 会拆成两条依次执行。
+     */
+    private static void executeCommandChain(MinecraftServer server, String command) {
+        String[] parts = command.split("\\s*&&\\s*");
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) continue;
+            try {
+                server.getCommands().performPrefixedCommand(
+                        server.createCommandSourceStack(), trimmed);
+            } catch (Exception e) {
+                LOGGER.error("Failed to execute command: {}", trimmed, e);
             }
         }
     }
