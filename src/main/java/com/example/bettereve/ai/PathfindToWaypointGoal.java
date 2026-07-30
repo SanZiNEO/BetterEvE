@@ -56,6 +56,14 @@ public class PathfindToWaypointGoal extends Goal {
         arrived = false;
         checkCurrentPositionForWaypoint();
         selectNextTarget();
+        // 如果选中的目标就在当前位置，跳过
+        if (currentTarget != null && currentTarget.isInside(mob.getX(), mob.getZ())) {
+            currentOrder = currentTarget.getOrder();
+            selectNextTarget();
+        }
+        if (currentTarget != null) {
+            navigateToFarthest(currentTarget);
+        }
         LOGGER.info("[{}] 寻路开始 order={}", mob.getDisplayName().getString(), currentOrder);
     }
 
@@ -81,6 +89,11 @@ public class PathfindToWaypointGoal extends Goal {
             LOGGER.info("[{}] 到达区域={} order={}->{}", mob.getDisplayName().getString(),
                 currentTarget != null ? currentTarget.getId() : "终点", oldOrder,
                 currentTarget != null ? currentTarget.getOrder() : "-");
+            // 如果新目标也在当前区域内（敌方/己方最后区域重复选中），再跳一次
+            if (currentTarget != null && currentTarget.isInside(mob.getX(), mob.getZ())) {
+                currentOrder = currentTarget.getOrder();
+                selectNextTarget();
+            }
             if (currentTarget != null) {
                 navigateToFarthest(currentTarget);
                 repathTimer = 0;
