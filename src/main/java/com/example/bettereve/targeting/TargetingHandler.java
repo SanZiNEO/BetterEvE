@@ -2,7 +2,6 @@ package com.example.bettereve.targeting;
 
 import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.ai.FactionHostileTargetGoal;
-import com.example.bettereve.ai.PathfindToWaypointGoal;
 import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -78,7 +77,7 @@ public class TargetingHandler {
         // 添加阵营目标选择器（优先级最高）
         mob.targetSelector.addGoal(0, new FactionHostileTargetGoal(mob, true, true));
         
-        // 如果是被动生物（没有 RangedAttackGoal 也没有 MeleeAttackGoal），添加一个近战攻击 Goal
+        // 添加近战攻击 Goal（如无远程攻击）
         if (mob instanceof PathfinderMob pathfinder) {
             boolean hasRanged = pathfinder.goalSelector.getAvailableGoals().stream()
                     .anyMatch(g -> g.getGoal() instanceof RangedAttackGoal);
@@ -87,11 +86,23 @@ public class TargetingHandler {
             if (!hasRanged && !hasMelee) {
                 pathfinder.goalSelector.addGoal(2, new MeleeAttackGoal(pathfinder, 1.0, false));
             }
-            // 对非 neutral 阵营生物添加寻路 AI（优先级 1，在战斗 Goal 0 之后）
+            // 为非中立阵营生物替换导航器（A* 绕开基地）
             String factionId = FactionHelper.getEntityFactionId(mob);
             if (!"neutral".equals(factionId)) {
-                pathfinder.goalSelector.addGoal(1, new PathfindToWaypointGoal(pathfinder));
+                replaceNavigation(pathfinder);
             }
+        }
+    }
+
+    // 替换生物的导航器为 FactionGroundNavigator，使 A* 路径绕过基地
+    private static void replaceNavigation(Mob mob) {
+        if (mob.getNavigation().getClass() == com.example.bettereve.ai.FactionGroundNavigator.class) return;
+        try {
+            java.lang.reflect.Field navField = net.minecraft.world.entity.Mob.class.getDeclaredField("navigation");
+            navField.setAccessible(true);
+            navField.set(mob, new com.example.bettereve.ai.FactionGroundNavigator(mob, mob.level()));
+        } catch (Exception e) {
+            LOGGER.error("Failed to replace navigation for {}", mob, e);
         }
     }
     

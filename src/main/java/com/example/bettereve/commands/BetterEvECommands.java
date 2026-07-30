@@ -145,7 +145,13 @@ public class BetterEvECommands {
                         )
                     )
                 )
-            )
+                .then(Commands.literal("spawn")
+                    .then(Commands.argument("crystalId", StringArgumentType.word())
+                        .suggests(CRYSTAL_TEMPLATE_ID_SUGGESTIONS)
+                        .executes(BetterEvECommands::executeSpawnCrystalFromTemplate)
+                    )
+                )
+            )  // close crystal
             .then(Commands.literal("spawn")
                 .then(Commands.argument("entityType", ResourceLocationArgument.id())
                     .suggests(ENTITY_TYPE_SUGGESTIONS)
@@ -307,6 +313,16 @@ public class BetterEvECommands {
         return builder.buildFuture();
     };
 
+
+    private static final SuggestionProvider<CommandSourceStack> CRYSTAL_TEMPLATE_ID_SUGGESTIONS = (context, builder) -> {
+        var scenario = com.example.bettereve.scenario.ScenarioManager.getActiveScenario();
+        if (scenario != null && scenario.getCrystals() != null) {
+            for (var tpl : scenario.getCrystals()) {
+                builder.suggest(tpl.getId());
+            }
+        }
+        return builder.buildFuture();
+    };
     private static int executeCreateFaction(CommandContext<CommandSourceStack> context) {
         String id = StringArgumentType.getString(context, "id");
         String name = StringArgumentType.getString(context, "name");
@@ -708,6 +724,39 @@ public class BetterEvECommands {
         context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("水晶基地创建成功: " +
             com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() +
             " ID: " + crystalId), true);
+        return 1;
+    }
+
+    private static int executeSpawnCrystalFromTemplate(CommandContext<CommandSourceStack> context) {
+        String crystalId = StringArgumentType.getString(context, "crystalId");
+        var scenario = com.example.bettereve.scenario.ScenarioManager.getActiveScenario();
+        if (scenario == null || scenario.getCrystals() == null) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("当前未加载剧本或剧本中无水晶模板"));
+            return 0;
+        }
+        com.example.bettereve.scenario.Scenario.CrystalTemplateDef template = null;
+        for (var t : scenario.getCrystals()) {
+            if (crystalId.equals(t.getId())) { template = t; break; }
+        }
+        if (template == null) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("未找到水晶模板: " + crystalId));
+            return 0;
+        }
+        net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(
+            (int) Math.floor(template.getX()),
+            (int) Math.floor(template.getY()),
+            (int) Math.floor(template.getZ()));
+        String factionId = template.getFactionId();
+        if (factionId == null || factionId.isEmpty()) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("水晶模板 " + crystalId + " 未设置阵营"));
+            return 0;
+        }
+        net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
+        CrystalSystem.spawnCrystal(level, pos, factionId, template.getHealth(),
+            template.getAttackDamage(), template.getArmor(), template.getAttackRange(),
+            template.getAttackCooldown(), template.getSizeKey(), template.getModelScale(),
+            template.isShowHealthBar(), false, crystalId);
+        context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("水晶已从模板创建: " + crystalId + " (" + factionId + ")"), true);
         return 1;
     }
     

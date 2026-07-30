@@ -30,29 +30,29 @@
   ],
   "crystals": [
     {
-      "id": "red_base",
-      "factionId": "red",
+      "id": "red_base", "factionId": "red",
+      "x": -40, "y": -60, "z": 0,
       "health": 8000, "attackDamage": 20, "armor": 8,
       "attackRange": 15.0, "attackCooldown": 2.0,
       "sizeKey": "5x10", "modelScale": 1.0, "showHealthBar": true
     },
     {
-      "id": "red_normal_tower",
-      "factionId": "red",
+      "id": "red_normal_tower", "factionId": "red",
+      "x": -15, "y": -60, "z": 0,
       "health": 3000, "attackDamage": 10, "armor": 3,
       "attackRange": 12.0, "attackCooldown": 2.0,
       "sizeKey": "3x10", "modelScale": 1.0, "showHealthBar": true
     },
     {
-      "id": "blue_base",
-      "factionId": "blue",
+      "id": "blue_base", "factionId": "blue",
+      "x": 40, "y": -60, "z": 0,
       "health": 8000, "attackDamage": 20, "armor": 8,
       "attackRange": 15.0, "attackCooldown": 2.0,
       "sizeKey": "5x10", "modelScale": 1.0, "showHealthBar": true
     },
     {
-      "id": "blue_normal_tower",
-      "factionId": "blue",
+      "id": "blue_normal_tower", "factionId": "blue",
+      "x": 15, "y": -60, "z": 0,
       "health": 3000, "attackDamage": 10, "armor": 3,
       "attackRange": 12.0, "attackCooldown": 2.0,
       "sizeKey": "3x10", "modelScale": 1.0, "showHealthBar": true
@@ -66,10 +66,10 @@
       "commands": [
         { "delay": 0, "command": "title @a title \"§e§l比赛开始！\"" },
         { "delay": 5, "command": "time set day && weather clear" },
-        { "delay": 0, "command": "bettereve crystal create red -40 -60 0 8000 20 8 15 2 5x10 1 true red_base" },
-        { "delay": 0, "command": "bettereve crystal create red -15 -60 0 3000 10 3 12 2 3x10 1 true red_normal_tower" },
-        { "delay": 0, "command": "bettereve crystal create blue 40 -60 0 8000 20 8 15 2 5x10 1 true blue_base" },
-        { "delay": 0, "command": "bettereve crystal create blue 15 -60 0 3000 10 3 12 2 3x10 1 true blue_normal_tower" }
+        { "delay": 0, "command": "bettereve crystal spawn red_base" },
+        { "delay": 0, "command": "bettereve crystal spawn red_normal_tower" },
+        { "delay": 0, "command": "bettereve crystal spawn blue_base" },
+        { "delay": 0, "command": "bettereve crystal spawn blue_normal_tower" }
       ],
       "triggers": [
         { "_comment": "红方基地被摧毁 → 蓝队胜利", "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "blue_victory" },

@@ -143,6 +143,7 @@ public class Scenario {
     public static class CrystalTemplateDef {
         private String id;
         private String factionId;
+        private double x, y, z;
         private int health;
         private int attackDamage;
         private int armor;
@@ -155,6 +156,12 @@ public class Scenario {
         public void setId(String id) { this.id = id; }
         public String getFactionId() { return factionId; }
         public void setFactionId(String factionId) { this.factionId = factionId; }
+        public double getX() { return x; }
+        public void setX(double x) { this.x = x; }
+        public double getY() { return y; }
+        public void setY(double y) { this.y = y; }
+        public double getZ() { return z; }
+        public void setZ(double z) { this.z = z; }
         public int getHealth() { return health; }
         public void setHealth(int health) { this.health = health; }
         public int getAttackDamage() { return attackDamage; }

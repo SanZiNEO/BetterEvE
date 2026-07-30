@@ -183,6 +183,12 @@ public class CrystalSystem {
                 }
 
                 serverLevel.addFreshEntity(crystalEntity);
+
+                // 注册碰撞箱，让 A* 寻路绕过基地
+                int[] sz = CrystalEntityType.parseSizeKey(sizeKey);
+                CrystalCollisionRegistry.register(
+                    crystalDefId != null ? crystalDefId : factionId,
+                    factionId, pos.getX() + 0.5, pos.getZ() + 0.5, sz[0], sz[1]);
                 System.out.println("CrystalEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey +
                     ", health bar: " + (showHealthBar ? "visible" : "hidden") +
                     ", death clear: " + (enableDeathClear ? "enabled" : "disabled") +
