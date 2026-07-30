@@ -2,6 +2,7 @@ package com.example.bettereve.targeting;
 
 import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.ai.FactionHostileTargetGoal;
+import com.example.bettereve.ai.PathfindToWaypointGoal;
 import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -90,6 +91,8 @@ public class TargetingHandler {
             String factionId = FactionHelper.getEntityFactionId(mob);
             if (!"neutral".equals(factionId)) {
                 replaceNavigation(pathfinder);
+                // 添加寻路 AI（优先级 1，仅在无攻击目标时运行）
+                pathfinder.goalSelector.addGoal(1, new PathfindToWaypointGoal(pathfinder));
             }
         }
     }
