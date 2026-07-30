@@ -3,9 +3,9 @@
   "name": "默认剧本",
   "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方核心即为胜利。",
   "factions": [
-    { "id": "neutral", "name": "中立", "color": "#FFFFFF", "levelConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
-    { "id": "red", "name": "红队", "color": "#FF0000", "levelConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
-    { "id": "blue", "name": "蓝队", "color": "#0000FF", "levelConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } }
+    { "id": "neutral", "name": "中立", "color": "#FFFFFF", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
+    { "id": "red", "name": "红队", "color": "#FF0000", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
+    { "id": "blue", "name": "蓝队", "color": "#0000FF", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } }
   ],
   "relations": [
     { "from": "red", "to": "blue", "type": "hostile" },

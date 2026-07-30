@@ -49,12 +49,12 @@ public class Scenario {
         public void setName(String name) { this.name = name; }
         public String getColor() { return color; }
         public void setColor(String color) { this.color = color; }
-    private LevelConfig levelConfig = new LevelConfig();
-    public LevelConfig getLevelConfig() { return levelConfig; }
-    public void setLevelConfig(LevelConfig levelConfig) { this.levelConfig = levelConfig; }
+    private EntityLevelConfig entityLevelConfig = new EntityLevelConfig();
+    public EntityLevelConfig getEntityLevelConfig() { return entityLevelConfig; }
+    public void setEntityLevelConfig(EntityLevelConfig entityLevelConfig) { this.entityLevelConfig = entityLevelConfig; }
     }
 
-    public static class LevelConfig {
+    public static class EntityLevelConfig {
         private int maxLevel = 500;
         private double healthBonus = 10.0;
         private double attackBonus = 10.0;

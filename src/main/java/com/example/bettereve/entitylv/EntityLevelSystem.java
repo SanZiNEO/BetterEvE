@@ -46,7 +46,7 @@ public class EntityLevelSystem {
      */
     public static void setEntityLevel(Entity entity, int level) {
         if (level < 0) level = 0;
-        Scenario.LevelConfig levelCfg = getLevelConfig(entity);
+        Scenario.EntityLevelConfig levelCfg = getEntityLevelConfig(entity);
         int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.entitylv_maxLevel.get();
         if (level > maxLevel) level = maxLevel;
         
@@ -134,13 +134,13 @@ public class EntityLevelSystem {
     /**
      * 获取实体的等级配置（优先从剧本读取，fallback 到全局配置）。
      */
-    private static Scenario.LevelConfig getLevelConfig(Entity entity) {
+    private static Scenario.EntityLevelConfig getEntityLevelConfig(Entity entity) {
         Scenario scenario = ScenarioManager.getActiveScenario();
         if (scenario == null || scenario.getFactions() == null || entity == null) return null;
         String factionId = com.example.bettereve.faction.FactionHelper.getEntityFactionId(entity);
         for (Scenario.FactionDef faction : scenario.getFactions()) {
             if (faction.getId().equals(factionId)) {
-                return faction.getLevelConfig();
+                return faction.getEntityLevelConfig();
             }
         }
         return null;
@@ -151,7 +151,7 @@ public class EntityLevelSystem {
         // 检查实体是否有NBT属性（用于判断是否可以突破上限）
         boolean hasNbtAttributes = hasCustomNbtAttributes(entity);
 
-        Scenario.LevelConfig levelCfg = getLevelConfig(entity);
+        Scenario.EntityLevelConfig levelCfg = getEntityLevelConfig(entity);
         double healthBonus = (levelCfg != null ? levelCfg.getHealthBonus() : BetterEvEConfig.INSTANCE.entitylv_healthBonus.get()) / 100;
         double attackBonus = (levelCfg != null ? levelCfg.getAttackBonus() : BetterEvEConfig.INSTANCE.entitylv_attackBonus.get()) / 100;
         int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.entitylv_maxLevel.get();
