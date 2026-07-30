@@ -26,9 +26,11 @@ public class PathfindToWaypointGoal extends Goal {
     private final PathNavigation navigation;
     private WaypointRegion currentTarget = null;
     private int currentOrder = 0;
-    private boolean arrived = false;
 
-    private static final int REPATH_INTERVAL = 80; // 4秒
+    private boolean arrived = false;
+    private boolean inEnemyTerritory = false;
+
+    private static final int REPATH_INTERVAL = 80;
     private int repathTimer = 0;
 
     public PathfindToWaypointGoal(PathfinderMob mob) {
@@ -56,7 +58,6 @@ public class PathfindToWaypointGoal extends Goal {
         arrived = false;
         checkCurrentPositionForWaypoint();
         selectNextTarget();
-        // 如果选中的目标就在当前位置，跳过
         if (currentTarget != null && currentTarget.isInside(mob.getX(), mob.getZ())) {
             currentOrder = currentTarget.getOrder();
             selectNextTarget();
@@ -89,7 +90,6 @@ public class PathfindToWaypointGoal extends Goal {
             LOGGER.info("[{}] 到达区域={} order={}->{}", mob.getDisplayName().getString(),
                 currentTarget != null ? currentTarget.getId() : "终点", oldOrder,
                 currentTarget != null ? currentTarget.getOrder() : "-");
-            // 如果新目标也在当前区域内（敌方/己方最后区域重复选中），再跳一次
             if (currentTarget != null && currentTarget.isInside(mob.getX(), mob.getZ())) {
                 currentOrder = currentTarget.getOrder();
                 selectNextTarget();
@@ -108,7 +108,6 @@ public class PathfindToWaypointGoal extends Goal {
         }
     }
 
-    /** 导航到目标区域内离生物当前位置最远的角 */
     private void navigateToFarthest(WaypointRegion target) {
         double mx = mob.getX(), mz = mob.getZ();
         double[][] corners = {
@@ -144,19 +143,25 @@ public class PathfindToWaypointGoal extends Goal {
         String factionId = FactionHelper.getEntityFactionId(mob);
         if (factionId == null) { arrived = true; return; }
 
+        // 1. 己方路径点（从小到大）
         WaypointRegion next = WaypointManager.getNextWaypoint(factionId, currentOrder);
         if (next != null) {
             currentTarget = next;
             repathTimer = REPATH_INTERVAL;
+            inEnemyTerritory = false;
             return;
         }
 
-        int saved = currentOrder;
-        currentOrder = Integer.MAX_VALUE;
-        boolean found = findEnemyGoal();
-        currentOrder = saved;
-        if (found) return;
+        // 2. 敌方路径点（从大到小）
+        // 首次进入时提升 currentOrder 以找到所有敌方路径点
+        // 到达敌方路径点后 currentOrder 更新为实际值，后续自动找更低的
+        if (!inEnemyTerritory) {
+            currentOrder = Integer.MAX_VALUE;
+            inEnemyTerritory = true;
+        }
+        if (findEnemyGoal()) return;
 
+        // 3. 没有更多路径点了
         arrived = true;
         currentTarget = null;
         LOGGER.info("[{}] 所有路径点已完成", mob.getDisplayName().getString());
