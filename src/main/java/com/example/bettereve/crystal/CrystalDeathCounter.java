@@ -1,4 +1,4 @@
-package com.example.bettereve.base;
+package com.example.bettereve.crystal;
 
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
@@ -14,8 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 用于在客户端缓存和显示基地死亡计数
  * 使用ConcurrentHashMap实现线程安全
  */
-public class BaseDeathCounter {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/BaseDeathCounter");
+public class CrystalDeathCounter {
+    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/CrystalDeathCounter");
     
     // 使用ConcurrentHashMap确保线程安全
     private static final ConcurrentHashMap<String, Integer> deathCounts = new ConcurrentHashMap<>();
@@ -113,7 +113,7 @@ public class BaseDeathCounter {
     public static void clearAll() {
         deathCounts.clear();
         entityKillCounts.clear();
-        LOGGER.debug("Cleared all base death counts");
+        LOGGER.debug("Cleared all crystal death counts");
     }
     
     /**
@@ -137,7 +137,7 @@ public class BaseDeathCounter {
         for (String factionId : entityKillCounts.keySet()) {
             entityKillCounts.put(factionId, 0);
         }
-        LOGGER.debug("Reset all base death counts to 0");
+        LOGGER.debug("Reset all crystal death counts to 0");
     }
     
     /**
@@ -156,6 +156,6 @@ public class BaseDeathCounter {
     public static String getStatistics() {
         int total = getTotalDeathCount();
         int factions = deathCounts.size();
-        return String.format("Base Deaths: total=%d, factions=%d", total, factions);
+        return String.format("Crystal Deaths: total=%d, factions=%d", total, factions);
     }
 }

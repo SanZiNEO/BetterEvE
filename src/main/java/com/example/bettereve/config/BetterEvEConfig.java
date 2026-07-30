@@ -20,21 +20,19 @@ public class BetterEvEConfig {
 
     // ===================== 2. 寻敌系统配置 =====================
     public final ForgeConfigSpec.DoubleValue targeting_defaultFollowRange;
-    
 
     // ===================== 3. 计数器系统配置 =====================
     public final ForgeConfigSpec.ConfigValue<Boolean> counter_countEntityType;
 
-    // ===================== 4. 基地系统配置 =====================
-    public final ForgeConfigSpec.IntValue base_defaultHealth;
-    // base_clearRadius — 保留但当前未使用（清场逻辑走全图 /kill）
-    public final ForgeConfigSpec.IntValue base_clearRadius;
+    // ===================== 4. 水晶基地系统配置 =====================
+    public final ForgeConfigSpec.IntValue crystal_defaultHealth;
+    public final ForgeConfigSpec.IntValue crystal_clearRadius;
     
 
-    // ===================== 5. 等级系统配置 =====================
-    public final ForgeConfigSpec.DoubleValue level_healthBonus;
-    public final ForgeConfigSpec.DoubleValue level_attackBonus;
-    public final ForgeConfigSpec.IntValue level_maxLevel;
+    // ===================== 5. 实体等级系统配置 =====================
+    public final ForgeConfigSpec.DoubleValue entitylv_healthBonus;
+    public final ForgeConfigSpec.DoubleValue entitylv_attackBonus;
+    public final ForgeConfigSpec.IntValue entitylv_maxLevel;
 
     // ===================== 6. 全局开关配置 =====================
     public final ForgeConfigSpec.ConfigValue<Boolean> global_hudEnabled;
@@ -80,30 +78,28 @@ public class BetterEvEConfig {
                 .define("countEntityType", true);
         builder.pop();
 
-        // ---------- 4. 基地系统配置 ----------
-        builder.push("base");
-        base_defaultHealth = builder
-                .comment("基地默认血量")
-                .defineInRange("defaultHealth", 10000, 100, 100000); // 范围100~10万
-        // base_clearRadius — 保留但当前未使用（清场逻辑走全图 /kill）
-        base_clearRadius = builder
-                .comment("基地清空地图范围（以基地为中心的半径，格）[当前未使用]")
+        // ---------- 4. 水晶基地系统配置 ----------
+        builder.push("crystal");
+        crystal_defaultHealth = builder
+                .comment("水晶基地默认血量")
+                .defineInRange("defaultHealth", 10000, 100, 100000);
+        crystal_clearRadius = builder
+                .comment("水晶基地清空地图范围（以基地为中心的半径，格）[当前未使用]")
                 .defineInRange("clearRadius", 50, 10, 200);
-        
         builder.pop();
-
         // ---------- 5. 等级系统配置 ----------
-        builder.push("level");
-        level_healthBonus = builder
+        builder.push("entitylv");
+        entitylv_healthBonus = builder
                 .comment("每级生命值加成比例（%）默认10%")
-                .defineInRange("healthBonus", 10.0D, 0.0D, 100.0D); // 0~100%
-        level_attackBonus = builder
+                .defineInRange("healthBonus", 10.0D, 0.0D, 100.0D);
+        entitylv_attackBonus = builder
                 .comment("每级攻击力加成比例（%）默认10%")
                 .defineInRange("attackBonus", 10.0D, 0.0D, 100.0D);
-        level_maxLevel = builder
+        entitylv_maxLevel = builder
                 .comment("等级上限")
-                .defineInRange("maxLevel", 500, 1, 1000); // 1~1000级
+                .defineInRange("maxLevel", 500, 1, 1000);
         builder.pop();
+
 
         // ---------- 6. 全局开关配置 ----------
         builder.push("global");

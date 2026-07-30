@@ -1,6 +1,6 @@
 package com.example.bettereve.mixin;
 
-import com.example.bettereve.entity.BaseEntity;
+import com.example.bettereve.entity.CrystalEntity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.util.Mth;
@@ -12,13 +12,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Mixin to fix the issue where melee mobs cannot attack BaseEntity when its width > 4
+ * Mixin to fix the issue where melee mobs cannot attack CrystalEntity when its width > 4
  * or when the center is blocked by blocks.
  * 
  * The problem: Vanilla Minecraft's attack mechanism locks onto the target's center position.
- * When BaseEntity has a large collision box (width > 4), attackers may not be able to reach the center.
+ * When CrystalEntity has a large collision box (width > 4), attackers may not be able to reach the center.
  * 
- * Solution: When a mob is attacking a BaseEntity, calculate distance to the nearest point
+ * Solution: When a mob is attacking a CrystalEntity, calculate distance to the nearest point
  * on the collision box instead of the center.
  */
 @Mixin(Mob.class)
@@ -26,13 +26,13 @@ public abstract class MobAttackDistanceMixin {
     
     /**
      * Modify the perceived target distance calculation for melee attacks.
-     * When the target is a BaseEntity, calculate distance to the nearest point on its collision box.
-     * This allows melee mobs to attack BaseEntity even when it has a large width or when the center is blocked.
+     * When the target is a CrystalEntity, calculate distance to the nearest point on its collision box.
+     * This allows melee mobs to attack CrystalEntity even when it has a large width or when the center is blocked.
      */
     @Inject(method = "getPerceivedTargetDistanceSquareForMeleeAttack", at = @At("HEAD"), cancellable = true)
     private void onGetPerceivedTargetDistanceSquareForMeleeAttack(LivingEntity target, CallbackInfoReturnable<Double> cir) {
-        // 非 BaseEntity 不拦截，走原版逻辑
-        if (!(target instanceof BaseEntity)) {
+        // 非 CrystalEntity 不拦截，走原版逻辑
+        if (!(target instanceof CrystalEntity)) {
             return;
         }
         

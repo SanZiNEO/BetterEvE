@@ -55,7 +55,7 @@ import java.util.List;
  *   2. 模型看起来像建筑立在地面上
  *   3. 远程攻击从模型位置发出（顶部），视觉效果合理
  * 
- * 对应的渲染器在 BaseEntityRenderer.java 中处理平移+缩放，
+ * 对应的渲染器在 CrystalEntityRenderer.java 中处理平移+缩放，
  * 如果修改了碰撞箱逻辑或渲染偏移，必须同时考虑：
  *   - 已有游戏地图中已放置的基地位置
  *   - 近战生物能否正常攻击到
@@ -64,7 +64,7 @@ import java.util.List;
  * 
  * 注意：基地实体不可移动，只能在原地攻击
  */
-public class BaseEntity extends Mob {
+public class CrystalEntity extends Mob {
     
     // 动画状态枚举
     public enum AnimationState {
@@ -74,15 +74,15 @@ public class BaseEntity extends Mob {
     }
     
     // 实体数据访问器 - 用于网络同步
-    private static final EntityDataAccessor<String> DATA_FACTION_ID = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.STRING);
-    private static final EntityDataAccessor<Integer> DATA_MAX_HEALTH = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<Integer> DATA_ARMOR = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<Integer> DATA_ATTACK_DAMAGE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<Float> DATA_ATTACK_RANGE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_ATTACK_COOLDOWN = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Float> DATA_MODEL_SCALE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.FLOAT);
-    private static final EntityDataAccessor<Integer> DATA_ANIMATION_STATE = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<Integer> DATA_ATTACK_TARGET = SynchedEntityData.defineId(BaseEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> DATA_FACTION_ID = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Integer> DATA_MAX_HEALTH = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_ARMOR = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_ATTACK_DAMAGE = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Float> DATA_ATTACK_RANGE = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_ATTACK_COOLDOWN = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_MODEL_SCALE = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> DATA_ANIMATION_STATE = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_ATTACK_TARGET = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.INT);
     
     // 注意：碰撞箱已经通过EntityType.Builder.sized(width, height)预设
     // 实体位置在碰撞箱底部（原版标准）
@@ -112,7 +112,7 @@ public class BaseEntity extends Mob {
     private static final int BASE_TOTAL_CYCLE = 120; // 基础总攻击周期（ticks，6秒）
     
 
-    public BaseEntity(EntityType<? extends BaseEntity> type, Level level) {
+    public CrystalEntity(EntityType<? extends CrystalEntity> type, Level level) {
         super(type, level);
         this.attackTimer = 0;
     }
@@ -288,16 +288,16 @@ public class BaseEntity extends Mob {
     // 获取实体类型名称中的尺寸信息
     public String getSizeKey() {
         String entityName = this.getType().getDescriptionId();
-        if (entityName.contains("base_entity_")) {
-            // 从实体名称中提取尺寸信息，如 "base_entity_3x10" -> "3x10"
-            return entityName.substring(entityName.indexOf("base_entity_") + "base_entity_".length());
+        if (entityName.contains("crystal_entity_")) {
+            // 从实体名称中提取尺寸信息，如 "crystal_entity_3x10" -> "3x10"
+            return entityName.substring(entityName.indexOf("crystal_entity_") + "crystal_entity_".length());
         }
         return "3x10"; // 默认尺寸
     }
     
     // 从尺寸键值解析宽度和高度
     public int[] parseSizeKey() {
-        return BaseEntityType.parseSizeKey(getSizeKey());
+        return CrystalEntityType.parseSizeKey(getSizeKey());
     }
     
     // 注意：不需要缓存尺寸，原版Minecraft会自动处理
@@ -341,7 +341,7 @@ public class BaseEntity extends Mob {
         super.registerGoals();
         this.goalSelector.addGoal(1, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(2, new RandomLookAroundGoal(this));
-        this.targetSelector.addGoal(1, new BaseEntityAttackGoal(this));
+        this.targetSelector.addGoal(1, new CrystalEntityAttackGoal(this));
     }
 
     // 不可移动
@@ -445,7 +445,7 @@ public class BaseEntity extends Mob {
             // 播放攻击音效
             this.playSound(this.getAttackSound(), 1.0F, 1.0F);
         } catch (Exception e) {
-            System.err.println("BaseEntity attackTarget error: " + e.getMessage());
+            System.err.println("CrystalEntity attackTarget error: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -653,12 +653,12 @@ public class BaseEntity extends Mob {
     }
 
     // 攻击目标选择器 - 参考 Minecraft 原版 Guardian 类实现
-    private static class BaseEntityAttackGoal extends Goal {
-        private final BaseEntity entity;
+    private static class CrystalEntityAttackGoal extends Goal {
+        private final CrystalEntity entity;
         private LivingEntity target;
         private int attackTime;
 
-        public BaseEntityAttackGoal(BaseEntity entity) {
+        public CrystalEntityAttackGoal(CrystalEntity entity) {
             this.entity = entity;
             this.setFlags(EnumSet.of(Goal.Flag.TARGET, Goal.Flag.MOVE, Goal.Flag.LOOK));
         }

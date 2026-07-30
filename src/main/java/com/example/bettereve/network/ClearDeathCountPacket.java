@@ -1,6 +1,6 @@
 package com.example.bettereve.network;
 
-import com.example.bettereve.base.BaseDeathCounter;
+import com.example.bettereve.crystal.CrystalDeathCounter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 
 /**
  * 专用清除基地死亡计数数据包。
- * 替代原先在 BaseDeathPacket 中复用的清除标志位方案。
+ * 替代原先在 CrystalDeathPacket 中复用的清除标志位方案。
  */
 public class ClearDeathCountPacket {
     private static final Logger LOGGER = LogManager.getLogger("BetterEvE/ClearDeathCountPacket");
@@ -49,10 +49,10 @@ public class ClearDeathCountPacket {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             if (factionId == null || "all".equals(factionId)) {
-                BaseDeathCounter.clearAll();
+                CrystalDeathCounter.clearAll();
                 LOGGER.debug("Client: Cleared all base death counts via ClearDeathCountPacket");
             } else {
-                BaseDeathCounter.clearFaction(factionId);
+                CrystalDeathCounter.clearFaction(factionId);
                 LOGGER.debug("Client: Cleared base death count for faction {} via ClearDeathCountPacket", factionId);
             }
         });

@@ -1,4 +1,4 @@
-package com.example.bettereve.level;
+package com.example.bettereve.entitylv;
 
 import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.scenario.Scenario;
@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class LevelSystem {
+public class EntityLevelSystem {
     private static final Map<UUID, Integer> entityLevels = new HashMap<>();
     private static final String NBT_LEVEL_KEY = "BetterEvE_Level";
 
@@ -47,7 +47,7 @@ public class LevelSystem {
     public static void setEntityLevel(Entity entity, int level) {
         if (level < 0) level = 0;
         Scenario.LevelConfig levelCfg = getLevelConfig(entity);
-        int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.level_maxLevel.get();
+        int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.entitylv_maxLevel.get();
         if (level > maxLevel) level = maxLevel;
         
         // 同时存储到内存和 NBT 中，确保持久性
@@ -152,9 +152,9 @@ public class LevelSystem {
         boolean hasNbtAttributes = hasCustomNbtAttributes(entity);
 
         Scenario.LevelConfig levelCfg = getLevelConfig(entity);
-        double healthBonus = (levelCfg != null ? levelCfg.getHealthBonus() : BetterEvEConfig.INSTANCE.level_healthBonus.get()) / 100;
-        double attackBonus = (levelCfg != null ? levelCfg.getAttackBonus() : BetterEvEConfig.INSTANCE.level_attackBonus.get()) / 100;
-        int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.level_maxLevel.get();
+        double healthBonus = (levelCfg != null ? levelCfg.getHealthBonus() : BetterEvEConfig.INSTANCE.entitylv_healthBonus.get()) / 100;
+        double attackBonus = (levelCfg != null ? levelCfg.getAttackBonus() : BetterEvEConfig.INSTANCE.entitylv_attackBonus.get()) / 100;
+        int maxLevel = levelCfg != null ? levelCfg.getMaxLevel() : BetterEvEConfig.INSTANCE.entitylv_maxLevel.get();
 
         // 生命值
         if (entity.getAttribute(Attributes.MAX_HEALTH) != null) {
@@ -210,9 +210,9 @@ public class LevelSystem {
         if (level <= 0) return;
 
         // 获取配置的属性加成百分比
-        double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get() / 100;
+        double attackBonus = BetterEvEConfig.INSTANCE.entitylv_attackBonus.get() / 100;
         
-        // 伤害加成（与 LevelSystem 相同的非线性增长公式）
+        // 伤害加成（与 EntityLevelSystem 相同的非线性增长公式）
         double damageMultiplier = 1 + attackBonus * Math.pow(level, 1.42);
         double maxDamage = 200.0; // 限制最大伤害倍数为 200 倍
         double finalDamage = Math.min(damageMultiplier, maxDamage);
@@ -246,7 +246,7 @@ public class LevelSystem {
      * 获取等级数值表（用于显示，根据配置动态生成）
      */
     public static String getLevelTable() {
-        int maxLevel = BetterEvEConfig.INSTANCE.level_maxLevel.get();
+        int maxLevel = BetterEvEConfig.INSTANCE.entitylv_maxLevel.get();
         StringBuilder sb = new StringBuilder(String.format("等级属性表 (0-%d级):\n", maxLevel));
         sb.append("等级 | 生命值 | 攻击力 | 护甲 | 击退抗性\n");
         sb.append("-----|--------|--------|------|----------\n");
@@ -260,8 +260,8 @@ public class LevelSystem {
         // 添加0级到最大级的属性表
         for (int level = 0; level <= maxLevel; level += step) {
             // 计算属性加成
-            double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get() / 100;
-            double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get() / 100;
+            double healthBonus = BetterEvEConfig.INSTANCE.entitylv_healthBonus.get() / 100;
+            double attackBonus = BetterEvEConfig.INSTANCE.entitylv_attackBonus.get() / 100;
             
             double healthMultiplier = 1 + healthBonus * Math.pow(level, 1.4);
             double finalHealth = Math.min(healthMultiplier, 200.0);
@@ -285,8 +285,8 @@ public class LevelSystem {
         
         // 添加最大级的属性
         if (maxLevel % step != 0) {
-            double healthBonus = BetterEvEConfig.INSTANCE.level_healthBonus.get() / 100;
-            double attackBonus = BetterEvEConfig.INSTANCE.level_attackBonus.get() / 100;
+            double healthBonus = BetterEvEConfig.INSTANCE.entitylv_healthBonus.get() / 100;
+            double attackBonus = BetterEvEConfig.INSTANCE.entitylv_attackBonus.get() / 100;
             
             double healthMultiplier = 1 + healthBonus * Math.pow(maxLevel, 1.4);
             double finalHealth = Math.min(healthMultiplier, 200.0);

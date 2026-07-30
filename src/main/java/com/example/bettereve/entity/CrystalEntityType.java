@@ -10,19 +10,19 @@ import net.minecraftforge.registries.RegistryObject;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BaseEntityType {
+public class CrystalEntityType {
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, Bettereve.MODID);
     
     // 存储所有实体类型的映射表：size -> RegistryObject
-    private static final Map<String, RegistryObject<EntityType<BaseEntity>>> ENTITY_MAP = new HashMap<>();
+    private static final Map<String, RegistryObject<EntityType<CrystalEntity>>> ENTITY_MAP = new HashMap<>();
     
     // 原来的单一实体类型（保留兼容性）
-    public static final RegistryObject<EntityType<BaseEntity>> BASE_ENTITY = ENTITY_TYPES.register("base_entity", () ->
-            EntityType.Builder.of(BaseEntity::new, MobCategory.MONSTER)
+    public static final RegistryObject<EntityType<CrystalEntity>> CRYSTAL_ENTITY = ENTITY_TYPES.register("crystal_entity", () ->
+            EntityType.Builder.of(CrystalEntity::new, MobCategory.MONSTER)
                     .sized(3.0F, 10.0F)
                     .clientTrackingRange(80)
                     .updateInterval(3)
-                    .build("base_entity")
+                    .build("crystal_entity")
     );
 
     static {
@@ -39,10 +39,10 @@ public class BaseEntityType {
      */
     private static void registerSizeVariant(int width, int height) {
         String sizeKey = getSizeKey(width, height);
-        String registryName = "base_entity_" + sizeKey;
+        String registryName = "crystal_entity_" + sizeKey;
         
-        RegistryObject<EntityType<BaseEntity>> entityType = ENTITY_TYPES.register(registryName, () ->
-                EntityType.Builder.of(BaseEntity::new, MobCategory.MONSTER)
+        RegistryObject<EntityType<CrystalEntity>> entityType = ENTITY_TYPES.register(registryName, () ->
+                EntityType.Builder.of(CrystalEntity::new, MobCategory.MONSTER)
                         .sized((float) width, (float) height)  // 预设碰撞箱大小
                         .clientTrackingRange(80)
                         .updateInterval(3)
@@ -62,13 +62,13 @@ public class BaseEntityType {
     /**
      * 根据尺寸键值获取实体类型
      */
-    public static EntityType<BaseEntity> getEntityTypeBySize(String sizeKey) {
-        RegistryObject<EntityType<BaseEntity>> registryObj = ENTITY_MAP.get(sizeKey);
+    public static EntityType<CrystalEntity> getEntityTypeBySize(String sizeKey) {
+        RegistryObject<EntityType<CrystalEntity>> registryObj = ENTITY_MAP.get(sizeKey);
         if (registryObj != null) {
             return registryObj.get();
         }
         // 如果找不到指定的尺寸，返回默认实体类型
-        return BASE_ENTITY.get();
+        return CRYSTAL_ENTITY.get();
     }
     
     /**
@@ -105,9 +105,9 @@ public class BaseEntityType {
     /**
      * 获取所有实体类型的RegistryObject列表
      */
-    public static java.util.List<RegistryObject<EntityType<BaseEntity>>> getAllEntityTypes() {
-        java.util.List<RegistryObject<EntityType<BaseEntity>>> list = new java.util.ArrayList<>();
-        list.add(BASE_ENTITY);
+    public static java.util.List<RegistryObject<EntityType<CrystalEntity>>> getAllEntityTypes() {
+        java.util.List<RegistryObject<EntityType<CrystalEntity>>> list = new java.util.ArrayList<>();
+        list.add(CRYSTAL_ENTITY);
         list.addAll(ENTITY_MAP.values());
         return list;
     }

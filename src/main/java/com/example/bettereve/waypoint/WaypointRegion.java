@@ -1,4 +1,4 @@
-package com.example.bettereve.goal;
+package com.example.bettereve.waypoint;
 
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioManager;
@@ -7,15 +7,15 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 目标区域 — 定义兵线路径点（XZ 无限高矩形柱体）。
+ * 路径点区域 — 定义兵线路径点（XZ 无限高矩形柱体）。
  */
-public class GoalRegion {
+public class WaypointRegion {
     private final String id;
     private final String factionId;
     private final int order;
     private final double x1, z1, x2, z2;
 
-    public GoalRegion(String id, String factionId, int order, double x1, double z1, double x2, double z2) {
+    public WaypointRegion(String id, String factionId, int order, double x1, double z1, double x2, double z2) {
         this.id = id;
         this.factionId = factionId;
         this.order = order;
@@ -50,6 +50,6 @@ public class GoalRegion {
      * 获取区域的范围描述。
      */
     public String getDescription() {
-        return String.format("(%d: %.0f,%.0f)-(%.0f,%.0f)", order, x1, z1, x2, z2);
+        return String.format("Waypoint (%d: %.0f,%.0f)-(%.0f,%.0f)", order, x1, z1, x2, z2);
     }
 }

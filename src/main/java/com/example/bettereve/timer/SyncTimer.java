@@ -1,7 +1,7 @@
 package com.example.bettereve.timer;
 
 import com.example.bettereve.faction.FactionHelper;
-import com.example.bettereve.level.LevelSystem;
+import com.example.bettereve.entitylv.EntityLevelSystem;
 import com.example.bettereve.network.NetworkManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -85,7 +85,7 @@ public class SyncTimer {
     private static void syncEntityLevel(LivingEntity entity) {
         try {
             // 从NBT读取等级信息（确保获取最新数据）
-            int level = LevelSystem.getEntityLevel(entity);
+            int level = EntityLevelSystem.getEntityLevel(entity);
             
             // 同步到所有客户端
             NetworkManager.syncEntityLevelToAll(entity, level);

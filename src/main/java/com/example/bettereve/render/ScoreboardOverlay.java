@@ -1,7 +1,7 @@
 package com.example.bettereve.render;
 
 import com.example.bettereve.Bettereve;
-import com.example.bettereve.base.BaseDeathCounter;
+import com.example.bettereve.crystal.CrystalDeathCounter;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
 import com.example.bettereve.scenario.ScenarioManager;
@@ -26,14 +26,14 @@ public class ScoreboardOverlay {
     private static final int MARGIN_TOP = 4;
     private static final int LINE_GAP = 10;
 
-    public static final IGuiOverlay BASE_DEATH_OVERLAY = (gui, guiGraphics, partialTick, width, height) -> {
+    public static final IGuiOverlay CRYSTAL_DEATH_OVERLAY = (gui, guiGraphics, partialTick, width, height) -> {
         if (ScenarioManager.getActiveScenario() == null) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
 
-        var deathCounts = BaseDeathCounter.getAllFactionDeathCounts();
-        var killCounts = BaseDeathCounter.getAllEntityKillCounts();
+        var deathCounts = CrystalDeathCounter.getAllFactionDeathCounts();
+        var killCounts = CrystalDeathCounter.getAllEntityKillCounts();
         var factions = FactionRegistry.getAllFactions().stream()
                 .filter(Faction::isEnabled).toList();
         if (factions.isEmpty()) return;
@@ -75,6 +75,6 @@ public class ScoreboardOverlay {
 
     @SubscribeEvent
     public static void onRegisterGuiOverlays(RegisterGuiOverlaysEvent event) {
-        event.registerBelow(VanillaGuiOverlay.CROSSHAIR.id(), "bettereve_scoreboard", BASE_DEATH_OVERLAY);
+        event.registerBelow(VanillaGuiOverlay.CROSSHAIR.id(), "bettereve_scoreboard", CRYSTAL_DEATH_OVERLAY);
     }
 }

@@ -1,7 +1,7 @@
-package com.example.bettereve.render.BaseEntity;
+package com.example.bettereve.render.CrystalEntity;
 
-import com.example.bettereve.entity.BaseEntity;
-import com.example.bettereve.entity.BaseEntityModel;
+import com.example.bettereve.entity.CrystalEntity;
+import com.example.bettereve.entity.CrystalEntityModel;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -10,32 +10,32 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.resources.ResourceLocation;
 
-public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<BaseEntity>> {
-    private static final ResourceLocation TEXTURE = new ResourceLocation("bettereve", "textures/entity/baseentity.png");
+public class CrystalEntityRenderer extends MobRenderer<CrystalEntity, CrystalEntityModel<CrystalEntity>> {
+    private static final ResourceLocation TEXTURE = new ResourceLocation("bettereve", "textures/entity/crystalentity.png");
 
-    public BaseEntityRenderer(EntityRendererProvider.Context context) {
-        super(context, new BaseEntityModel<>(context.bakeLayer(BaseEntityModel.LAYER_LOCATION)), 0.5F);
+    public CrystalEntityRenderer(EntityRendererProvider.Context context) {
+        super(context, new CrystalEntityModel<>(context.bakeLayer(CrystalEntityModel.LAYER_LOCATION)), 0.5F);
     }
 
     @Override
-    public ResourceLocation getTextureLocation(BaseEntity entity) {
+    public ResourceLocation getTextureLocation(CrystalEntity entity) {
         return TEXTURE;
     }
 
     @Override
-    protected RenderType getRenderType(BaseEntity entity, boolean visible, boolean shadowVisible, boolean outlineVisible) {
+    protected RenderType getRenderType(CrystalEntity entity, boolean visible, boolean shadowVisible, boolean outlineVisible) {
         // 确保基地实体始终使用正常的渲染类型，不受可见性判定影响
         return RenderType.entityCutout(getTextureLocation(entity));
     }
 
     @Override
-    protected boolean isBodyVisible(BaseEntity entity) {
+    protected boolean isBodyVisible(CrystalEntity entity) {
         // 确保基地实体始终可见，不受任何遮挡判定影响
         return true;
     }
     
     @Override
-    protected boolean shouldShowName(BaseEntity entity) {
+    protected boolean shouldShowName(CrystalEntity entity) {
         // 确保基地实体的名称始终可见
         return super.shouldShowName(entity);
     }
@@ -62,7 +62,7 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
      * ==================================================================
      */
     @Override
-    protected void scale(BaseEntity entity, PoseStack poseStack, float partialTicks) {
+    protected void scale(CrystalEntity entity, PoseStack poseStack, float partialTicks) {
         // 重要：必须使用负号！这是经过实际测试验证的
         // 原因：实体位置在碰撞箱底部（getY()返回脚部位置）
         // Minecraft坐标系：Y轴向上为正，translate(0, offsetY, 0)中：
@@ -85,8 +85,8 @@ public class BaseEntityRenderer extends MobRenderer<BaseEntity, BaseEntityModel<
     }
 
     @Override
-    public void render(BaseEntity entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
-        // 注意：粒子效果现在在BaseEntity.tick()中每tick生成
+    public void render(CrystalEntity entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+        // 注意：粒子效果现在在CrystalEntity.tick()中每tick生成
         // 这里不需要再生成粒子，避免重复
         
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);

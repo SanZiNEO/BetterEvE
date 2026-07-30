@@ -11,8 +11,8 @@ public class Scenario {
     private String description;
     private List<FactionDef> factions;
     private List<RelationDef> relations;
-    private List<GoalRegionDef> goals;
-    private List<BaseTemplateDef> bases;
+    private List<WaypointRegionDef> waypoints;
+    private List<CrystalTemplateDef> crystals;
     private List<PhaseDef> phases;
     private ScenarioOptions options;
 
@@ -26,10 +26,10 @@ public class Scenario {
     public void setFactions(List<FactionDef> factions) { this.factions = factions; }
     public List<RelationDef> getRelations() { return relations; }
     public void setRelations(List<RelationDef> relations) { this.relations = relations; }
-    public List<GoalRegionDef> getGoals() { return goals; }
-    public void setGoals(List<GoalRegionDef> goals) { this.goals = goals; }
-    public List<BaseTemplateDef> getBases() { return bases; }
-    public void setBases(List<BaseTemplateDef> bases) { this.bases = bases; }
+    public List<WaypointRegionDef> getWaypoints() { return waypoints; }
+    public void setWaypoints(List<WaypointRegionDef> waypoints) { this.waypoints = waypoints; }
+    public List<CrystalTemplateDef> getCrystals() { return crystals; }
+    public void setCrystals(List<CrystalTemplateDef> crystals) { this.crystals = crystals; }
     public List<PhaseDef> getPhases() { return phases; }
     public void setPhases(List<PhaseDef> phases) { this.phases = phases; }
     public ScenarioOptions getOptions() { return options; }
@@ -82,7 +82,7 @@ public class Scenario {
         public void setType(String type) { this.type = type; }
     }
 
-    public static class GoalRegionDef {
+    public static class WaypointRegionDef {
         private String id;
         private String factionId;
         private int order;
@@ -103,7 +103,7 @@ public class Scenario {
         public void setZ2(double z2) { this.z2 = z2; }
     }
 
-    public static class BaseTemplateDef {
+    public static class CrystalTemplateDef {
         private String id;
         private String factionId;
         private int health;
@@ -114,7 +114,6 @@ public class Scenario {
         private String sizeKey;
         private double modelScale;
         private boolean showHealthBar;
-        // getters/setters
         public String getId() { return id; }
         public void setId(String id) { this.id = id; }
         public String getFactionId() { return factionId; }

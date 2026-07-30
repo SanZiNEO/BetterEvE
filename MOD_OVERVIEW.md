@@ -56,15 +56,14 @@ BetterEvE/
 │   ├── main/
 │   │   ├── java/com/example/bettereve/
 │   │   │   ├── ai/          # AI 目标选择器 + 寻路
-│   │   │   ├── base/        # 基地系统 + 死亡计数器
 │   │   │   ├── commands/    # 指令处理
 │   │   │   ├── config/      # Forge 配置 GUI
 │   │   │   ├── counter/     # 死亡计数持久化
-│   │   │   ├── entity/      # BaseEntity 自定义实体
+│   │   │   ├── crystal/     # 水晶基地系统
+│   │   │   ├── entity/      # 自定义实体
+│   │   │   ├── entitylv/    # 实体等级系统
 │   │   │   ├── events/      # 事件处理器
 │   │   │   ├── faction/     # 阵营系统 + 关系管理
-│   │   │   ├── goal/        # 兵线路径点系统
-│   │   │   ├── level/       # 等级系统
 │   │   │   ├── mixin/       # Mixin 注入
 │   │   │   ├── network/     # 网络数据包
 │   │   │   ├── phase/       # 阶段 + 监测器系统
@@ -72,7 +71,8 @@ BetterEvE/
 │   │   │   ├── scenario/    # 剧本 JSON 加载
 │   │   │   ├── scoreboard/  # 计分板管理
 │   │   │   ├── targeting/   # 目标选择器管理
-│   │   │   └── timer/       # 同步定时器
+│   │   │   ├── timer/       # 同步定时器
+│   │   │   └── waypoint/    # 兵线路径点系统
 │   │   └── resources/
 │   │       └── bettereve.mixins.json
 │   └── test/

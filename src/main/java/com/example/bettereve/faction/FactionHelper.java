@@ -13,16 +13,16 @@ public class FactionHelper {
     private static final String FACTION_NBT_KEY = "BetterEvE:FactionID";
     private static final String SHOW_HEALTH_BAR_NBT_KEY = "BetterEvE:ShowHealthBar";
 
-    // 获取实体的阵营ID（支持 BaseEntity 类型的特殊处理）
+    // 获取实体的阵营ID（支持 CrystalEntity 类型的特殊处理）
     public static String getEntityFactionId(Entity entity) {
         if (entity == null) {
             return "neutral";
         }
 
-        // 特殊处理 BaseEntity 类型
-        if (entity instanceof com.example.bettereve.entity.BaseEntity) {
-            com.example.bettereve.entity.BaseEntity baseEntity = (com.example.bettereve.entity.BaseEntity) entity;
-            String factionId = baseEntity.getFactionId();
+        // 特殊处理 CrystalEntity 类型
+        if (entity instanceof com.example.bettereve.entity.CrystalEntity) {
+            com.example.bettereve.entity.CrystalEntity crystalEntity = (com.example.bettereve.entity.CrystalEntity) entity;
+            String factionId = crystalEntity.getFactionId();
             return factionId.isEmpty() ? "neutral" : factionId;
         }
 
@@ -40,7 +40,7 @@ public class FactionHelper {
         return "neutral"; // 默认中立阵营
     }
 
-    // 设置实体的阵营ID（支持 BaseEntity 类型的特殊处理）
+    // 设置实体的阵营ID（支持 CrystalEntity 类型的特殊处理）
     public static void setEntityFactionId(Entity entity, String factionId) {
         if (entity == null) {
             return;
@@ -50,10 +50,10 @@ public class FactionHelper {
             factionId = "neutral";
         }
 
-        // 特殊处理 BaseEntity 类型
-        if (entity instanceof com.example.bettereve.entity.BaseEntity) {
-            com.example.bettereve.entity.BaseEntity baseEntity = (com.example.bettereve.entity.BaseEntity) entity;
-            baseEntity.setFactionId(factionId);
+        // 特殊处理 CrystalEntity 类型
+        if (entity instanceof com.example.bettereve.entity.CrystalEntity) {
+            com.example.bettereve.entity.CrystalEntity crystalEntity = (com.example.bettereve.entity.CrystalEntity) entity;
+            crystalEntity.setFactionId(factionId);
         } else {
             // 其他实体使用 NBT 实现
             CompoundTag nbt = entity.getPersistentData();

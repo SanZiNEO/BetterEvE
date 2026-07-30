@@ -1,19 +1,24 @@
 package com.example.bettereve.commands;
 
-import com.example.bettereve.base.BaseSystem;
-import com.example.bettereve.counter.DeathCounter;
+import com.example.bettereve.crystal.CrystalSystem;
+import com.example.bettereve.crystal.CrystalDeathCounter;
+import com.example.bettereve.entitylv.EntityLevelSystem;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
-import com.example.bettereve.level.LevelSystem;
-import com.example.bettereve.faction.PlayerFactionData;
+import com.example.bettereve.mixin.MobAccessor;
+import com.example.bettereve.network.HealthBarScalePacket;
+import com.example.bettereve.network.FactionSyncHandler;
+import com.example.bettereve.network.CrystalDeathPacket;
+import com.example.bettereve.phase.PhaseManager;
+import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioIO;
 import com.example.bettereve.scenario.ScenarioManager;
-import com.example.bettereve.phase.PhaseManager;
-import com.example.bettereve.goal.GoalVisualizer;
-import com.example.bettereve.scenario.Scenario;
-import com.example.bettereve.network.FactionSyncHandler;
 import com.example.bettereve.scoreboard.ScoreboardManager;
+import com.example.bettereve.waypoint.WaypointVisualizer;
+import com.example.bettereve.counter.DeathCounter;
+import com.example.bettereve.faction.PlayerFactionData;
+import com.example.bettereve.network.NetworkManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -48,11 +53,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
-
 import net.minecraft.world.DifficultyInstance;
-
-import com.example.bettereve.mixin.MobAccessor;
-import com.example.bettereve.network.HealthBarScalePacket;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -103,11 +104,11 @@ public class BetterEvECommands {
                         .suggests(PHASE_SUGGESTIONS)
                         .executes(BetterEvECommands::executePhaseSwitch)))
             )  // close phase
-            .then(Commands.literal("goal")
+            .then(Commands.literal("waypoint")
                 .then(Commands.literal("visualize")
-                    .executes(BetterEvECommands::executeGoalVisualizeToggle))
-            )  // close goal
-            .then(Commands.literal("base")
+                    .executes(BetterEvECommands::executeWaypointVisualizeToggle))
+            )  // close waypoint
+            .then(Commands.literal("crystal")
                 .then(Commands.literal("create")
                     .then(Commands.argument("factionId", StringArgumentType.word())
                         .suggests(FACTION_ID_SUGGESTIONS)
@@ -122,9 +123,9 @@ public class BetterEvECommands {
                                                         .then(Commands.argument("size", StringArgumentType.word())
                                                             .suggests(SIZE_SUGGESTIONS)
                                                             .then(Commands.argument("modelScale", DoubleArgumentType.doubleArg(0.01, 4.0))
-                                                                .executes(BetterEvECommands::executeCreateBaseOptimized)
+                                                                .executes(BetterEvECommands::executeCreateCrystalOptimized)
                                                                 .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
-                                                                    .executes(BetterEvECommands::executeCreateBaseWithHealthBar)
+                                                                    .executes(BetterEvECommands::executeCreateCrystalWithHealthBar)
                                                                 )
                                                             )
                                                         )
@@ -170,11 +171,11 @@ public class BetterEvECommands {
             .then(Commands.literal("scoreboard")
                 .then(Commands.literal("clear")
                     .executes(BetterEvECommands::clearAllScoreboards)
-                    .then(Commands.literal("base")
-                        .executes(BetterEvECommands::clearBaseScoreboard)
+                    .then(Commands.literal("crystal")
+                        .executes(BetterEvECommands::clearCrystalScoreboard)
                         .then(Commands.argument("factionName", StringArgumentType.greedyString())
                             .suggests(FACTION_NAME_SUGGESTIONS)
-                            .executes(BetterEvECommands::clearBaseFactionScoreboard)
+                            .executes(BetterEvECommands::clearCrystalFactionScoreboard)
                         )
                     )
                     .then(Commands.argument("factionName", StringArgumentType.greedyString())
@@ -269,7 +270,7 @@ public class BetterEvECommands {
 
     private static final SuggestionProvider<CommandSourceStack> SIZE_SUGGESTIONS = (context, builder) -> {
         // 获取所有可用的尺寸键值
-        String[] sizeKeys = com.example.bettereve.base.BaseSystem.getAllBaseSizes();
+        String[] sizeKeys = CrystalSystem.getAllCrystalSizes();
         
         // 添加常见的尺寸建议
         String[] commonSizes = {
@@ -382,7 +383,7 @@ public class BetterEvECommands {
                         FactionSyncHandler.syncEntityImmediately(mob);
                         
                         if (level > 0) {
-                            LevelSystem.setEntityLevel(mob, level);
+                            EntityLevelSystem.setEntityLevel(mob, level);
                         }
                         
                         // 设置血条可见性
@@ -601,11 +602,11 @@ public class BetterEvECommands {
         return 1;
     }
     
-    private static int executeCreateBaseOptimized(CommandContext<CommandSourceStack> context) {
-        return BetterEvECommandsAdditionalMethods.executeCreateBaseOptimized(context);
+    private static int executeCreateCrystalOptimized(CommandContext<CommandSourceStack> context) {
+        return BetterEvECommandsAdditionalMethods.executeCreateCrystalOptimized(context);
     }
     
-    private static int executeCreateBaseWithHealthBar(CommandContext<CommandSourceStack> context) {
+    private static int executeCreateCrystalWithHealthBar(CommandContext<CommandSourceStack> context) {
         String factionId = StringArgumentType.getString(context, "factionId");
         int x = IntegerArgumentType.getInteger(context, "x");
         int y = IntegerArgumentType.getInteger(context, "y");
@@ -623,7 +624,7 @@ public class BetterEvECommands {
         net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
         
         // 检查尺寸键值是否有效
-        if (!com.example.bettereve.base.BaseSystem.isValidSizeKey(sizeKey)) {
+        if (!CrystalSystem.isValidSizeKey(sizeKey)) {
             context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("无效的尺寸键值: " + sizeKey + 
                 "，有效的尺寸格式为: 宽度x高度（例如 3x10）"));
             return 0;
@@ -635,12 +636,12 @@ public class BetterEvECommands {
             return 0;
         }
         
-        // 调用 BaseSystem
+        // 调用 CrystalSystem
         net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
         
-        com.example.bettereve.base.BaseSystem.spawnBase(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar);
+        CrystalSystem.spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar);
         
-        context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("基地创建成功: " + 
+        context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("水晶基地创建成功: " + 
             com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() + 
             " 位置: " + pos.toShortString() + 
             " 尺寸: " + sizeKey + 
@@ -649,23 +650,21 @@ public class BetterEvECommands {
         return 1;
     }
     
-    
     /**
      * 清除所有基地死亡计数
      */
-    private static int clearBaseScoreboard(CommandContext<CommandSourceStack> context) {
-        // 这里需要调用BaseDeathCounter的清除方法
-        // 但BaseDeathCounter是客户端专用的，我们需要通过网络数据包通知所有客户端
+    private static int clearCrystalScoreboard(CommandContext<CommandSourceStack> context) {
+        // 通过网络数据包通知所有客户端清除水晶基地死亡计数
         try {
-            // 使用NetworkManager的现有方法清除所有基地死亡计数
-            com.example.bettereve.network.NetworkManager.clearBaseDeathCounts();
+            // 使用NetworkManager的现有方法清除所有水晶基地死亡计数
+            com.example.bettereve.network.NetworkManager.clearCrystalDeathCounts();
             
-            context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("已发送清除基地死亡计数的指令到所有客户端"), true);
-            LOGGER.info("Base death counters cleared via command");
+            context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("已发送清除水晶基地死亡计数的指令到所有客户端"), true);
+            LOGGER.info("Crystal death counters cleared via command");
             return 1;
         } catch (Exception e) {
-            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("清除基地死亡计数失败: " + e.getMessage()));
-            LOGGER.error("Failed to clear base death counters", e);
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("清除水晶基地死亡计数失败: " + e.getMessage()));
+            LOGGER.error("Failed to clear crystal death counters", e);
             return 0;
         }
     }
@@ -673,7 +672,7 @@ public class BetterEvECommands {
     /**
      * 清除指定阵营的基地死亡计数
      */
-    private static int clearBaseFactionScoreboard(CommandContext<CommandSourceStack> context) {
+    private static int clearCrystalFactionScoreboard(CommandContext<CommandSourceStack> context) {
         String factionName = StringArgumentType.getString(context, "factionName");
         net.minecraft.server.level.ServerLevel serverLevel = context.getSource().getLevel();
         
@@ -693,20 +692,20 @@ public class BetterEvECommands {
         
         try {
             // 创建清除指定阵营的数据包
-            com.example.bettereve.network.BaseDeathPacket packet = new com.example.bettereve.network.BaseDeathPacket(targetFaction.getId(), true);
+            CrystalDeathPacket packet = new CrystalDeathPacket(targetFaction.getId(), true);
             
             // 使用NetworkManager的通道发送数据包给所有玩家
-            com.example.bettereve.network.NetworkManager.getChannel().send(
+            NetworkManager.getChannel().send(
                 net.minecraftforge.network.PacketDistributor.ALL.noArg(), 
                 packet
             );
             
-            context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("已发送清除阵营 " + factionName + " 的基地死亡计数的指令到所有客户端"), true);
-            LOGGER.info("Base death counters for faction {} cleared via command", factionName);
+            context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("已发送清除阵营 " + factionName + " 的水晶基地死亡计数的指令到所有客户端"), true);
+            LOGGER.info("Crystal death counters for faction {} cleared via command", factionName);
             return 1;
         } catch (Exception e) {
-            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("清除阵营基地死亡计数失败: " + e.getMessage()));
-            LOGGER.error("Failed to clear base death counters for faction {}", factionName, e);
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("清除阵营水晶基地死亡计数失败: " + e.getMessage()));
+            LOGGER.error("Failed to clear crystal death counters for faction {}", factionName, e);
             return 0;
         }
     }
@@ -816,11 +815,11 @@ public class BetterEvECommands {
         return 1;
     }
 
-    private static int executeGoalVisualizeToggle(CommandContext<CommandSourceStack> context) {
-        boolean newState = !GoalVisualizer.isEnabled();
-        GoalVisualizer.setEnabled(newState);
+    private static int executeWaypointVisualizeToggle(CommandContext<CommandSourceStack> context) {
+        boolean newState = !WaypointVisualizer.isEnabled();
+        WaypointVisualizer.setEnabled(newState);
         context.getSource().sendSuccess(() -> 
-            Component.literal("Goal 可视化已" + (newState ? "启用" : "禁用")), true);
+            Component.literal("路径点可视化已" + (newState ? "启用" : "禁用")), true);
         return 1;
     }
 }

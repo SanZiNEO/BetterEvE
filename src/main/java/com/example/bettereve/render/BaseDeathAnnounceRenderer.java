@@ -272,8 +272,8 @@ public class BaseDeathAnnounceRenderer {
     @SubscribeEvent
     public static void onRegisterGuiOverlays(RegisterGuiOverlaysEvent event) {
         // 在十字准心下方注册，但比基地死亡计分板更低（确保中央显示不被遮挡）
-        event.registerBelow(VanillaGuiOverlay.CROSSHAIR.id(), "bettereve_base_death_announce", BASE_DEATH_ANNOUNCE_OVERLAY);
-        LOGGER.info("Registered base death announce HUD overlay (total duration: {}ms, text scale: {})", 
+        event.registerBelow(VanillaGuiOverlay.CROSSHAIR.id(), "bettereve_crystal_death_announce", BASE_DEATH_ANNOUNCE_OVERLAY);
+        LOGGER.info("Registered crystal death announce HUD overlay (total duration: {}ms, text scale: {})", 
                    ANNOUNCE_TOTAL_DURATION_MS, TEXT_SCALE);
     }
     
@@ -288,7 +288,7 @@ public class BaseDeathAnnounceRenderer {
      * 获取配置信息（用于调试）
      */
     public static String getConfigInfo() {
-        return String.format("BaseDeathAnnounceRenderer Config: totalDuration=%dms, textScale=%.2f, lineSpacing=%d, shadow=%s",
+        return String.format("CrystalDeathAnnounceRenderer Config: totalDuration=%dms, textScale=%.2f, lineSpacing=%d, shadow=%s",
                            ANNOUNCE_TOTAL_DURATION_MS, TEXT_SCALE, LINE_SPACING, TEXT_SHADOW);
     }
 }

@@ -1,4 +1,4 @@
-package com.example.bettereve.goal;
+package com.example.bettereve.waypoint;
 
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
@@ -21,7 +21,7 @@ import net.minecraftforge.fml.common.Mod;
 
 @OnlyIn(Dist.CLIENT)
 @Mod.EventBusSubscriber(modid = "bettereve", value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class GoalVisualizer {
+public class WaypointVisualizer {
     private static boolean enabled = false;
 
     public static void setEnabled(boolean enable) { enabled = enable; }
@@ -47,7 +47,7 @@ public class GoalVisualizer {
         poseStack.pushPose();
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
 
-        for (GoalRegion region : GoalManager.getAllGoals()) {
+        for (WaypointRegion region : WaypointManager.getAllWaypoints()) {
             double cx = region.getCenterX();
             double cz = region.getCenterZ();
             if (playerPos.distanceToSqr(new Vec3(cx, playerPos.y, cz)) > 64 * 64) continue;

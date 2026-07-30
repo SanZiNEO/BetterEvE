@@ -100,24 +100,24 @@ public class BetterEvEConfigScreen extends Screen {
                     String.valueOf(BetterEvEConfig.INSTANCE.targeting_defaultFollowRange.get()),
                     "double", this.parent));
 
-            // 基地系统配置
-            entries.add(new ConfigEntry("基地默认血量",
-                    String.valueOf(BetterEvEConfig.INSTANCE.base_defaultHealth.get()),
+            // 水晶基地系统配置
+            entries.add(new ConfigEntry("水晶基地默认血量",
+                    String.valueOf(BetterEvEConfig.INSTANCE.crystal_defaultHealth.get()),
                     "int", this.parent));
-            entries.add(new ConfigEntry("基地清空地图范围（格）",
-                    String.valueOf(BetterEvEConfig.INSTANCE.base_clearRadius.get()),
+            entries.add(new ConfigEntry("水晶基地清空地图范围（格）",
+                    String.valueOf(BetterEvEConfig.INSTANCE.crystal_clearRadius.get()),
                     "int", this.parent));
-
-            // 等级系统配置
+            // 实体等级系统配置
             entries.add(new ConfigEntry("每级生命值加成比例（%）",
-                    String.valueOf(BetterEvEConfig.INSTANCE.level_healthBonus.get()),
+                    String.valueOf(BetterEvEConfig.INSTANCE.entitylv_healthBonus.get()),
                     "double", this.parent));
             entries.add(new ConfigEntry("每级攻击力加成比例（%）",
-                    String.valueOf(BetterEvEConfig.INSTANCE.level_attackBonus.get()),
+                    String.valueOf(BetterEvEConfig.INSTANCE.entitylv_attackBonus.get()),
                     "double", this.parent));
             entries.add(new ConfigEntry("等级上限",
-                    String.valueOf(BetterEvEConfig.INSTANCE.level_maxLevel.get()),
+                    String.valueOf(BetterEvEConfig.INSTANCE.entitylv_maxLevel.get()),
                     "int", this.parent));
+
 
             // 全局开关配置
             entries.add(new ConfigEntry("全局HUD显示总开关",
@@ -222,21 +222,22 @@ public class BetterEvEConfigScreen extends Screen {
                 case "全局默认寻敌范围（格）":
                     BetterEvEConfig.INSTANCE.targeting_defaultFollowRange.set(Double.parseDouble(value));
                     break;
-                case "基地默认血量":
-                    BetterEvEConfig.INSTANCE.base_defaultHealth.set(Integer.parseInt(value));
+                case "水晶基地默认血量":
+                    BetterEvEConfig.INSTANCE.crystal_defaultHealth.set(Integer.parseInt(value));
                     break;
-                case "基地清空地图范围（格）":
-                    BetterEvEConfig.INSTANCE.base_clearRadius.set(Integer.parseInt(value));
+                case "水晶基地清空地图范围（格）":
+                    BetterEvEConfig.INSTANCE.crystal_clearRadius.set(Integer.parseInt(value));
                     break;
                 case "每级生命值加成比例（%）":
-                    BetterEvEConfig.INSTANCE.level_healthBonus.set(Double.parseDouble(value));
+                    BetterEvEConfig.INSTANCE.entitylv_healthBonus.set(Double.parseDouble(value));
                     break;
                 case "每级攻击力加成比例（%）":
-                    BetterEvEConfig.INSTANCE.level_attackBonus.set(Double.parseDouble(value));
+                    BetterEvEConfig.INSTANCE.entitylv_attackBonus.set(Double.parseDouble(value));
                     break;
                 case "等级上限":
-                    BetterEvEConfig.INSTANCE.level_maxLevel.set(Integer.parseInt(value));
+                    BetterEvEConfig.INSTANCE.entitylv_maxLevel.set(Integer.parseInt(value));
                     break;
+
             }
         }
 

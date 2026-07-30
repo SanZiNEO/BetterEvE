@@ -1,12 +1,12 @@
 package com.example.bettereve;
 
 import com.example.bettereve.config.BetterEvEConfig;
-import com.example.bettereve.entity.BaseEntity;
-import com.example.bettereve.scenario.ScenarioIO;
-import com.example.bettereve.entity.BaseEntityModel;
-import com.example.bettereve.entity.BaseEntityType;
+import com.example.bettereve.entity.CrystalEntity;
+import com.example.bettereve.entity.CrystalEntityModel;
+import com.example.bettereve.entity.CrystalEntityType;
 import com.example.bettereve.mixin.AccessorRangedAttribute;
 import com.example.bettereve.network.NetworkManager;
+import com.example.bettereve.scenario.ScenarioIO;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.RangedAttribute;
@@ -42,7 +42,7 @@ public class Bettereve {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, BetterEvEConfig.COMMON_SPEC);
 
         // 注册实体类型
-        BaseEntityType.ENTITY_TYPES.register(modEventBus);
+        CrystalEntityType.ENTITY_TYPES.register(modEventBus);
         
         // 注册实体属性
         modEventBus.addListener(this::registerAttributes);
@@ -50,9 +50,9 @@ public class Bettereve {
 
     private void registerAttributes(final net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {
         // 为所有不同尺寸的实体类型注册属性
-        for (net.minecraftforge.registries.RegistryObject<net.minecraft.world.entity.EntityType<com.example.bettereve.entity.BaseEntity>> entityType : 
-             com.example.bettereve.entity.BaseEntityType.getAllEntityTypes()) {
-            event.put(entityType.get(), com.example.bettereve.entity.BaseEntity.createAttributes().build());
+        for (net.minecraftforge.registries.RegistryObject<net.minecraft.world.entity.EntityType<CrystalEntity>> entityType : 
+             CrystalEntityType.getAllEntityTypes()) {
+            event.put(entityType.get(), CrystalEntity.createAttributes().build());
         }
     }
 
@@ -98,18 +98,18 @@ public class Bettereve {
             });
         }
 
-        @SubscribeEvent
+    @SubscribeEvent
         public static void onRegisterRenderers(net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
             // 为所有不同尺寸的实体类型注册渲染器
-            for (net.minecraftforge.registries.RegistryObject<net.minecraft.world.entity.EntityType<com.example.bettereve.entity.BaseEntity>> entityType : 
-                 com.example.bettereve.entity.BaseEntityType.getAllEntityTypes()) {
-                event.registerEntityRenderer(entityType.get(), com.example.bettereve.render.BaseEntity.BaseEntityRenderer::new);
+            for (net.minecraftforge.registries.RegistryObject<net.minecraft.world.entity.EntityType<CrystalEntity>> entityType : 
+                 CrystalEntityType.getAllEntityTypes()) {
+                event.registerEntityRenderer(entityType.get(), com.example.bettereve.render.CrystalEntity.CrystalEntityRenderer::new);
             }
         }
 
-        @SubscribeEvent
+    @SubscribeEvent
         public static void onRegisterLayerDefinitions(net.minecraftforge.client.event.EntityRenderersEvent.RegisterLayerDefinitions event) {
-            event.registerLayerDefinition(com.example.bettereve.entity.BaseEntityModel.LAYER_LOCATION, com.example.bettereve.entity.BaseEntityModel::createBodyLayer);
+            event.registerLayerDefinition(CrystalEntityModel.LAYER_LOCATION, CrystalEntityModel::createBodyLayer);
         }
 
         static {

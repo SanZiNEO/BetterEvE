@@ -26,13 +26,13 @@ import javax.annotation.Nullable;
  * 本模型使用自定义手动动画系统，实现待机、攻击和死亡三种动画状态
  * 完全按照 Blockbench 中的设计实现
  */
-public class BaseEntityModel<T extends BaseEntity> extends EntityModel<T> {
+public class CrystalEntityModel<T extends CrystalEntity> extends EntityModel<T> {
     // 模型层位置 - 用于在客户端注册和渲染
-    public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation("bettereve", "baseentity"), "main");
+    public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation("bettereve", "crystalentity"), "main");
     private final ModelPart core;        // 核心部件
     private final ModelPart kuangjia;   // 框架部件
 
-    public BaseEntityModel(ModelPart root) {
+    public CrystalEntityModel(ModelPart root) {
         this.core = root.getChild("core");
         this.kuangjia = root.getChild("kuangjia");
     }

@@ -1,7 +1,7 @@
 package com.example.bettereve.events;
 
 import com.example.bettereve.faction.FactionHelper;
-import com.example.bettereve.level.LevelSystem;
+import com.example.bettereve.entitylv.EntityLevelSystem;
 import com.example.bettereve.Bettereve;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -45,9 +45,9 @@ public class ProjectileFactionInheritanceHandler {
             }
 
             // 继承发射者的等级
-            int level = LevelSystem.getEntityLevel(owner);
+            int level = EntityLevelSystem.getEntityLevel(owner);
             if (level > 0) {
-                LevelSystem.setEntityLevel(projectile, level);
+                EntityLevelSystem.setEntityLevel(projectile, level);
                 LOGGER.debug("投掷物继承等级: 实体类型={}, 发射者UUID={}, 发射者等级={}, 投掷物UUID={}", 
                     entity.getType().toString(), owner.getUUID(), level, entity.getUUID());
             }

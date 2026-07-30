@@ -165,9 +165,9 @@ public class FactionHostileTargetGoal extends TargetGoal {
             return false;
         }
         
-        // 对非 BaseEntity 的目标检查视线（LOS）
-        // BaseEntity 是建筑，不需要 LOS；其他生物需要视线
-        if (!(target instanceof com.example.bettereve.entity.BaseEntity)) {
+        // 对非 CrystalEntity 的目标检查视线（LOS）
+        // CrystalEntity 是建筑，不需要 LOS；其他生物需要视线
+        if (!(target instanceof com.example.bettereve.entity.CrystalEntity)) {
             if (!mob.hasLineOfSight(target)) {
                 return false;
             }

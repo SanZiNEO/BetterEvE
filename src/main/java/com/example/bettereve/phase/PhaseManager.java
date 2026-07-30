@@ -1,6 +1,7 @@
 package com.example.bettereve.phase;
 
-import com.example.bettereve.base.BaseSystem;
+import com.example.bettereve.crystal.CrystalSystem;
+
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioManager;
 import net.minecraft.core.BlockPos;
@@ -78,9 +79,9 @@ public class PhaseManager {
 
     private static void spawnBasesFromPhase(Scenario.PhaseDef phase) {
         if (phase.getSpawnBases() == null || phase.getSpawnBases().getPositions() == null) return;
-        if (currentScenario.getBases() == null) return;
+        if (currentScenario.getCrystals() == null) return;
 
-        for (Scenario.BaseTemplateDef template : currentScenario.getBases()) {
+        for (Scenario.CrystalTemplateDef template : currentScenario.getCrystals()) {
             if (template.getId().equals(phase.getSpawnBases().getTemplateId())) {
                 MinecraftForge.EVENT_BUS.post(new PhaseSpawnBasesEvent(template, phase.getSpawnBases().getPositions()));
                 break;
@@ -154,7 +155,7 @@ public class PhaseManager {
         var template = event.getTemplate();
         for (var pos : event.getPositions()) {
             BlockPos blockPos = BlockPos.containing(pos.getX(), pos.getY(), pos.getZ());
-            BaseSystem.spawnBase(
+            CrystalSystem.spawnCrystal(
                 null, blockPos,
                 template.getFactionId(), template.getHealth(),
                 template.getAttackDamage(), template.getArmor(),

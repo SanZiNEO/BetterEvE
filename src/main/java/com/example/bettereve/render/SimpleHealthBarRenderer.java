@@ -2,7 +2,7 @@ package com.example.bettereve.render;
 
 import com.example.bettereve.faction.ClientFactionCache;
 import com.example.bettereve.faction.FactionHelper;
-import com.example.bettereve.level.LevelSystem;
+import com.example.bettereve.entitylv.EntityLevelSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
@@ -341,7 +341,7 @@ public class SimpleHealthBarRenderer {
                     }
                 }
                 
-                return LevelSystem.getEntityLevel((LivingEntity) entity);
+                return EntityLevelSystem.getEntityLevel((LivingEntity) entity);
             }
             return 0;
         } catch (Exception e) {

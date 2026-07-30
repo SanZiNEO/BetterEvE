@@ -1,6 +1,6 @@
 package com.example.bettereve.network;
-
 import com.example.bettereve.Bettereve;
+import com.example.bettereve.network.CrystalDeathPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -11,16 +11,10 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
-
-/**
- * 网络管理器
- * 负责注册和发送数据包，实现客户端/服务器数据同步
- */
 public class NetworkManager {
     private static final Logger LOGGER = LogManager.getLogger("BetterEvE/NetworkManager");
     
@@ -93,13 +87,13 @@ public class NetworkManager {
             HealthBarVisibilityPacket::handle
         );
         
-        // 注册基地死亡同步数据包
+        // 注册水晶基地死亡同步数据包
         CHANNEL.registerMessage(
             packetId++,
-            BaseDeathPacket.class,
-            BaseDeathPacket::encode,
-            BaseDeathPacket::decode,
-            BaseDeathPacket::handle
+            CrystalDeathPacket.class,
+            CrystalDeathPacket::encode,
+            CrystalDeathPacket::decode,
+            CrystalDeathPacket::handle
         );
         
         // 注册清除死亡计数数据包
@@ -369,14 +363,14 @@ public class NetworkManager {
     }
     
     /**
-     * 发送基地死亡事件到所有客户端（向后兼容，默认计数和播报都启用）
-     * @param factionId 死亡的基地所属阵营ID
+     * 发送水晶基地死亡事件到所有客户端
+     * @param factionId 死亡的水晶基地所属阵营ID
      */
-    public static void sendBaseDeathToAll(String factionId) {
+    public static void sendCrystalDeathToAll(String factionId) {
         if (factionId == null || factionId.isEmpty()) {
             factionId = "neutral";
         }
-        BaseDeathPacket packet = new BaseDeathPacket(factionId);
+        CrystalDeathPacket packet = new CrystalDeathPacket(factionId);
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
     }
     
@@ -388,24 +382,21 @@ public class NetworkManager {
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
     }
     
-    public static void sendBaseDeathToPlayer(String factionId, ServerPlayer player) {
+    public static void sendCrystalDeathToPlayer(String factionId, ServerPlayer player) {
         if (factionId == null || factionId.isEmpty()) {
             factionId = "neutral";
         }
         if (player == null) return;
-        BaseDeathPacket packet = new BaseDeathPacket(factionId);
+        CrystalDeathPacket packet = new CrystalDeathPacket(factionId);
         CHANNEL.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
     }
     
     /**
-     * 清除所有客户端的基地死亡计数
+     * 清除所有客户端的水晶基地死亡计数
      */
-    public static void clearBaseDeathCounts() {
-        // 创建数据包
-        BaseDeathPacket packet = new BaseDeathPacket();
-        
-        // 发送给所有玩家
+    public static void clearCrystalDeathCounts() {
+        CrystalDeathPacket packet = new CrystalDeathPacket();
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
-        LOGGER.debug("Sent clear base death counts packet to all clients");
+        LOGGER.debug("Sent clear crystal death counts packet to all clients");
     }
 }

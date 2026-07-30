@@ -1,6 +1,6 @@
 package com.example.bettereve.network;
 
-import com.example.bettereve.base.BaseDeathCounter;
+import com.example.bettereve.crystal.CrystalDeathCounter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -15,8 +15,8 @@ import java.util.function.Supplier;
  * ADD_DEATH：增加得分
  * CLEAR_ALL / CLEAR_FACTION：清除计数
  */
-public class BaseDeathPacket {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/BaseDeathPacket");
+public class CrystalDeathPacket {
+    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/CrystalDeathPacket");
 
     public enum SyncMode {
         ADD_DEATH,
@@ -28,19 +28,19 @@ public class BaseDeathPacket {
     private final String factionId;
 
     /** ADD_DEATH */
-    public BaseDeathPacket(String factionId) {
+    public CrystalDeathPacket(String factionId) {
         this.mode = SyncMode.ADD_DEATH;
         this.factionId = factionId;
     }
 
     /** CLEAR_ALL */
-    public BaseDeathPacket() {
+    public CrystalDeathPacket() {
         this.mode = SyncMode.CLEAR_ALL;
         this.factionId = null;
     }
 
     /** CLEAR_FACTION */
-    public BaseDeathPacket(String factionId, boolean unused) {
+    public CrystalDeathPacket(String factionId, boolean unused) {
         this.mode = SyncMode.CLEAR_FACTION;
         this.factionId = factionId;
     }
@@ -52,18 +52,18 @@ public class BaseDeathPacket {
         }
     }
 
-    public static BaseDeathPacket decode(FriendlyByteBuf buffer) {
+    public static CrystalDeathPacket decode(FriendlyByteBuf buffer) {
         SyncMode mode = buffer.readEnum(SyncMode.class);
         switch (mode) {
             case ADD_DEATH:
-                return new BaseDeathPacket(buffer.readUtf(32767));
+                return new CrystalDeathPacket(buffer.readUtf(32767));
             case CLEAR_ALL:
-                return new BaseDeathPacket();
+                return new CrystalDeathPacket();
             case CLEAR_FACTION:
-                return new BaseDeathPacket(buffer.readUtf(32767), true);
+                return new CrystalDeathPacket(buffer.readUtf(32767), true);
             default:
-                LOGGER.error("BaseDeathPacket: unknown sync mode: {}", mode);
-                return new BaseDeathPacket();
+                LOGGER.error("CrystalDeathPacket: unknown sync mode: {}", mode);
+                return new CrystalDeathPacket();
         }
     }
 
@@ -82,15 +82,15 @@ public class BaseDeathPacket {
         switch (mode) {
             case ADD_DEATH:
                 if (factionId != null) {
-                    BaseDeathCounter.addDeath(factionId);
+                    CrystalDeathCounter.addDeath(factionId);
                 }
                 break;
             case CLEAR_ALL:
-                BaseDeathCounter.clearAll();
+                CrystalDeathCounter.clearAll();
                 break;
             case CLEAR_FACTION:
                 if (factionId != null) {
-                    BaseDeathCounter.clearFaction(factionId);
+                    CrystalDeathCounter.clearFaction(factionId);
                 }
                 break;
         }

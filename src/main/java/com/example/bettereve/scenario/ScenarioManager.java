@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import com.example.bettereve.goal.GoalManager;
+import com.example.bettereve.waypoint.WaypointManager;
 import com.example.bettereve.phase.PhaseManager;
 
 /**
@@ -23,9 +23,9 @@ public class ScenarioManager {
         activeScenario = scenario;
         activeScenarioName = name;
         
-        // 将加载的剧本同步到 PhaseManager 和 GoalManager
+        // 将加载的剧本同步到 PhaseManager 和 WaypointManager
         PhaseManager.loadFromScenario(scenario);
-        GoalManager.loadFromScenario(scenario);
+        WaypointManager.loadFromScenario(scenario);
         
         LOGGER.info("Loaded scenario: {} ({})", name, scenario.getName());
     }
