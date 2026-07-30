@@ -1,7 +1,7 @@
 {
   "id": "default",
   "name": "默认剧本",
-  "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方核心即为胜利。",
+  "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方内塔即为胜利。",
   "factions": [
     { "id": "neutral", "name": "中立", "color": "#FFFFFF", "showOnScoreboard": false, "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
     { "id": "red", "name": "红队", "color": "#FF0000", "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0 } },
@@ -20,11 +20,11 @@
   ],
   "crystals": [
     {
-      "id": "red_crystal_1",
+      "id": "red_base",
       "factionId": "red",
-      "health": 5000,
-      "attackDamage": 15,
-      "armor": 5,
+      "health": 8000,
+      "attackDamage": 20,
+      "armor": 8,
       "attackRange": 15.0,
       "attackCooldown": 2.0,
       "sizeKey": "5x10",
@@ -32,23 +32,23 @@
       "showHealthBar": true
     },
     {
-      "id": "red_crystal_2",
+      "id": "red_normal_tower",
       "factionId": "red",
-      "health": 5000,
-      "attackDamage": 15,
-      "armor": 5,
-      "attackRange": 15.0,
+      "health": 3000,
+      "attackDamage": 10,
+      "armor": 3,
+      "attackRange": 12.0,
       "attackCooldown": 2.0,
       "sizeKey": "3x10",
       "modelScale": 1.0,
       "showHealthBar": true
     },
     {
-      "id": "blue_crystal_1",
+      "id": "blue_base",
       "factionId": "blue",
-      "health": 5000,
-      "attackDamage": 15,
-      "armor": 5,
+      "health": 8000,
+      "attackDamage": 20,
+      "armor": 8,
       "attackRange": 15.0,
       "attackCooldown": 2.0,
       "sizeKey": "5x10",
@@ -56,12 +56,12 @@
       "showHealthBar": true
     },
     {
-      "id": "blue_crystal_2",
+      "id": "blue_normal_tower",
       "factionId": "blue",
-      "health": 5000,
-      "attackDamage": 15,
-      "armor": 5,
-      "attackRange": 15.0,
+      "health": 3000,
+      "attackDamage": 10,
+      "armor": 3,
+      "attackRange": 12.0,
       "attackCooldown": 2.0,
       "sizeKey": "3x10",
       "modelScale": 1.0,
@@ -71,34 +71,95 @@
   "phases": [
     {
       "id": "match_start",
-      "announce": { "message": "§e§l战斗开始！摧毁敌方核心以获得胜利！", "duration": 5 },
+      "announce": { "message": "§e§l战斗开始！摧毁敌方基地以获得胜利！", "duration": 5 },
       "commands": [
         { "delay": 0, "command": "title @a title \"§e§l比赛开始！\"" },
-        { "delay": 5, "command": "time set day && weather clear" }
+        { "delay": 5, "command": "time set day && weather clear" },
+        { "delay": 0, "command": "bettereve crystal create red -40 -60 0 8000 20 8 15 2 5x10 1 true red_base" },
+        { "delay": 0, "command": "bettereve crystal create red -15 -60 0 3000 10 3 12 2 3x10 1 true red_normal_tower" },
+        { "delay": 0, "command": "bettereve crystal create blue 40 -60 0 8000 20 8 15 2 5x10 1 true blue_base" },
+        { "delay": 0, "command": "bettereve crystal create blue 15 -60 0 3000 10 3 12 2 3x10 1 true blue_normal_tower" }
       ],
       "triggers": [
-        { "type": "base_destroyed", "factionId": "red", "targetPhase": "blue_victory" },
-        { "type": "base_destroyed", "factionId": "blue", "targetPhase": "red_victory" }
+        { "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "red_base_down" },
+        { "type": "crystal_destroyed", "targetId": "blue_base", "targetPhase": "blue_base_down" }
+      ]
+    },
+    {
+      "id": "red_base_down",
+      "commands": [
+        { "delay": 0, "command": "title @a title \"§c§l红方基地被摧毁！蓝队获得最终胜利！\"" }
+      ],
+      "triggers": [
+        { "type": "timer", "threshold": 3, "targetPhase": "blue_victory" }
+      ]
+    },
+    {
+      "id": "blue_base_down",
+      "commands": [
+        { "delay": 0, "command": "title @a title \"§9§l蓝方基地被摧毁！红队获得最终胜利！\"" }
+      ],
+      "triggers": [
+        { "type": "timer", "threshold": 3, "targetPhase": "red_victory" }
       ]
     },
     {
       "id": "blue_victory",
-      "announce": { "message": "§9§l蓝队胜利！红队核心已被摧毁！", "duration": 10 },
       "commands": [
-        { "delay": 0, "command": "title @a title \"§9§l蓝队胜利！红队核心已被摧毁！\"" }
+        { "delay": 0, "command": "kill @e[type=!player]" },
+        { "delay": 0, "command": "kill @e[type=!player]" },
+        { "delay": 0, "command": "title @a subtitle \"§7新的一局即将开始\"" },
+        { "delay": 0, "command": "title @a title \"§e10\"" },
+        { "delay": 1, "command": "title @a title \"§e9\"" },
+        { "delay": 2, "command": "title @a title \"§e8\"" },
+        { "delay": 3, "command": "title @a title \"§e7\"" },
+        { "delay": 4, "command": "title @a title \"§e6\"" },
+        { "delay": 5, "command": "title @a title \"§e5\"" },
+        { "delay": 6, "command": "title @a title \"§e4\"" },
+        { "delay": 7, "command": "title @a title \"§e3\"" },
+        { "delay": 8, "command": "title @a title \"§e2\"" },
+        { "delay": 9, "command": "title @a title \"§e1\"" },
+        { "delay": 10, "command": "title @a title \"§a§l重新开战！\"" }
       ],
       "triggers": [
-        { "type": "timer", "threshold": 30, "targetPhase": "match_start" }
+        { "type": "timer", "threshold": 12, "targetPhase": "phase_1" }
       ]
     },
     {
       "id": "red_victory",
-      "announce": { "message": "§c§l红队胜利！蓝队核心已被摧毁！", "duration": 10 },
       "commands": [
-        { "delay": 0, "command": "title @a title \"§c§l红队胜利！蓝队核心已被摧毁！\"" }
+        { "delay": 0, "command": "kill @e[type=!player]" },
+        { "delay": 0, "command": "kill @e[type=!player]" },
+        { "delay": 0, "command": "title @a subtitle \"§7新的一局即将开始\"" },
+        { "delay": 0, "command": "title @a title \"§e10\"" },
+        { "delay": 1, "command": "title @a title \"§e9\"" },
+        { "delay": 2, "command": "title @a title \"§e8\"" },
+        { "delay": 3, "command": "title @a title \"§e7\"" },
+        { "delay": 4, "command": "title @a title \"§e6\"" },
+        { "delay": 5, "command": "title @a title \"§e5\"" },
+        { "delay": 6, "command": "title @a title \"§e4\"" },
+        { "delay": 7, "command": "title @a title \"§e3\"" },
+        { "delay": 8, "command": "title @a title \"§e2\"" },
+        { "delay": 9, "command": "title @a title \"§e1\"" },
+        { "delay": 10, "command": "title @a title \"§a§l重新开战！\"" }
       ],
       "triggers": [
-        { "type": "timer", "threshold": 30, "targetPhase": "match_start" }
+        { "type": "timer", "threshold": 12, "targetPhase": "phase_1" }
+      ]
+    },
+    {
+      "id": "phase_1",
+      "announce": { "message": "§e§l新的一局开始！", "duration": 5 },
+      "commands": [
+        { "delay": 0, "command": "title @a title \"§e§l新的一局开始！\"" },
+        { "delay": 0, "command": "bettereve crystal create red -40 -60 0 8000 20 8 15 2 5x10 1 true red_base" },
+        { "delay": 0, "command": "bettereve crystal create red -15 -60 0 3000 10 3 12 2 3x10 1 true red_normal_tower" },
+        { "delay": 0, "command": "bettereve crystal create blue 40 -60 0 8000 20 8 15 2 5x10 1 true blue_base" },
+        { "delay": 0, "command": "bettereve crystal create blue 15 -60 0 3000 10 3 12 2 3x10 1 true blue_normal_tower" }
+      ],
+      "triggers": [
+        { "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "red_base_down" },
+        { "type": "crystal_destroyed", "targetId": "blue_base", "targetPhase": "blue_base_down" }
       ]
     }
   ],
