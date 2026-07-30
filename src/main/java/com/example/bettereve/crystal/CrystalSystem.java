@@ -67,7 +67,7 @@ public class CrystalSystem {
         String attackerFaction = FactionHelper.getEntityFactionId(attacker);
         if (attackerFaction == null) return;
         
-        if (victim instanceof CrystalEntity) {
+        if (victim instanceof CrystalEntity crystal) {
             NetworkManager.sendCrystalDeathToAll(attackerFaction);
             
             ServerLevel level = (ServerLevel) victim.level();
@@ -75,7 +75,8 @@ public class CrystalSystem {
                     victim.getX(), victim.getY(), victim.getZ(),
                     100, 0.5, 0.5, 0.5, 0.1);
             
-            PhaseManager.checkTriggers("crystal_destroyed", attackerFaction, 0);
+            String crystalDefId = crystal.getCrystalDefId();
+            PhaseManager.checkTriggers("crystal_destroyed", attackerFaction, crystalDefId.isEmpty() ? null : crystalDefId, 0);
             
         } else {
             String victimFaction = FactionHelper.getEntityFactionId(victim);
@@ -131,36 +132,41 @@ public class CrystalSystem {
     }
 
     public static void spawnCrystal(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey) {
-        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, 1.0); // 默认模型缩放为1.0
+        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, 1.0);
     }
     
     public static void spawnCrystal(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale) {
-        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, true); // 默认显示血条
+        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, true);
     }
     
     public static void spawnCrystal(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar) {
-        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, showHealthBar, false); // 默认不触发自动清场
+        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, showHealthBar, false);
     }
     
     public static void spawnCrystal(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar, boolean enableDeathClear) {
-        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, showHealthBar, enableDeathClear, false, false); // 默认不播报，不加入计数
+        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, showHealthBar, enableDeathClear, null);
+    }
+    
+    public static void spawnCrystal(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar, boolean enableDeathClear, @org.jetbrains.annotations.Nullable String crystalDefId) {
+        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, showHealthBar, enableDeathClear, false, false, crystalDefId);
     }
     
     public static void spawnCrystal(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar, boolean enableDeathClear, boolean enableBroadcast, boolean enableDeathCount) {
+        spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCooldown, sizeKey, modelScale, showHealthBar, enableDeathClear, enableBroadcast, enableDeathCount, null);
+    }
+    
+    public static void spawnCrystal(Level level, BlockPos pos, String factionId, int health, int attackDamage, int armor, double attackRange, double attackCooldown, String sizeKey, double modelScale, boolean showHealthBar, boolean enableDeathClear, boolean enableBroadcast, boolean enableDeathCount, @org.jetbrains.annotations.Nullable String crystalDefId) {
         if (level instanceof ServerLevel serverLevel) {
             try {
-                // 检查尺寸键值是否有效
                 if (!CrystalEntityType.isValidSizeKey(sizeKey)) {
                     throw new IllegalArgumentException("Invalid size key: " + sizeKey + ". Valid keys are: " + String.join(", ", CrystalEntityType.getAllSizeKeys()));
                 }
 
-                // 根据尺寸键值获取对应的实体类型
                 EntityType<CrystalEntity> entityType = CrystalEntityType.getEntityTypeBySize(sizeKey);
                 if (entityType == null) {
                     throw new IllegalStateException("CrystalEntity type not found for size: " + sizeKey);
                 }
 
-                // 在指定位置生成新的 CrystalEntity 作为基地
                 CrystalEntity crystalEntity = new CrystalEntity(entityType, level);
                 crystalEntity.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
                 crystalEntity.setFactionId(factionId);
@@ -171,17 +177,18 @@ public class CrystalSystem {
                 crystalEntity.setAttackRange(attackRange);
                 crystalEntity.setAttackCooldown(attackCooldown);
                 crystalEntity.setModelScale(modelScale);
-                crystalEntity.setShowHealthBar(showHealthBar); // 设置血条可见性
+                crystalEntity.setShowHealthBar(showHealthBar);
+                if (crystalDefId != null) {
+                    crystalEntity.setCrystalDefId(crystalDefId);
+                }
 
-                // 生成实体
                 serverLevel.addFreshEntity(crystalEntity);
-                System.out.println("CrystalEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey + 
-                    ", health bar: " + (showHealthBar ? "visible" : "hidden") + 
+                System.out.println("CrystalEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey +
+                    ", health bar: " + (showHealthBar ? "visible" : "hidden") +
                     ", death clear: " + (enableDeathClear ? "enabled" : "disabled") +
                     ", broadcast: " + (enableBroadcast ? "enabled" : "disabled") +
                     ", death count: " + (enableDeathCount ? "enabled" : "disabled"));
-                
-                // 解析尺寸键值，显示尺寸信息
+
                 int[] size = CrystalEntityType.parseSizeKey(sizeKey);
                 System.out.println("Size details: width=" + size[0] + ", height=" + size[1]);
             } catch (Exception e) {

@@ -83,6 +83,7 @@ public class CrystalEntity extends Mob {
     private static final EntityDataAccessor<Float> DATA_MODEL_SCALE = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> DATA_ANIMATION_STATE = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ATTACK_TARGET = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> DATA_CRYSTAL_DEF_ID = SynchedEntityData.defineId(CrystalEntity.class, EntityDataSerializers.STRING);
     
     // 注意：碰撞箱已经通过EntityType.Builder.sized(width, height)预设
     // 实体位置在碰撞箱底部（原版标准）
@@ -182,6 +183,7 @@ public class CrystalEntity extends Mob {
         this.entityData.define(DATA_MODEL_SCALE, 1.0F);
         this.entityData.define(DATA_ANIMATION_STATE, AnimationState.STANDBY.ordinal());
         this.entityData.define(DATA_ATTACK_TARGET, 0);
+        this.entityData.define(DATA_CRYSTAL_DEF_ID, "");
     }
     
     // 血条可见性属性 - 使用NBT存储，与FactionHelper保持一致
@@ -212,6 +214,15 @@ public class CrystalEntity extends Mob {
     public String getFactionId() {
         String factionId = this.entityData.get(DATA_FACTION_ID);
         return factionId.isEmpty() ? "neutral" : factionId;
+    }
+
+    // 水晶模板ID属性（剧本中 CrystalTemplateDef 的 id）
+    public void setCrystalDefId(String id) {
+        this.entityData.set(DATA_CRYSTAL_DEF_ID, id != null ? id : "");
+    }
+
+    public String getCrystalDefId() {
+        return this.entityData.get(DATA_CRYSTAL_DEF_ID);
     }
 
     // 最大生命值属性
@@ -595,6 +606,9 @@ public class CrystalEntity extends Mob {
         if (tag.contains("BetterEvE:AttackRange")) {
             this.setAttackRange(tag.getDouble("BetterEvE:AttackRange"));
         }
+        if (tag.contains("BetterEvE:CrystalDefId")) {
+            this.setCrystalDefId(tag.getString("BetterEvE:CrystalDefId"));
+        }
         if (tag.contains("BetterEvE:AttackCooldown")) {
             this.setAttackCooldown(tag.getDouble("BetterEvE:AttackCooldown"));
         }
@@ -603,6 +617,15 @@ public class CrystalEntity extends Mob {
         }
         if (tag.contains("BetterEvE:ShowHealthBar")) {
             this.setShowHealthBar(tag.getBoolean("BetterEvE:ShowHealthBar"));
+        }
+    }
+
+    @Override
+    public void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        String id = getCrystalDefId();
+        if (!id.isEmpty()) {
+            tag.putString("BetterEvE:CrystalDefId", id);
         }
     }
     // 初始化时设置属性

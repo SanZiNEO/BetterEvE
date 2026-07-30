@@ -126,6 +126,12 @@ public class BetterEvECommands {
                                                                 .executes(BetterEvECommands::executeCreateCrystalOptimized)
                                                                 .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
                                                                     .executes(BetterEvECommands::executeCreateCrystalWithHealthBar)
+                                                                    .then(Commands.argument("crystalId", StringArgumentType.word())
+                                                                        .executes(BetterEvECommands::executeCreateCrystalWithHealthBarAndId)
+                                                                    )
+                                                                )
+                                                                .then(Commands.argument("crystalId", StringArgumentType.word())
+                                                                    .executes(BetterEvECommands::executeCreateCrystalOptimizedWithId)
                                                                 )
                                                             )
                                                         )
@@ -647,6 +653,61 @@ public class BetterEvECommands {
             " 尺寸: " + sizeKey + 
             " 模型缩放: " + String.format("%.2f", modelScale) + "x" +
             " 血条: " + (showHealthBar ? "可见" : "隐藏")), true);
+        return 1;
+    }
+
+    private static int executeCreateCrystalWithHealthBarAndId(CommandContext<CommandSourceStack> context) {
+        String factionId = StringArgumentType.getString(context, "factionId");
+        int x = IntegerArgumentType.getInteger(context, "x");
+        int y = IntegerArgumentType.getInteger(context, "y");
+        int z = IntegerArgumentType.getInteger(context, "z");
+        int health = IntegerArgumentType.getInteger(context, "health");
+        int attackDamage = IntegerArgumentType.getInteger(context, "attackDamage");
+        int armor = IntegerArgumentType.getInteger(context, "armor");
+        double attackRange = DoubleArgumentType.getDouble(context, "attackRange");
+        double attackCycle = DoubleArgumentType.getDouble(context, "attackCycle");
+        String sizeKey = StringArgumentType.getString(context, "size");
+        double modelScale = DoubleArgumentType.getDouble(context, "modelScale");
+        boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
+        String crystalId = StringArgumentType.getString(context, "crystalId");
+        
+        net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+        if (!CrystalSystem.isValidSizeKey(sizeKey)) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("无效的尺寸键值: " + sizeKey));
+            return 0;
+        }
+        net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
+        CrystalSystem.spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, showHealthBar, false, crystalId);
+        context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("水晶基地创建成功: " +
+            com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() +
+            " ID: " + crystalId), true);
+        return 1;
+    }
+
+    private static int executeCreateCrystalOptimizedWithId(CommandContext<CommandSourceStack> context) {
+        String factionId = StringArgumentType.getString(context, "factionId");
+        int x = IntegerArgumentType.getInteger(context, "x");
+        int y = IntegerArgumentType.getInteger(context, "y");
+        int z = IntegerArgumentType.getInteger(context, "z");
+        int health = IntegerArgumentType.getInteger(context, "health");
+        int attackDamage = IntegerArgumentType.getInteger(context, "attackDamage");
+        int armor = IntegerArgumentType.getInteger(context, "armor");
+        double attackRange = DoubleArgumentType.getDouble(context, "attackRange");
+        double attackCycle = DoubleArgumentType.getDouble(context, "attackCycle");
+        String sizeKey = StringArgumentType.getString(context, "size");
+        double modelScale = DoubleArgumentType.getDouble(context, "modelScale");
+        String crystalId = StringArgumentType.getString(context, "crystalId");
+        
+        net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+        if (!CrystalSystem.isValidSizeKey(sizeKey)) {
+            context.getSource().sendFailure(net.minecraft.network.chat.Component.literal("无效的尺寸键值: " + sizeKey));
+            return 0;
+        }
+        net.minecraft.server.level.ServerLevel level = context.getSource().getLevel();
+        CrystalSystem.spawnCrystal(level, pos, factionId, health, attackDamage, armor, attackRange, attackCycle, sizeKey, modelScale, true, false, crystalId);
+        context.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("水晶基地创建成功: " +
+            com.example.bettereve.faction.FactionRegistry.getFaction(factionId).getName() +
+            " ID: " + crystalId), true);
         return 1;
     }
     

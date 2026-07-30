@@ -22,6 +22,8 @@ import java.util.List;
  * 3. 战斗优先于赶路（优先级低于战斗 Goal）
  */
 public class PathfindToWaypointGoal extends Goal {
+    private static final String WAYPOINT_ORDER_KEY = "BetterEvE:LastWaypointOrder";
+    
     private final PathfinderMob mob;
     private final PathNavigation navigation;
     private WaypointRegion currentTarget = null;
@@ -35,25 +37,19 @@ public class PathfindToWaypointGoal extends Goal {
     public PathfindToWaypointGoal(PathfinderMob mob) {
         this.mob = mob;
         this.navigation = mob.getNavigation();
-        this.setFlags(EnumSet.of(Flag.MOVE));
+        this.setFlags(EnumSet.of(Goal.Flag.MOVE));
     }
 
     @Override
     public boolean canUse() {
-        // 只有非中立阵营的实体才使用路径点推进
+        if (mob.getTarget() != null) return false;
         String factionId = FactionHelper.getEntityFactionId(mob);
-        if (factionId == null || "neutral".equals(factionId)) {
-            return false;
-        }
-        
-        // 检查是否有路径点
-        List<WaypointRegion> waypoints = WaypointManager.getWaypointRegionsByFaction(factionId);
-        return waypoints != null && !waypoints.isEmpty();
+        if (factionId == null || "neutral".equals(factionId)) return false;
+        return true;
     }
 
     @Override
     public boolean canContinueToUse() {
-        // 如果已经到达最终目标，不再继续
         if (arrived) {
             return false;
         }
@@ -62,13 +58,14 @@ public class PathfindToWaypointGoal extends Goal {
 
     @Override
     public void start() {
-        currentOrder = 0;
+        currentOrder = mob.getPersistentData().getInt(WAYPOINT_ORDER_KEY);
         arrived = false;
         selectNextTarget();
     }
 
     @Override
     public void stop() {
+        mob.getPersistentData().putInt(WAYPOINT_ORDER_KEY, currentOrder);
         navigation.stop();
     }
 
@@ -81,8 +78,8 @@ public class PathfindToWaypointGoal extends Goal {
 
         // 检查是否到达当前目标
         if (currentTarget.isInside(mob.getX(), mob.getZ())) {
-            // 到达当前目标，选择下一个
             currentOrder = currentTarget.getOrder();
+            mob.getPersistentData().putInt(WAYPOINT_ORDER_KEY, currentOrder);
             selectNextTarget();
             return;
         }
@@ -99,61 +96,56 @@ public class PathfindToWaypointGoal extends Goal {
 
     private void selectNextTarget() {
         String factionId = FactionHelper.getEntityFactionId(mob);
-        if (factionId == null) return;
-
-        // 先尝试获取己方阵营的下一个路径点
-        WaypointRegion next = WaypointManager.getNextWaypoint(factionId, currentOrder);
-        if (next != null) {
-            currentTarget = next;
-            double cx = currentTarget.getCenterX();
-            double cz = currentTarget.getCenterZ();
-            navigation.moveTo(cx, mob.getY(), cz, 1.0);
-            repathTimer = 0;
+        if (factionId == null) {
+            arrived = true;
             return;
         }
 
-        // 己方路径点走完了，尝试走敌方路径点（从大到小）
+        WaypointRegion next = null;
+        
+        // 1. 先找自己阵营的路径点（从小到大）
+        next = WaypointManager.getNextWaypoint(factionId, currentOrder);
+        if (next != null) {
+            currentTarget = next;
+            repathTimer = REPATH_INTERVAL; // 立即可达
+            return;
+        }
+        
+        // 2. 己方走完了，找敌方路径点
         if (findEnemyGoal()) {
             return;
         }
-
-        // 没有更多路径点了，标记为到达
+        
+        // 3. 没有更多路径点了，到达终点
         arrived = true;
         currentTarget = null;
-        navigation.stop();
     }
 
+    /**
+     * 查找敌方阵营的下一个路径点。
+     * 策略：遍历所有非本阵营的路径点，选择 order 大于当前 order 的最小值（从边界向敌阵推进）。
+     */
     private boolean findEnemyGoal() {
         String factionId = FactionHelper.getEntityFactionId(mob);
         if (factionId == null) return false;
 
-        // 获取所有阵营
         List<WaypointRegion> allWaypoints = WaypointManager.getAllWaypoints();
-        
-        // 找到最大的order（敌方路径点从大到小走）
-        WaypointRegion bestTarget = null;
+        WaypointRegion best = null;
         int bestOrder = Integer.MAX_VALUE;
-        
+
         for (WaypointRegion region : allWaypoints) {
-            if (!region.getFactionId().equals(factionId)) {
-                int order = region.getOrder();
-                // 敌方路径点：从大到小
-                if (order > currentOrder && order < bestOrder) {
-                    bestOrder = order;
-                    bestTarget = region;
-                }
+            if (factionId.equals(region.getFactionId())) continue;
+            if (region.getOrder() > currentOrder && region.getOrder() < bestOrder) {
+                best = region;
+                bestOrder = region.getOrder();
             }
         }
-        
-        if (bestTarget != null) {
-            currentTarget = bestTarget;
-            double cx = currentTarget.getCenterX();
-            double cz = currentTarget.getCenterZ();
-            navigation.moveTo(cx, mob.getY(), cz, 1.0);
-            repathTimer = 0;
+
+        if (best != null) {
+            currentTarget = best;
+            repathTimer = REPATH_INTERVAL;
             return true;
         }
-        
         return false;
     }
 }

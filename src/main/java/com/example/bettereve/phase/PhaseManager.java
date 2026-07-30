@@ -90,6 +90,10 @@ public class PhaseManager {
     }
 
     public static void checkTriggers(String type, String factionId, int value) {
+        checkTriggers(type, factionId, null, value);
+    }
+
+    public static void checkTriggers(String type, String factionId, String crystalDefId, int value) {
         Scenario.PhaseDef current = getCurrentPhase();
         if (current == null || current.getTriggers() == null) return;
 
@@ -100,6 +104,11 @@ public class PhaseManager {
             switch (type) {
                 case "base_destroyed":
                     if (factionId.equals(trigger.getFactionId()) || "*".equals(trigger.getFactionId())) {
+                        triggered = true;
+                    }
+                    break;
+                case "crystal_destroyed":
+                    if (crystalDefId != null && crystalDefId.equals(trigger.getTargetId())) {
                         triggered = true;
                     }
                     break;
@@ -114,7 +123,7 @@ public class PhaseManager {
             }
 
             if (triggered && trigger.getTargetPhase() != null) {
-                LOGGER.info("Trigger fired: {} ({}) -> phase {}", trigger.getType(), trigger.getFactionId(), trigger.getTargetPhase());
+                LOGGER.info("Trigger fired: {} (targetId={}) -> phase {}", trigger.getType(), trigger.getTargetId(), trigger.getTargetPhase());
                 switchTo(trigger.getTargetPhase());
                 break;
             }
