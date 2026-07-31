@@ -1,12 +1,12 @@
 package com.example.bettereve.network;
 
 import com.example.bettereve.faction.FactionHelper;
+import com.example.bettereve.entitylv.EntityLevelSystem;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
@@ -23,6 +23,7 @@ public class FactionSyncHandler {
     // 同步计数器（用于控制同步频率）
     private static int syncTickCounter = 0;
     private static final int SYNC_TICK_INTERVAL = 20; // 每20 tick（1秒）处理一次批量同步
+    private static int cleanupCounter = 0; // 客户端缓存清理计数（每 30 次批量同步约 30 秒一次）
     
     /**
      * 当实体加入世界时触发同步
@@ -48,17 +49,9 @@ public class FactionSyncHandler {
         // 同步血条可见性信息
         boolean showHealthBar = FactionHelper.getEntityShowHealthBar(entity);
         NetworkManager.syncEntityHealthBarVisibilityToAll(entity, showHealthBar);
-    }
-    
-    /**
-     * 当实体阵营改变时触发同步
-     * 通过监听实体变化事件实现
-     */
-    @SubscribeEvent
-    public static void onLivingUpdate(LivingEvent.LivingTickEvent event) {
-        // 这个事件每tick都会触发，我们需要控制同步频率
-        // 实际实现中，阵营改变应该通过专门的标记来触发
-        // 这里只是示例，实际应该通过其他机制检测阵营变化
+
+        // 同步等级信息（实体加入世界后补发一次，替代原 SyncTimer 的全量遍历）
+        NetworkManager.syncEntityLevelToAll(entity, EntityLevelSystem.getEntityLevel(entity));
     }
     
     /**
@@ -80,9 +73,10 @@ public class FactionSyncHandler {
         if (syncTickCounter >= SYNC_TICK_INTERVAL) {
             NetworkManager.processSyncQueue();
             syncTickCounter = 0;
-            
-            // 定期清理客户端缓存（可选）
-            if (syncTickCounter % 600 == 0) { // 每30秒
+
+            // 定期清理客户端缓存（每 30 次批量同步 ≈ 30 秒）
+            if (++cleanupCounter >= 30) {
+                cleanupCounter = 0;
                 NetworkManager.clearClientCache();
             }
         }
@@ -108,6 +102,7 @@ public class FactionSyncHandler {
             return false;
         }).forEach(entity -> {
             NetworkManager.syncEntityFaction(entity, (net.minecraft.server.level.ServerPlayer) player);
+            NetworkManager.syncEntityLevel(entity, EntityLevelSystem.getEntityLevel(entity), (net.minecraft.server.level.ServerPlayer) player);
         });
     }
     
@@ -131,6 +126,7 @@ public class FactionSyncHandler {
             return false;
         }).forEach(entity -> {
             NetworkManager.syncEntityFaction(entity, (net.minecraft.server.level.ServerPlayer) player);
+            NetworkManager.syncEntityLevel(entity, EntityLevelSystem.getEntityLevel(entity), (net.minecraft.server.level.ServerPlayer) player);
         });
     }
     

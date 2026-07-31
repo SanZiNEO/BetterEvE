@@ -61,13 +61,13 @@ public class CrystalCollisionRegistry {
             this.centerX = x;
             this.centerZ = z;
             this.edgeSize = width;
-            // sizeKey 的 width 跟 Minecraft 方块坐标对应，碰撞箱以水晶位置为中心向四周扩展
+            // 碰撞箱以水晶位置为中心向四周扩展；XZ 两个方向都用水平边长 a（sizeKey 的 a×b 中的 a），
+            // 基地实体碰撞盒是 a×a 正方形，高度 b 不影响占地区域
             int halfW = (int) Math.ceil(width / 2.0);
-            int halfH = (int) Math.ceil(height / 2.0);
             this.minX = (int) Math.floor(x) - halfW;
             this.maxX = (int) Math.floor(x) + halfW;
-            this.minZ = (int) Math.floor(z) - halfH;
-            this.maxZ = (int) Math.floor(z) + halfH;
+            this.minZ = (int) Math.floor(z) - halfW;
+            this.maxZ = (int) Math.floor(z) + halfW;
         }
 
         boolean contains(int bx, int bz) {
