@@ -3,175 +3,71 @@ package com.example.bettereve.ai;
 import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.goal.target.TargetGoal;
-import net.minecraft.world.entity.ai.targeting.TargetingConditions;
-
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+// 阵营目标选择器：同阵营永不互打，异阵营按剧本关系判定（FactionRelationManager）。
+// 继承原版 NearestAttackableTargetGoal，复用其随机间隔扫描（平均每 10 游戏 tick 一次）、
+// 目标失效自动清除、生命周期与 TARGET flag 抢占机制。
+public class FactionHostileTargetGoal extends NearestAttackableTargetGoal<LivingEntity> {
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/TargetGoal");
 
-// 自定义目标选择器：完全控制攻击目标选择，确保阵营敌对判定完全生效
-public class FactionHostileTargetGoal extends TargetGoal {
-    private static final Logger LOGGER = LoggerFactory.getLogger(FactionHostileTargetGoal.class);
-    private final Mob mob; // 当前生物
-    private LivingEntity target; // 目标生物
-    private final TargetingConditions targetingConditions; // 目标条件
-    private long lastRefreshTime; // 上次刷新时间
-
-    // 构造方法
-    public FactionHostileTargetGoal(Mob mob, boolean mustSee, boolean mustReach) {
-        super(mob, false, mustReach);
-        this.mob = mob;
-        // 创建目标条件：先不设置忽略视线，由 isValidTarget 根据目标类型决定
-        this.targetingConditions = TargetingConditions.forCombat()
-                .range(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE));
-        this.lastRefreshTime = 0;
+    public FactionHostileTargetGoal(Mob mob) {
+        // (mob, 目标类型, randomInterval=10, mustSee=false, mustReach=false, selector=null)
+        // mustSee=false：不检查视线（避免战斗中 LOS 短暂失效丢目标）
+        super(mob, LivingEntity.class, 10, false, false, null);
     }
 
-    // 判断是否应该开始执行该目标
-    @Override
-    public boolean canUse() {
-        double followRange = mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
-        double rangeSqr = followRange * followRange;
-
-        // 如果有已有的目标，检查距离和有效性
-        if (target != null && target.isAlive() && mob.distanceToSqr(target) <= rangeSqr && isValidTarget(target)) {
-            return true;
-        }
-        // 旧目标失效或超出范围，清除
-        if (target != null) {
-            target = null;
-            mob.setTarget(null);
-        }
-
-        // 在周围找到符合条件的目标
-        List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
-                LivingEntity.class,
-                mob.getBoundingBox().inflate(followRange),
-                entity -> isValidTarget(entity)
-        );
-
-        if (nearbyEntities.isEmpty()) {
-            return false;
-        }
-
-        // 找到最近的目标
-        target = findNearestTarget(nearbyEntities);
-        return target != null;
-    }
-
-    // 判断是否应该继续执行该目标
+    // 目标中途失效时立即丢弃：目标阵营变化（如玩家切换阵营）或目标变为中立后不再追打。
+    // 基类 canContinueToUse 不重查阵营，此覆写保证"同阵营永不互打"契约在战斗中也成立
+    // （原 TargetGoalMixin 的兜底职责，用纯代码替代，Mixin 随之删除）。
     @Override
     public boolean canContinueToUse() {
-        if (target == null || !target.isAlive()) {
+        if (!super.canContinueToUse()) {
             return false;
         }
-
-        // 检查目标是否仍然在范围内且有效
-        double followRange = mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE);
-        boolean isValid = mob.distanceToSqr(target) <= followRange * followRange &&
-                isValidTarget(target);
-                
-        // 如果目标不再有效，清除目标
-        if (!isValid) {
-            mob.setTarget(null);
+        LivingEntity target = this.mob.getTarget();
+        if (FactionHelper.isEntitiesHostile(this.mob, target)) {
+            return true;
         }
-        
-        return isValid;
-    }
-
-    // 强制刷新目标选择机制，确保完全控制目标选择过程
-    public void forceRefreshTarget() {
-        if (mob.level().isClientSide) {
-            return;
-        }
-        
-        long currentTime = mob.level().getGameTime();
-        // 限制刷新频率，避免过于频繁
-        if (currentTime - lastRefreshTime < 100) { // 至少100tick（5秒）才刷新一次
-            return;
-        }
-        
-        lastRefreshTime = currentTime;
-        
-        // 检查当前目标是否仍然符合条件
         if (target != null) {
-            if (!target.isAlive() || !isValidTarget(target)) {
-                // 如果当前目标无效，清除目标
-                target = null;
-                mob.setTarget(null);
-            } else {
-                // 当前目标仍然有效，检查是否有更合适的目标
-                List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
-                        LivingEntity.class,
-                        mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
-                        entity -> isValidTarget(entity)
-                );
-                
-                if (!nearbyEntities.isEmpty()) {
-                    LivingEntity nearestTarget = findNearestTarget(nearbyEntities);
-                    if (nearestTarget != null && nearestTarget != target) {
-                        target = nearestTarget;
-                        mob.setTarget(target);
-                    }
-                }
-            }
-        } else {
-            // 没有目标，寻找新目标
-            List<? extends LivingEntity> nearbyEntities = mob.level().getEntitiesOfClass(
-                    LivingEntity.class,
-                    mob.getBoundingBox().inflate(mob.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE)),
-                    entity -> isValidTarget(entity)
-            );
-            
-            if (!nearbyEntities.isEmpty()) {
-                target = findNearestTarget(nearbyEntities);
-                mob.setTarget(target);
-            }
+            LOGGER.debug("[{}] 阵营重查失败，放弃目标 #{} {} faction={} 位置=({}, {}, {})",
+                    this.mob.getDisplayName().getString(), target.getId(),
+                    target.getDisplayName().getString(), FactionHelper.getEntityFactionId(target),
+                    String.format("%.1f", target.getX()), String.format("%.1f", target.getY()),
+                    String.format("%.1f", target.getZ()));
         }
+        return false;
     }
 
-    // 开始执行目标
-    @Override
-    public void start() {
-        if (target != null) {
-            mob.setTarget(target);
-        }
-        super.start();
-    }
-
-    // 停止执行目标
-    @Override
-    public void stop() {
-        // 不清除目标，长期保留，避免频繁设置/清除导致的开销
-        super.stop();
-    }
-
-    // 找到最近的目标
-    private LivingEntity findNearestTarget(List<? extends LivingEntity> entities) {
+    protected void findTarget() {
+        double range = this.getFollowDistance();
         LivingEntity nearest = null;
-        double nearestDistance = Double.MAX_VALUE;
-
-        for (LivingEntity entity : entities) {
-            double distance = mob.distanceToSqr(entity);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearest = entity;
+        double best = Double.MAX_VALUE;
+        for (LivingEntity e : this.mob.level().getEntitiesOfClass(
+                LivingEntity.class, this.getTargetSearchArea(range),
+                // 原版语义：创造/旁观玩家不可成为目标（canBeSeenAsEnemy），隐身且不发光者也不可见
+                e -> e != this.mob && e.isAlive() && e.canBeSeenAsEnemy() && e.canBeSeenByAnyone())) {
+            // 唯一判定标准：阵营敌对关系（同阵营/中立 → false 排除；未定义关系 → 默认敌对）
+            if (!FactionHelper.isEntitiesHostile(this.mob, e)) continue;
+            double d = this.mob.distanceToSqr(e);
+            if (d < best) {
+                best = d;
+                nearest = e;
             }
         }
-        return nearest;
-    }
-    private boolean isValidTarget(LivingEntity target) {
-        if (target == mob) return false;
-        // 完全基于阵营判定，不检查视线（避免战斗中 LOS 短暂失效导致丢失目标）
-        boolean isHostile = FactionHelper.isEntitiesHostile(this.mob, target);
-        if (!isHostile) {
-            if (mob.getTarget() == target) {
-                mob.setTarget(null);
-            }
-            return false;
+        this.target = nearest;
+        // 目标选择变更时记录（调试用）：本机位置/阵营 + 选中的目标 id/阵营/位置
+        if (nearest != null && nearest != this.mob.getTarget()) {
+            LOGGER.debug("[{}] 选中目标 #{} {} faction={} 位置=({}, {}, {}) 本机=({}, {}, {}) faction={} 距离={}",
+                    this.mob.getDisplayName().getString(), nearest.getId(),
+                    nearest.getDisplayName().getString(), FactionHelper.getEntityFactionId(nearest),
+                    String.format("%.1f", nearest.getX()), String.format("%.1f", nearest.getY()),
+                    String.format("%.1f", nearest.getZ()),
+                    String.format("%.1f", this.mob.getX()), String.format("%.1f", this.mob.getY()),
+                    String.format("%.1f", this.mob.getZ()),
+                    FactionHelper.getEntityFactionId(this.mob), String.format("%.1f", Math.sqrt(best)));
         }
-        return true;
     }
 }

@@ -27,6 +27,18 @@ public class CrystalCollisionRegistry {
         return false;
     }
 
+    /** 基地 XZ 占地区域信息（兵线路线推荐用）：基地 id/阵营 + 中心坐标 + 水平边长 a（sizeKey 的 a×b 中的 a） */
+    public record CrystalFootprint(String crystalId, String factionId, double centerX, double centerZ, int edgeSize) {}
+
+    /** 获取所有基地的占地区域只读视图，供兵线路线推荐绕开基地使用 */
+    public static List<CrystalFootprint> getFootprints() {
+        List<CrystalFootprint> result = new ArrayList<>(boxes.size());
+        for (CrystalBox box : boxes) {
+            result.add(new CrystalFootprint(box.crystalId, box.factionId, box.centerX, box.centerZ, box.edgeSize));
+        }
+        return result;
+    }
+
     /** 检查某方块坐标是否被指定阵营的基地碰撞箱占用 */
     public static boolean isBlockedAt(int blockX, int blockZ, String factionId) {
         for (CrystalBox box : boxes) {
@@ -38,11 +50,17 @@ public class CrystalCollisionRegistry {
     private static class CrystalBox {
         final String crystalId;
         final String factionId;
+        final double centerX;
+        final double centerZ;
+        final int edgeSize; // sizeKey 的水平边长 a
         final int minX, maxX, minZ, maxZ;
 
         CrystalBox(String crystalId, String factionId, double x, double z, int width, int height) {
             this.crystalId = crystalId;
             this.factionId = factionId;
+            this.centerX = x;
+            this.centerZ = z;
+            this.edgeSize = width;
             // sizeKey 的 width 跟 Minecraft 方块坐标对应，碰撞箱以水晶位置为中心向四周扩展
             int halfW = (int) Math.ceil(width / 2.0);
             int halfH = (int) Math.ceil(height / 2.0);

@@ -26,6 +26,10 @@ public class FactionNodeEvaluator extends WalkNodeEvaluator {
         }
         // 检查该坐标是否在基地碰撞箱内
         if (CrystalCollisionRegistry.isBlockedAt(x, z)) {
+            // 攻击模式下（有攻击目标）放行基地：寻路时绕基地，但追击攻击目标时允许靠近
+            if (this.mob != null && this.mob.getTarget() != null) {
+                return type;
+            }
             return BlockPathTypes.BLOCKED;
         }
         return type;

@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 路径点管理器 — 从剧本加载并查询 Waypoint 区域。
@@ -24,6 +23,8 @@ public class WaypointManager {
     public static void loadFromScenario(Scenario scenario) {
         waypoints.clear();
         loaded = false;
+        // 剧本重载：全局兵线进度一并重置（区域定义可能变化）
+        WaypointProgressRegistry.clearAll();
         
         if (scenario == null || scenario.getWaypoints() == null) return;
         
@@ -40,16 +41,6 @@ public class WaypointManager {
     }
 
     /**
-     * 获取指定阵营的 Waypoint 区域（按 order 排序）。
-     */
-    public static List<WaypointRegion> getWaypointRegionsByFaction(String factionId) {
-        return waypoints.stream()
-                .filter(g -> factionId.equals(g.getFactionId()))
-                .sorted(Comparator.comparingInt(WaypointRegion::getOrder))
-                .collect(Collectors.toList());
-    }
-
-    /**
      * 获取指定阵营的下一个 Waypoint 区域。
      */
     public static WaypointRegion getNextWaypoint(String factionId, int currentOrder) {
@@ -60,12 +51,22 @@ public class WaypointManager {
     }
 
     /**
-     * 获取指定阵营的第一个 Waypoint 区域。
+     * 获取指定阵营 order 最大的 waypoint（阵营结束点）。
      */
-    public static WaypointRegion getFirstWaypoint(String factionId) {
+    public static WaypointRegion getLastWaypoint(String factionId) {
         return waypoints.stream()
                 .filter(g -> factionId.equals(g.getFactionId()))
-                .min(Comparator.comparingInt(WaypointRegion::getOrder))
+                .max(Comparator.comparingInt(WaypointRegion::getOrder))
+                .orElse(null);
+    }
+
+    /**
+     * 获取指定阵营中 order 小于 currentOrder 的最大 waypoint（降序阶段的下一步）。
+     */
+    public static WaypointRegion getPreviousWaypoint(String factionId, int currentOrder) {
+        return waypoints.stream()
+                .filter(g -> factionId.equals(g.getFactionId()) && g.getOrder() < currentOrder)
+                .max(Comparator.comparingInt(WaypointRegion::getOrder))
                 .orElse(null);
     }
 

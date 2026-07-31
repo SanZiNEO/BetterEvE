@@ -47,6 +47,15 @@ public class WaypointRegion {
     public double getCenterZ() { return (z1 + z2) / 2.0; }
 
     /**
+     * 获取该区域中心点到指定 XZ 坐标的平方距离（阵营排序用，避免 sqrt）。
+     */
+    public double distanceToSqr(double x, double z) {
+        double dx = x - getCenterX();
+        double dz = z - getCenterZ();
+        return dx * dx + dz * dz;
+    }
+
+    /**
      * 获取区域的范围描述。
      */
     public String getDescription() {

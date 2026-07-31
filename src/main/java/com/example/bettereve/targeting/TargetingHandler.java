@@ -2,19 +2,33 @@ package com.example.bettereve.targeting;
 
 import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.ai.FactionHostileTargetGoal;
+import com.example.bettereve.entity.CrystalEntity;
+import com.example.bettereve.waypoint.WaypointProgressRegistry;
 import com.example.bettereve.ai.PathfindToWaypointGoal;
 import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
-import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.AvoidEntityGoal;
+import net.minecraft.world.entity.ai.goal.BreakDoorGoal;
+import net.minecraft.world.entity.ai.goal.BreedGoal;
+import net.minecraft.world.entity.ai.goal.EatBlockGoal;
+import net.minecraft.world.entity.ai.goal.FleeSunGoal;
+import net.minecraft.world.entity.ai.goal.FollowParentGoal;
+import net.minecraft.world.entity.ai.goal.InteractGoal;
+import net.minecraft.world.entity.ai.goal.MoveThroughVillageGoal;
+import net.minecraft.world.entity.ai.goal.MoveTowardsRestrictionGoal;
+import net.minecraft.world.entity.ai.goal.OpenDoorGoal;
+import net.minecraft.world.entity.ai.goal.PanicGoal;
+import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
+import net.minecraft.world.entity.ai.goal.RestrictSunGoal;
+import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
-import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
@@ -35,18 +49,11 @@ public class TargetingHandler {
         }
     }
 
-    // 监听生物的 tick 事件，每100tick（5秒）刷新一次目标
+    // 实体离开世界（死亡/卸载）时清理其兵线进度，防止全局注册表泄漏
     @SubscribeEvent
-    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
-        if (event.getEntity() instanceof Mob mob && !mob.level().isClientSide) {
-            // 每100tick（5秒）刷新一次目标，降低CPU开销
-            if (mob.tickCount % 100 == 0) {
-                // 遍历目标选择器中的所有目标选择器，找到我们的自定义目标选择器
-                mob.targetSelector.getAvailableGoals().stream()
-                        .filter(goal -> goal.getGoal() instanceof FactionHostileTargetGoal)
-                        .forEach(goal -> ((FactionHostileTargetGoal) goal.getGoal()).forceRefreshTarget());
-                
-            }
+    public static void onEntityLeaveWorld(EntityLeaveLevelEvent event) {
+        if (event.getEntity() instanceof Mob mob) {
+            WaypointProgressRegistry.remove(mob);
         }
     }
 
@@ -61,6 +68,12 @@ public class TargetingHandler {
     }
 
     private static void setupFactionHostileTargetGoal(Mob mob) {
+        // 基地（CrystalEntity）有自足的 CrystalEntityAttackGoal（自扫+蓄力攻击），
+        // 不装 64 格大范围目标选择器，否则 TARGET flag 被抢、基地永远不攻击
+        if (mob instanceof CrystalEntity) {
+            return;
+        }
+
         // 检查是否已添加过我们的自定义目标选择器，如果是则返回，避免重复添加
         boolean hasCustomGoal = mob.targetSelector.getAvailableGoals().stream()
                 .anyMatch(goalEntry -> goalEntry.getGoal() instanceof FactionHostileTargetGoal);
@@ -69,30 +82,41 @@ public class TargetingHandler {
             return;
         }
         
-        // 移除原版敌对目标选择器
+        // 移除所有原版目标选择器（含 NeutralMob 的 ResetUniversalAngerTargetGoal 等），
+        // 只保留我们的 FactionHostileTargetGoal，确保阵营判定完全独占
         mob.targetSelector.removeAllGoals(goal ->
-            goal instanceof NearestAttackableTargetGoal ||
-            goal instanceof HurtByTargetGoal
+            goal instanceof net.minecraft.world.entity.ai.goal.target.TargetGoal &&
+            !(goal instanceof FactionHostileTargetGoal)
         );
         
         // 添加阵营目标选择器（优先级最高）
-        mob.targetSelector.addGoal(0, new FactionHostileTargetGoal(mob, true, true));
+        mob.targetSelector.addGoal(0, new FactionHostileTargetGoal(mob));
         
         // 添加近战攻击 Goal（如无远程攻击）
         if (mob instanceof PathfinderMob pathfinder) {
+            // 完全覆盖原版/模组干扰 AI：移除会与兵线寻路、阵营战斗冲突的移动类 goal
+            pathfinder.goalSelector.removeAllGoals(g ->
+                g instanceof RandomStrollGoal || g instanceof PanicGoal
+                || g instanceof FleeSunGoal || g instanceof RestrictSunGoal
+                || g instanceof AvoidEntityGoal || g instanceof TemptGoal
+                || g instanceof FollowParentGoal || g instanceof BreedGoal
+                || g instanceof EatBlockGoal || g instanceof MoveTowardsRestrictionGoal
+                || g instanceof MoveThroughVillageGoal || g instanceof BreakDoorGoal
+                || g instanceof OpenDoorGoal || g instanceof InteractGoal
+            );
             boolean hasRanged = pathfinder.goalSelector.getAvailableGoals().stream()
                     .anyMatch(g -> g.getGoal() instanceof RangedAttackGoal);
             boolean hasMelee = pathfinder.goalSelector.getAvailableGoals().stream()
                     .anyMatch(g -> g.getGoal() instanceof MeleeAttackGoal);
             if (!hasRanged && !hasMelee) {
-                pathfinder.goalSelector.addGoal(2, new MeleeAttackGoal(pathfinder, 1.0, false));
+                pathfinder.goalSelector.addGoal(1, new MeleeAttackGoal(pathfinder, 1.0, false));
             }
             // 为非中立阵营生物替换导航器（A* 绕开基地）
             String factionId = FactionHelper.getEntityFactionId(mob);
             if (!"neutral".equals(factionId)) {
                 replaceNavigation(pathfinder);
-                // 添加寻路 AI（优先级 1，仅在无攻击目标时运行）
-                pathfinder.goalSelector.addGoal(1, new PathfindToWaypointGoal(pathfinder));
+                // 添加寻路 AI（优先级 2，低于近战攻击 Goal，仅在无攻击目标时运行）
+                pathfinder.goalSelector.addGoal(2, new PathfindToWaypointGoal(pathfinder));
             }
         }
     }
