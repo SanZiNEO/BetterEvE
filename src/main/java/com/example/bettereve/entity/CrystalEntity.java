@@ -692,19 +692,13 @@ public class CrystalEntity extends Mob {
     public void checkDespawn() {
         Scenario scenario = ScenarioManager.getActiveScenario();
         if (scenario != null) {
-            var zone = scenario.getKeepAliveZone();
-            if (zone != null && isWithinKeepAlive(zone)) {
+            Scenario.KeepAliveZone zone = scenario.getKeepAliveZone();
+            if (zone != null && zone.contains(this.getX(), this.getZ())) {
                 this.noActionTime = 0;
                 return;
             }
         }
         super.checkDespawn();
-    }
-
-    private boolean isWithinKeepAlive(Scenario.KeepAliveZone zone) {
-        double x = this.getX(), z = this.getZ();
-        return x >= Math.min(zone.getX1(), zone.getX2()) && x <= Math.max(zone.getX1(), zone.getX2())
-            && z >= Math.min(zone.getZ1(), zone.getZ2()) && z <= Math.max(zone.getZ1(), zone.getZ2());
     }
 
     // 攻击目标选择器 - 参考 Minecraft 原版 Guardian 类实现

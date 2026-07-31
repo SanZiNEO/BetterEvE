@@ -106,6 +106,12 @@ public class Scenario {
         public void setX2(double x2) { this.x2 = x2; }
         public double getZ2() { return z2; }
         public void setZ2(double z2) { this.z2 = z2; }
+
+        /** 判断 XZ 坐标是否在保活区域内 */
+        public boolean contains(double x, double z) {
+            return x >= Math.min(x1, x2) && x <= Math.max(x1, x2)
+                    && z >= Math.min(z1, z2) && z <= Math.max(z1, z2);
+        }
     }
     public static class RelationDef {
         private String from;

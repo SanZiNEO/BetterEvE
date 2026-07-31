@@ -4,6 +4,8 @@ import com.example.bettereve.ai.FactionHostileTargetGoal;
 import com.example.bettereve.entity.CrystalEntity;
 import com.example.bettereve.waypoint.WaypointProgressRegistry;
 import com.example.bettereve.ai.PathfindToWaypointGoal;
+import com.example.bettereve.scenario.Scenario;
+import com.example.bettereve.scenario.ScenarioManager;
 import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -26,6 +28,8 @@ import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.living.MobSpawnEvent;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -53,6 +57,19 @@ public class TargetingHandler {
     public static void onEntityLeaveWorld(EntityLeaveLevelEvent event) {
         if (event.getEntity() instanceof Mob mob) {
             WaypointProgressRegistry.remove(mob);
+        }
+    }
+
+    // 保活区域内的生物不允许被原版 despawn（直播地图无自然生成，区域内生物全部由模组管理）
+    @SubscribeEvent
+    public static void onMobDespawn(MobSpawnEvent.AllowDespawn event) {
+        Mob mob = event.getEntity();
+        Scenario scenario = ScenarioManager.getActiveScenario();
+        if (scenario == null || scenario.getKeepAliveZone() == null) {
+            return;
+        }
+        if (scenario.getKeepAliveZone().contains(mob.getX(), mob.getZ())) {
+            event.setResult(Event.Result.DENY);
         }
     }
 

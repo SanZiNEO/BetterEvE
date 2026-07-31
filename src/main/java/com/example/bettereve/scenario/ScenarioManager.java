@@ -26,6 +26,9 @@ public class ScenarioManager {
         // 将加载的剧本同步到 PhaseManager 和 WaypointManager
         PhaseManager.loadFromScenario(scenario);
         WaypointManager.loadFromScenario(scenario);
+
+        // 保活区域强制加载：区域内 chunk 常驻，生物不卸载、AI 不冻结（运行时 ticket，不写盘）
+        KeepAliveZoneManager.bind(KeepAliveZoneManager.getServerLevel(), scenario.getKeepAliveZone());
         
         LOGGER.info("Loaded scenario: {} ({})", name, scenario.getName());
     }
