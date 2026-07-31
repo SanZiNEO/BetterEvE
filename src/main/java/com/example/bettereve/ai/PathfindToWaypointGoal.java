@@ -31,9 +31,6 @@ import java.util.Set;
 public class PathfindToWaypointGoal extends Goal {
     private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/PathGoal");
 
-    // 路线推荐：目标点与基地禁区之间的最小间距（生物半宽之外再留的余量，格）
-    private static final double BASE_CLEARANCE_MARGIN = 1.0;
-
     /** 调试日志上下文：生物名称、位置、阵营、当前攻击目标（id/名称/阵营/位置） */
     private String logContext() {
         LivingEntity t = mob.getTarget();
@@ -294,7 +291,7 @@ public class PathfindToWaypointGoal extends Goal {
 
     /**
      * XZ 路线推荐：候选点（原始垂足点 + 该边两个端点）中，取第一个
-     * "生物当前位置 → 候选点"直线走廊不穿过任何基地禁区（基地 a×a + 生物半宽 + 余量）的点。
+     * "生物当前位置 → 候选点"直线走廊不穿过任何基地禁区（基地中心 ± a，即 2a×2a，如 3x10 → 6x6）的点。
      * 找不到安全点（如生物已位于禁区内）时回退原始垂足点，行为不劣于原逻辑。
      */
     private double[] recommendSafeTargetXZ(double mx, double mz, double footX, double footZ,
@@ -302,12 +299,12 @@ public class PathfindToWaypointGoal extends Goal {
         List<CrystalCollisionRegistry.CrystalFootprint> footprints = CrystalCollisionRegistry.getFootprints();
         if (footprints.isEmpty()) return new double[]{footX, footZ};
 
-        double clearance = mob.getBbWidth() / 2.0 + BASE_CLEARANCE_MARGIN;
         double[][] candidates = {{footX, footZ}, {ex1, ez1}, {ex2, ez2}};
         for (double[] cand : candidates) {
             boolean blocked = false;
             for (CrystalCollisionRegistry.CrystalFootprint fp : footprints) {
-                double half = fp.edgeSize() / 2.0 + clearance;
+                // 禁区 = 基地中心 ± a（水平边长翻倍，如 3x10 基地 → 6x6 禁区），保证走廊不蹭基地实体
+                double half = fp.edgeSize();
                 if (segmentIntersectsRect(mx, mz, cand[0], cand[1],
                         fp.centerX() - half, fp.centerZ() - half,
                         fp.centerX() + half, fp.centerZ() + half)) {

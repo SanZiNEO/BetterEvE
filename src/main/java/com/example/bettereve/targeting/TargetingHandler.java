@@ -1,6 +1,5 @@
 package com.example.bettereve.targeting;
 
-import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.ai.FactionHostileTargetGoal;
 import com.example.bettereve.entity.CrystalEntity;
 import com.example.bettereve.waypoint.WaypointProgressRegistry;
@@ -58,8 +57,8 @@ public class TargetingHandler {
     }
 
     private static void setupExpandedFollowRange(Mob mob) {
-        // 使用配置文件中的默认寻敌范围
-        double followRange = BetterEvEConfig.INSTANCE.targeting_defaultFollowRange.get();
+        // 常态巡敌距离：剧本 options 优先（随地图设计），未配置时用配置文件默认值
+        double followRange = FactionHostileTargetGoal.targetingRange();
 
         // 使用属性系统设置寻敌范围，这是更稳定的方法
         if (mob.getAttribute(Attributes.FOLLOW_RANGE) != null) {

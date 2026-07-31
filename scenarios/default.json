@@ -129,6 +129,9 @@
     }
   ],
   "options": {
-    "playersDefaultFaction": "neutral"
+    "playersDefaultFaction": "neutral",
+    "targetingRange": 64,
+    "targetingFocusRange": 10,
+    "targetingFocusInterval": 20
   }
 }
