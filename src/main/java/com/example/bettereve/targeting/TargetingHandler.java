@@ -3,6 +3,7 @@ package com.example.bettereve.targeting;
 import com.example.bettereve.ai.FactionHostileTargetGoal;
 import com.example.bettereve.entity.CrystalEntity;
 import com.example.bettereve.waypoint.WaypointProgressRegistry;
+import com.example.bettereve.mixin.MobAccessor;
 import com.example.bettereve.ai.PathfindToWaypointGoal;
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioManager;
@@ -33,12 +34,9 @@ import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class TargetingHandler {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TargetingHandler.class);
 
     @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent event) {
@@ -123,7 +121,9 @@ public class TargetingHandler {
                     .anyMatch(g -> g.getGoal() instanceof RangedAttackGoal);
             boolean hasMelee = pathfinder.goalSelector.getAvailableGoals().stream()
                     .anyMatch(g -> g.getGoal() instanceof MeleeAttackGoal);
-            if (!hasRanged && !hasMelee) {
+            // 只有带攻击属性（ATTACK_DAMAGE）的生物才加近战攻击，
+            // 否则 MeleeAttackGoal.tick 读取该属性时抛 "Can't find attribute" 崩溃（如动物）
+            if (!hasRanged && !hasMelee && pathfinder.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
                 pathfinder.goalSelector.addGoal(1, new MeleeAttackGoal(pathfinder, 1.0, false));
             }
             // 为非中立阵营生物替换导航器（A* 绕开基地）
@@ -137,15 +137,10 @@ public class TargetingHandler {
     }
 
     // 替换生物的导航器为 FactionGroundNavigator，使 A* 路径绕过基地
+    // 使用 Mixin Accessor 访问 private 字段（类型安全、随映射自动适配，替代脆弱反射）
     private static void replaceNavigation(Mob mob) {
         if (mob.getNavigation().getClass() == com.example.bettereve.ai.FactionGroundNavigator.class) return;
-        try {
-            java.lang.reflect.Field navField = net.minecraft.world.entity.Mob.class.getDeclaredField("navigation");
-            navField.setAccessible(true);
-            navField.set(mob, new com.example.bettereve.ai.FactionGroundNavigator(mob, mob.level()));
-        } catch (Exception e) {
-            LOGGER.error("Failed to replace navigation for {}", mob, e);
-        }
+        ((MobAccessor) mob).setNavigation(new com.example.bettereve.ai.FactionGroundNavigator(mob, mob.level()));
     }
     
     public static void loadFromConfig() {

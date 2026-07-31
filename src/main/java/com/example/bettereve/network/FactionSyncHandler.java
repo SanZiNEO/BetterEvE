@@ -23,7 +23,6 @@ public class FactionSyncHandler {
     // 同步计数器（用于控制同步频率）
     private static int syncTickCounter = 0;
     private static final int SYNC_TICK_INTERVAL = 20; // 每20 tick（1秒）处理一次批量同步
-    private static int cleanupCounter = 0; // 客户端缓存清理计数（每 30 次批量同步约 30 秒一次）
     
     /**
      * 当实体加入世界时触发同步
@@ -73,12 +72,6 @@ public class FactionSyncHandler {
         if (syncTickCounter >= SYNC_TICK_INTERVAL) {
             NetworkManager.processSyncQueue();
             syncTickCounter = 0;
-
-            // 定期清理客户端缓存（每 30 次批量同步 ≈ 30 秒）
-            if (++cleanupCounter >= 30) {
-                cleanupCounter = 0;
-                NetworkManager.clearClientCache();
-            }
         }
     }
     
