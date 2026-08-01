@@ -1,6 +1,5 @@
 package com.example.bettereve.entitylv;
 
-import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioManager;
 import net.minecraft.nbt.CompoundTag;

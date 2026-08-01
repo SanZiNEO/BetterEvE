@@ -32,6 +32,7 @@ import net.minecraftforge.event.entity.living.MobSpawnEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
+import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -140,6 +141,8 @@ public class TargetingHandler {
     // 使用 Mixin Accessor 访问 private 字段（类型安全、随映射自动适配，替代脆弱反射）
     private static void replaceNavigation(Mob mob) {
         if (mob.getNavigation().getClass() == com.example.bettereve.ai.FactionGroundNavigator.class) return;
+        // 原生非地面导航的生物保持原导航（飞行/水生/模组自定义导航器不替换）
+        if (!(mob.getNavigation() instanceof GroundPathNavigation)) return;
         ((MobAccessor) mob).setNavigation(new com.example.bettereve.ai.FactionGroundNavigator(mob, mob.level()));
     }
     

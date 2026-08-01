@@ -1,7 +1,6 @@
 package com.example.bettereve.render;
 
 import com.example.bettereve.Bettereve;
-import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.crystal.CrystalDeathCounter;
 import com.example.bettereve.scenario.ScenarioManager;
 import com.example.bettereve.scenario.Scenario;
@@ -59,13 +58,13 @@ public class ScoreboardOverlay {
 
     public static final IGuiOverlay CRYSTAL_DEATH_OVERLAY = (gui, guiGraphics, partialTick, width, height) -> {
         // ---------- 提前退出守卫 ----------
-        if (!BetterEvEConfig.INSTANCE.global_hudEnabled.get()) return;
-        if (ScenarioManager.getActiveScenario() == null) return;
+        var scenario = ScenarioManager.getActiveScenario();
+        if (scenario == null) return;
+        if (scenario.getOptions() != null && !scenario.getOptions().isHudEnabled()) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
 
-        var scenario = ScenarioManager.getActiveScenario();
         var factionDefs = scenario.getFactions();
         if (factionDefs == null || factionDefs.isEmpty()) return;
         var visibleDefs = factionDefs.stream()

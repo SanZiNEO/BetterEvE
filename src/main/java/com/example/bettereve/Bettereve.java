@@ -1,13 +1,11 @@
 package com.example.bettereve;
 
-import com.example.bettereve.config.BetterEvEConfig;
 import com.example.bettereve.entity.CrystalEntity;
 import com.example.bettereve.entity.CrystalEntityModel;
 import com.example.bettereve.entity.CrystalEntityType;
 import com.example.bettereve.mixin.AccessorRangedAttribute;
 import com.example.bettereve.network.NetworkManager;
 import com.example.bettereve.scenario.ScenarioIO;
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraftforge.api.distmarker.Dist;
@@ -15,9 +13,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -38,8 +34,6 @@ public class Bettereve {
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
 
-        // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, BetterEvEConfig.COMMON_SPEC);
 
         // 注册实体类型
         CrystalEntityType.ENTITY_TYPES.register(modEventBus);
@@ -112,14 +106,5 @@ public class Bettereve {
             event.registerLayerDefinition(CrystalEntityModel.LAYER_LOCATION, CrystalEntityModel::createBodyLayer);
         }
 
-        static {
-            // 注册配置屏幕工厂，使 Mods 页面的配置按钮可以跳转 GUI
-            ModLoadingContext.get().registerExtensionPoint(
-                    net.minecraftforge.client.ConfigScreenHandler.ConfigScreenFactory.class,
-                    () -> new net.minecraftforge.client.ConfigScreenHandler.ConfigScreenFactory((mc, screen) ->
-                            new com.example.bettereve.config.BetterEvEConfigScreen(screen)
-                    )
-            );
-        }
     }
 }

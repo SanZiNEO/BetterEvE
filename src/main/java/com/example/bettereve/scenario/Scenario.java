@@ -271,6 +271,7 @@ public class Scenario {
         private double targetingRange = 64.0;        // 常态巡敌距离（格），随地图设计配置
         private double targetingFocusRange = 10.0;   // 近距离重扫距离（格）：范围内出现非基地敌对目标即切换
         private int targetingFocusInterval = 20;     // 近距离重扫间隔（tick）
+        private boolean hudEnabled = true;           // 全局 HUD 总开关（原 BetterEvEConfig.global_hudEnabled 迁入）
 
         public String getPlayersDefaultFaction() { return playersDefaultFaction; }
         public void setPlayersDefaultFaction(String playersDefaultFaction) { this.playersDefaultFaction = playersDefaultFaction; }
@@ -280,5 +281,7 @@ public class Scenario {
         public void setTargetingFocusRange(double targetingFocusRange) { this.targetingFocusRange = targetingFocusRange; }
         public int getTargetingFocusInterval() { return targetingFocusInterval; }
         public void setTargetingFocusInterval(int targetingFocusInterval) { this.targetingFocusInterval = targetingFocusInterval; }
+        public boolean isHudEnabled() { return hudEnabled; }
+        public void setHudEnabled(boolean hudEnabled) { this.hudEnabled = hudEnabled; }
     }
 }
