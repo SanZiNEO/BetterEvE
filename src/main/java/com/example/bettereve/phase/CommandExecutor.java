@@ -63,6 +63,13 @@ public class CommandExecutor {
     }
 
     /**
+     * 清空所有待执行的延迟指令（阶段切换/剧本加载时调用，防止旧阶段/旧剧本的指令串场）。
+     */
+    public static void clearPending() {
+        pendingCommands.clear();
+    }
+
+    /**
      * 执行一条指令，支持 && 链式拆分。
      */
     private static void executeCommandChain(MinecraftServer server, String command) {

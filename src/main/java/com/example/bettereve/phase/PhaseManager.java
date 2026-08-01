@@ -25,6 +25,8 @@ public class PhaseManager {
     private static boolean isLoaded = false;
 
     public static void loadFromScenario(Scenario scenario) {
+        // 新剧本加载：清理上一局残留的延迟指令，防止串场
+        CommandExecutor.clearPending();
         currentScenario = scenario;
         currentPhaseId = null;
         timerTicks = 0;
@@ -48,6 +50,12 @@ public class PhaseManager {
             LOGGER.warn("Phase not found: {}", phaseId);
             return;
         }
+
+        // 幂等：同一阶段重复触发直接忽略（防 timer/trigger/外部指令重复执行副作用）
+        if (phaseId.equals(currentPhaseId)) return;
+
+        // 清理上一阶段的延迟指令，防止旧指令串场到新阶段
+        CommandExecutor.clearPending();
 
         currentPhaseId = phaseId;
         timerTicks = 0;
