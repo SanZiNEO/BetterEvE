@@ -29,6 +29,34 @@ import javax.annotation.Nullable;
 public class CrystalEntityModel<T extends CrystalEntity> extends EntityModel<T> {
     // 模型层位置 - 用于在客户端注册和渲染
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation("bettereve", "crystalentity"), "main");
+
+    /** 缓存的模型高出碰撞箱顶部的最大高度（格，未乘 modelScale） */
+    private static Float modelHeightAboveCollisionBox;
+
+    /**
+     * 从模型定义自动计算：模型相对碰撞箱顶部向上伸出的最大高度（格）。
+     * 遍历所有 Cube 并变换到模型根空间，取最大 Y。
+     * 这样血条位置会随模型改动自动适应，不需要手写固定数值。
+     */
+    public static float getModelHeightAboveCollisionBox() {
+        if (modelHeightAboveCollisionBox != null) {
+            return modelHeightAboveCollisionBox;
+        }
+        ModelPart root = createBodyLayer().bakeRoot();
+        PoseStack poseStack = new PoseStack();
+        float[] maxHeight = {0.0f};
+        root.visit(poseStack, (pose, path, index, cube) -> {
+            // Minecraft 模型坐标中 Y 向下为正，所以模型“最高点”是 minY（更小的负数）。
+            // 16 像素 = 1 格，取 -minY/16 作为该 Cube 高出模型原点的高度。
+            float heightAbove = Math.max(0.0f, -cube.minY / 16.0f);
+            if (heightAbove > maxHeight[0]) {
+                maxHeight[0] = heightAbove;
+            }
+        });
+        modelHeightAboveCollisionBox = maxHeight[0];
+        return modelHeightAboveCollisionBox;
+    }
+
     private final ModelPart core;        // 核心部件
     private final ModelPart kuangjia;   // 框架部件
 

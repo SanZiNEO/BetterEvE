@@ -1,4 +1,5 @@
 /.gradle
+/.gradle-home
 /build
 /cankao
 /run
@@ -10,3 +11,5 @@ search_nbt_args.java
 search_nbt_args.class
 /run-data
 /.vscode
+/example
+/logs

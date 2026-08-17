@@ -1,22 +1,24 @@
 package com.example.bettereve.render;
 
+import com.example.bettereve.entity.CrystalEntity;
+import com.example.bettereve.entity.CrystalEntityModel;
 import com.example.bettereve.faction.ClientFactionCache;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.entitylv.EntityLevelSystem;
+import com.example.bettereve.network.HealthBarTextVisibilityPacket;
+import com.example.bettereve.scenario.Scenario;
+import com.example.bettereve.scenario.ScenarioManager;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-import org.joml.Vector4f;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,313 +26,224 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 世界空间实体化血条渲染器。
+ * <p>
+ * 参考 Neat 的做法：在 LevelRenderer.renderEntity 的实体渲染完成后，
+ * 以世界坐标 + 摄像机朝向绘制 billboard 血条，使 Oculus/Iris 光影能正常处理。
+ * 视觉布局保留旧版：背景层 + 填充层 + 容器层 + Lv 文字 + 血量数字。
+ */
 public class SimpleHealthBarRenderer {
-    
+
     private static final float BAR_TOTAL_WIDTH = 80.0f;
     private static final float BAR_TOTAL_HEIGHT = 10.0f;
-    
+
     private static final float HALF_WIDTH = BAR_TOTAL_WIDTH / 2.0f;
     private static final float HALF_HEIGHT = BAR_TOTAL_HEIGHT / 2.0f;
-    
+
     private static final float PRE_BAR_LEFT = 0 - HALF_WIDTH;
     private static final float PRE_BAR_RIGHT = 0 + HALF_WIDTH;
     private static final float PRE_BAR_BOTTOM = 0 - HALF_HEIGHT;
     private static final float PRE_BAR_TOP = 0 + HALF_HEIGHT;
-    
+
     // 容器层尺寸（是基础尺寸的 1.2 倍）
     private static final float CONTAINER_BAR_TOTAL_WIDTH = BAR_TOTAL_WIDTH * 1.2f;
     private static final float CONTAINER_BAR_TOTAL_HEIGHT = BAR_TOTAL_HEIGHT * 1.2f;
-    
+
     private static final float CONTAINER_HALF_WIDTH = CONTAINER_BAR_TOTAL_WIDTH / 2.0f;
     private static final float CONTAINER_HALF_HEIGHT = CONTAINER_BAR_TOTAL_HEIGHT / 2.0f;
-    
+
     private static final float PRE_CONTAINER_BAR_LEFT = 0 - CONTAINER_HALF_WIDTH;
     private static final float PRE_CONTAINER_BAR_RIGHT = 0 + CONTAINER_HALF_WIDTH;
     private static final float PRE_CONTAINER_BAR_BOTTOM = 0 - CONTAINER_HALF_HEIGHT;
     private static final float PRE_CONTAINER_BAR_TOP = 0 + CONTAINER_HALF_HEIGHT;
-    
-    private static final float BAR_Y_OFFSET = 0.2f;
-    
+
+    /** 血条头顶偏移（方块） */
+    private static final float BAR_Y_OFFSET = 0.5f;
+
+    /** 世界空间缩放基准：把 80 单位宽的旧 HUD 血条换算成约 2.1 格宽的世界血条 */
+    private static final float WORLD_SCALE_BASE = 0.0267f;
+
     private static final int TEXT_COLOR = 0xFFFFFFFF;
-    
+
+    // 兜底阵营颜色（剧本 faction.color 缺失/解析失败时使用）
     private static final int RED_FACTION_COLOR = 0xFFFF3232;
     private static final int BLUE_FACTION_COLOR = 0xFF3264FF;
     private static final int GREEN_FACTION_COLOR = 0xFF32C832;
-    // 背景颜色比对应阵营颜色浅一些（亮度增加 30%）
-    private static final int RED_BG_COLOR = 0xFFFF8080;
-    private static final int BLUE_BG_COLOR = 0xFF80A0FF;
-    private static final int GREEN_BG_COLOR = 0xFF80E080;
-    
+
     // 统一缩放因子，可通过配置或命令修改
     private static float GLOBAL_SCALE = 1.0f;
-    
-    // 渲染队列和缓存
+
+    // 每帧已渲染实体缓存，防止同一实体被多次绘制
     private static final Set<UUID> renderedThisFrame = new HashSet<>();
     private static final Map<UUID, Float> healthCache = new HashMap<>();
-    
+
     public static void onFrameStart() {
         renderedThisFrame.clear();
     }
-    
-    /**
-     * 设置统一缩放因子
-     */
+
     public static void setGlobalScale(float scale) {
-        GLOBAL_SCALE = Math.max(0.1f, Math.min(3.0f, scale));  // 限制缩放范围 0.1-3.0
+        GLOBAL_SCALE = Math.max(0.1f, Math.min(3.0f, scale));
     }
-    
-    /**
-     * 获取当前缩放因子
-     */
+
     public static float getGlobalScale() {
         return GLOBAL_SCALE;
     }
-    
+
     public static boolean shouldShowHealthBar(Entity entity) {
         if (entity == null || !(entity instanceof LivingEntity)) {
             return false;
         }
-        
         if (entity instanceof Player) {
             return false;
         }
-        
-        // 检查是否应该显示血条（从网络同步的客户端缓存获取）
         return com.example.bettereve.network.HealthBarVisibilityPacket.ClientHealthBarVisibilityCache
                 .getEntityHealthBarVisibility(entity.getUUID());
     }
-    
+
     /**
-     * 预处理阶段：预计算实体的渲染数据
+     * 世界空间血条渲染入口，由 LevelRendererMixin 在实体渲染完成后调用。
      */
-    public static HealthBarRenderData preRenderHealthBar(Entity entity, float partialTick) {
+    public static void renderHealthBarWorld(Entity entity, PoseStack poseStack,
+                                            MultiBufferSource bufferSource, Camera camera,
+                                            float partialTick, double camX, double camY, double camZ) {
         if (!shouldShowHealthBar(entity)) {
-            return null;
+            return;
         }
-        
+
         UUID entityId = entity.getUUID();
         if (renderedThisFrame.contains(entityId)) {
-            return null;
+            return;
         }
         renderedThisFrame.add(entityId);
-        
-        LivingEntity livingEntity = (LivingEntity) entity;
-        
+
+        LivingEntity living = (LivingEntity) entity;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || mc.font == null) {
+            return;
+        }
+
         double x = Mth.lerp(partialTick, entity.xOld, entity.getX());
         double y = Mth.lerp(partialTick, entity.yOld, entity.getY());
         double z = Mth.lerp(partialTick, entity.zOld, entity.getZ());
-        
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.gameRenderer == null || mc.getCameraEntity() == null) {
-            return null;
-        }
-        
-        double entityY = y + entity.getEyeHeight() + 0.8;
-        
-        float healthPercent = getHealthPercent(livingEntity);
+
+        float healthPercent = getHealthPercent(living);
         int factionColor = getFactionColor(entity);
         int level = getEntityLevel(entity);
-        boolean shouldShowLevel = shouldShowLevel(level);
-        
-        // 文字参数预计算
-        String levelText = shouldShowLevel ? "Lv." + level : "";
-        String healthText = (int) Math.ceil(livingEntity.getHealth()) + "/" + (int) Math.ceil(livingEntity.getMaxHealth());
-        
-        return new HealthBarRenderData(
-            entityId,
-            healthPercent,
-            factionColor,
-            (int) Math.ceil(livingEntity.getHealth()),
-            (int) Math.ceil(livingEntity.getMaxHealth()),
-            0,  // 插值进度
-            x, entityY, z,
-            GLOBAL_SCALE,  // 统一缩放因子
-            BAR_Y_OFFSET,
-            levelText,
-            healthText,
-            1.0f,  // 文字渲染缩放（与全局缩放合并）
-            mc.font.width(levelText),
-            mc.font.width(healthText),
-            0, 0,  // 预计算的文字位置将在渲染时基于全局缩放计算
-            0, 0
-        );
-    }
-    
-    /**
-     * 正式渲染阶段：从预计算的渲染数据进行渲染
-     */
-    public static void renderFromPreRendered(HealthBarRenderData renderData, PoseStack poseStack, 
-                                            MultiBufferSource bufferSource) {
-        Minecraft mc = Minecraft.getInstance();
-        
-        // 转换到屏幕坐标（锁定距离缩放，使用统一缩放）
-        boolean isOnScreen = toScreenCoordinates(renderData.getRenderX(), renderData.getRenderY(), 
-                                               renderData.getRenderZ(), poseStack, mc, renderData.getScale());
-        if (!isOnScreen) {
-            return;
+        boolean showLevelText = shouldShowLevelText(entity, level);
+        boolean showHealthText = shouldShowHealthText(entity);
+
+        String levelText = showLevelText ? "Lv." + level : "";
+        String healthText = showHealthText ? (int) Math.ceil(living.getHealth()) + "/" + (int) Math.ceil(living.getMaxHealth()) : "";
+
+        float finalScale = GLOBAL_SCALE * WORLD_SCALE_BASE;
+
+        // 普通生物：血条在碰撞箱正上方。
+        // 基地实体：碰撞箱在底部、模型在碰撞箱上方，血条要再抬高“模型高度 × modelScale”。
+        double renderY;
+        if (living instanceof CrystalEntity crystal) {
+            renderY = y + living.getBbHeight()
+                    + CrystalEntityModel.getModelHeightAboveCollisionBox() * crystal.getModelScale()
+                    + BAR_Y_OFFSET;
+        } else {
+            renderY = y + living.getBbHeight() + BAR_Y_OFFSET;
         }
-        
+
+        poseStack.pushPose();
         try {
-            float healthPercent = renderData.getHealthPercent();
-            int factionColor = renderData.getFactionColor();
-            boolean shouldShowLevel = !renderData.getLevelText().isEmpty();
-            
-            // 直接渲染三层，不使用模板测试
-            renderBarBackground(poseStack, bufferSource, healthPercent, factionColor);
+            poseStack.translate(x - camX, renderY - camY, z - camZ);
+            poseStack.mulPose(camera.rotation());
+            // 负 X/Y 缩放让血条面向玩家且不镜像
+            poseStack.scale(-finalScale, -finalScale, finalScale);
+
+            renderBarBackground(poseStack, bufferSource, factionColor);
             renderHealthFill(poseStack, bufferSource, healthPercent, factionColor);
             renderBarContainer(poseStack, bufferSource);
-            
-            if (shouldShowLevel) {
-                renderLevelText(poseStack, bufferSource, renderData.getLevelText());
+
+            if (showLevelText && !levelText.isEmpty()) {
+                renderLevelText(poseStack, bufferSource, levelText);
             }
-            
-            renderHealthText(poseStack, bufferSource, renderData.getHealthText());
-            
+            if (showHealthText && !healthText.isEmpty()) {
+                renderHealthText(poseStack, bufferSource, healthText);
+            }
         } finally {
             poseStack.popPose();
         }
     }
-    
-    /**
-     * 兼容旧版直接渲染方法
-     */
-    public static void renderHealthBar(Entity entity, PoseStack poseStack, 
-                                       MultiBufferSource bufferSource, float partialTick) {
-        HealthBarRenderData renderData = preRenderHealthBar(entity, partialTick);
-        if (renderData != null) {
-            renderFromPreRendered(renderData, poseStack, bufferSource);
-        }
-    }
-    
-    /**
-     * 转换到屏幕坐标：锁定距离缩放，使用统一缩放因子
-     */
-    private static boolean toScreenCoordinates(double x, double y, double z, PoseStack poseStack, Minecraft mc, float scale) {
-        GameRenderer gameRenderer = mc.gameRenderer;
-        Camera camera = gameRenderer.getMainCamera();
-        
-        try {
-            Vec3 entityPos = new Vec3(x, y, z);
-            Vec3 cameraPos = camera.getPosition();
-            
-            Vec3 relPos = entityPos.subtract(cameraPos);
-            
-            Matrix4f viewMatrix = new Matrix4f();
-            viewMatrix.setLookAt(0, 0, 0, 
-                               (float)camera.getLookVector().x, 
-                               (float)camera.getLookVector().y, 
-                               (float)camera.getLookVector().z, 
-                               0, 1, 0);
-            
-            // 获取真实 FOV，使用与原版相同的方法
-            double fov = getCurrentFov(gameRenderer, camera);
-            float aspectRatio = (float)mc.getWindow().getScreenWidth() / (float)mc.getWindow().getScreenHeight();
-            float near = 0.05f;
-            float far = 1000.0f;
-            
-            Matrix4f projectionMatrix = new Matrix4f();
-            projectionMatrix.setPerspective((float)Math.toRadians(fov), aspectRatio, near, far);
-            
-            Matrix4f modelMatrix = new Matrix4f().translate((float)relPos.x, (float)relPos.y, (float)relPos.z);
-            Matrix4f mvpMatrix = new Matrix4f(projectionMatrix);
-            mvpMatrix.mul(viewMatrix).mul(modelMatrix);
-            
-            Vector4f clipPos = new Vector4f(0, 0, 0, 1);
-            clipPos.mul(mvpMatrix);
-            
-            if (clipPos.w <= 0) {
-                return false;
-            }
-            
-            float ndcX = clipPos.x / clipPos.w;
-            float ndcY = clipPos.y / clipPos.w;
-            float ndcZ = clipPos.z / clipPos.w;
-            
-            if (ndcX < -1 || ndcX > 1 || ndcY < -1 || ndcY > 1 || ndcZ < -1 || ndcZ > 1) {
-                return false;
-            }
-            
-            int guiScaledWidth = mc.getWindow().getGuiScaledWidth();
-            int guiScaledHeight = mc.getWindow().getGuiScaledHeight();
-            
-            float screenX = (ndcX + 1) * 0.5f * guiScaledWidth;
-            float screenY = (1 - ndcY) * 0.5f * guiScaledHeight;
-            
-            // 锁定距离缩放，使用统一缩放因子
-            float finalScale = GLOBAL_SCALE;
-            
-            poseStack.pushPose();
-            poseStack.translate(screenX, screenY, 0);
-            poseStack.scale(finalScale, finalScale, finalScale);
-            
-            return true;
-            
-        } catch (Exception e) {
-            return false;
-        }
-    }
-    
-    /**
-     * 获取当前 FOV，模拟原版 GameRenderer.getFov() 方法
-     */
-    private static double getCurrentFov(GameRenderer gameRenderer, Camera camera) {
-        return (double) Minecraft.getInstance().options.fov().get();
-    }
-    
+
     private static float getHealthPercent(LivingEntity entity) {
         UUID entityId = entity.getUUID();
-        
+
         if (!healthCache.containsKey(entityId)) {
             healthCache.put(entityId, entity.getHealth());
         }
-        
+
         float previousHealth = healthCache.get(entityId);
         float currentHealth = entity.getHealth();
-        
+
         if (previousHealth != currentHealth) {
             float interpolatedHealth = previousHealth + (currentHealth - previousHealth) * 0.1f;
             healthCache.put(entityId, interpolatedHealth);
-            
+
             if (Math.abs(interpolatedHealth - currentHealth) < 0.1f) {
                 healthCache.put(entityId, currentHealth);
                 interpolatedHealth = currentHealth;
             }
-            
+
             currentHealth = interpolatedHealth;
         }
-        
+
         float maxHealth = entity.getMaxHealth();
         return maxHealth <= 0 ? 0.0f : Math.max(0.0f, Math.min(1.0f, currentHealth / maxHealth));
     }
-    
+
+    /**
+     * 从剧本 faction.color 读取阵营颜色；读取失败时回退到默认色。
+     */
     private static int getFactionColor(Entity entity) {
         String factionId = ClientFactionCache.getCachedFactionId(entity);
-        
         if (factionId == null) {
             factionId = FactionHelper.getEntityFactionId(entity);
         }
-        
+
+        // 中立阵营固定用绿色兜底，避免 default.json 里 neutral=#FFFFFF 导致血条全白
+        if ("neutral".equals(factionId)) {
+            return GREEN_FACTION_COLOR;
+        }
+
+        Scenario scenario = ScenarioManager.getActiveScenario();
+        if (scenario != null && scenario.getFactions() != null) {
+            for (Scenario.FactionDef def : scenario.getFactions()) {
+                if (factionId.equals(def.getId())) {
+                    // 直接使用剧本 hex 颜色；getColorInt() 解析失败时返回白色
+                    return 0xFF000000 | def.getColorInt();
+                }
+            }
+        }
+
         return switch (factionId) {
             case "red" -> RED_FACTION_COLOR;
             case "blue" -> BLUE_FACTION_COLOR;
             default -> GREEN_FACTION_COLOR;
         };
     }
-    
-    private static int getBackgroundFactionColor(Entity entity) {
-        String factionId = ClientFactionCache.getCachedFactionId(entity);
-        
-        if (factionId == null) {
-            factionId = FactionHelper.getEntityFactionId(entity);
-        }
-        
-        return switch (factionId) {
-            case "red" -> RED_BG_COLOR;
-            case "blue" -> BLUE_BG_COLOR;
-            default -> GREEN_BG_COLOR;
-        };
+
+    /**
+     * 背景色 = 阵营颜色的同色系加深版（稍微深一点，用来垫底显示背景效果）。
+     * bar_background_texture.png 和 bar_texture.png 都是纯白图片，靠顶点颜色染色。
+     */
+    private static int getBackgroundColor(int factionColor) {
+        int r = (factionColor >> 16) & 0xFF;
+        int g = (factionColor >> 8) & 0xFF;
+        int b = factionColor & 0xFF;
+        int a = (factionColor >> 24) & 0xFF;
+
+        r = (int) (r * 0.7f);
+        g = (int) (g * 0.7f);
+        b = (int) (b * 0.7f);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
-    
+
     private static int getEntityLevel(Entity entity) {
         try {
             if (entity instanceof LivingEntity) {
@@ -340,7 +253,6 @@ public class SimpleHealthBarRenderer {
                         return cachedLevel;
                     }
                 }
-                
                 return EntityLevelSystem.getEntityLevel((LivingEntity) entity);
             }
             return 0;
@@ -348,29 +260,34 @@ public class SimpleHealthBarRenderer {
             return 0;
         }
     }
-    
-    private static boolean shouldShowLevel(int level) {
-        return level >= 0;
+
+    private static boolean shouldShowLevelText(Entity entity, int level) {
+        if (level < 0) return false;
+        return HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.getEntityLevelTextVisibility(entity.getUUID());
     }
-    
-    private static void renderHealthFill(PoseStack poseStack, MultiBufferSource bufferSource, 
-                                       float healthPercent, int factionColor) {
+
+    private static boolean shouldShowHealthText(Entity entity) {
+        return HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.getEntityHealthTextVisibility(entity.getUUID());
+    }
+
+    private static void renderHealthFill(PoseStack poseStack, MultiBufferSource bufferSource,
+                                         float healthPercent, int factionColor) {
         if (healthPercent <= 0.0f) {
             return;
         }
-        
+
         VertexConsumer vertexConsumer = bufferSource.getBuffer(HealthBarRenderType.FILL_TYPE);
         Matrix4f matrix = poseStack.last().pose();
-        
+
         float fillRight = PRE_BAR_LEFT + (BAR_TOTAL_WIDTH * healthPercent);
-        
         int r = (factionColor >> 16) & 0xFF;
         int g = (factionColor >> 8) & 0xFF;
         int b = factionColor & 0xFF;
         int a = (factionColor >> 24) & 0xFF;
-        
-        float fillZ = -0.1f;
-        
+        // 世界空间：-Z 朝摄像机（靠前），+Z 远离摄像机（靠后）
+        // 从后到前：背景(+0.1) → 填充(0.0) → 容器(-0.1) → 文字(-0.2)
+        float fillZ = 0.0f;
+
         vertexConsumer.vertex(matrix, PRE_BAR_LEFT, PRE_BAR_BOTTOM, fillZ)
             .color(r, g, b, a)
             .uv(0, 0)
@@ -392,25 +309,20 @@ public class SimpleHealthBarRenderer {
             .uv2(0xF000F0)
             .endVertex();
     }
-    
-    private static void renderBarBackground(PoseStack poseStack, MultiBufferSource bufferSource, 
-                                           float healthPercent, int factionColor) {
+
+    private static void renderBarBackground(PoseStack poseStack, MultiBufferSource bufferSource,
+                                            int factionColor) {
         VertexConsumer vertexConsumer = bufferSource.getBuffer(HealthBarRenderType.BACKGROUND_TYPE);
         Matrix4f matrix = poseStack.last().pose();
-        
-        int bgFactionColor = switch (factionColor) {
-            case RED_FACTION_COLOR -> RED_BG_COLOR;
-            case BLUE_FACTION_COLOR -> BLUE_BG_COLOR;
-            default -> GREEN_BG_COLOR;
-        };
-        
-        int r = (bgFactionColor >> 16) & 0xFF;
-        int g = (bgFactionColor >> 8) & 0xFF;
-        int b = bgFactionColor & 0xFF;
-        int a = (bgFactionColor >> 24) & 0xFF;
-        
-        float backgroundZ = 0.0f;
-        
+
+        int bgColor = getBackgroundColor(factionColor);
+        int r = (bgColor >> 16) & 0xFF;
+        int g = (bgColor >> 8) & 0xFF;
+        int b = bgColor & 0xFF;
+        int a = (bgColor >> 24) & 0xFF;
+        // 最底层（远离摄像机）
+        float backgroundZ = 0.1f;
+
         vertexConsumer.vertex(matrix, PRE_BAR_LEFT, PRE_BAR_BOTTOM, backgroundZ)
             .color(r, g, b, a)
             .uv(0, 0)
@@ -432,18 +344,18 @@ public class SimpleHealthBarRenderer {
             .uv2(0xF000F0)
             .endVertex();
     }
-    
+
     private static void renderBarContainer(PoseStack poseStack, MultiBufferSource bufferSource) {
         VertexConsumer vertexConsumer = bufferSource.getBuffer(HealthBarRenderType.CONTAINER_TYPE);
         Matrix4f matrix = poseStack.last().pose();
-        
+
         int r = 255;
         int g = 255;
         int b = 255;
         int a = 255;
-        
-        float containerZ = 0.1f;
-        
+        // 最上层套壳（朝向摄像机，带竖线/格子）
+        float containerZ = -0.1f;
+
         vertexConsumer.vertex(matrix, PRE_CONTAINER_BAR_LEFT, PRE_CONTAINER_BAR_BOTTOM, containerZ)
             .color(r, g, b, a)
             .uv(0, 0)
@@ -465,59 +377,56 @@ public class SimpleHealthBarRenderer {
             .uv2(0xF000F0)
             .endVertex();
     }
-    
+
     private static void renderLevelText(PoseStack poseStack, MultiBufferSource bufferSource, String levelText) {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
-        
+
         float textScale = 1.0f;
-        float levelTextRawHeight = font.lineHeight;  // 原始高度（正确写法）
-        float levelTextScaledHeight = levelTextRawHeight * textScale;  // 缩放后的高度
+        float levelTextScaledHeight = font.lineHeight * textScale;
         float levelTextRawWidth = font.width(levelText);
-        float levelTextScaledWidth = levelTextRawWidth * textScale;
-        
-        float x = 0 - HALF_WIDTH * 0.98f ;
-        float y = 0 - levelTextScaledHeight * 0.5f ;
-        
+
+        float x = 0 - HALF_WIDTH * 0.98f;
+        float y = 0 - levelTextScaledHeight * 0.5f;
+
         poseStack.pushPose();
         try {
+            // 文字放在最上层（比容器更靠近摄像机）
+            poseStack.translate(0, 0, -0.2f);
             poseStack.scale(textScale, textScale, textScale);
-            
-            font.drawInBatch(levelText, 
-                x / textScale, y / textScale, 
-                TEXT_COLOR, false, 
-                poseStack.last().pose(), bufferSource, 
+            font.drawInBatch(levelText,
+                x / textScale, y / textScale,
+                TEXT_COLOR, false,
+                poseStack.last().pose(), bufferSource,
                 Font.DisplayMode.NORMAL, 0, 0xF000F0);
-                
         } finally {
             poseStack.popPose();
         }
     }
-    
-    private static void renderHealthText(PoseStack poseStack, MultiBufferSource bufferSource, 
+
+    private static void renderHealthText(PoseStack poseStack, MultiBufferSource bufferSource,
                                          String healthText) {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
-        
+
         float textScale = 0.60f;
-        float healthTextRawHeight = font.lineHeight;  // 原始高度
-        float healthTextScaledHeight = healthTextRawHeight * textScale;  // 缩放后的高度
+        float healthTextScaledHeight = font.lineHeight * textScale;
         float healthTextRawWidth = font.width(healthText);
         float healthTextScaledWidth = healthTextRawWidth * textScale;
-        
-        float x = 0 + HALF_WIDTH * 0.98f - healthTextScaledWidth * 0.98f ;
-        float y = 0 - healthTextScaledHeight*0.5f ;
-        
+
+        float x = 0 + HALF_WIDTH * 0.98f - healthTextScaledWidth * 0.98f;
+        float y = 0 - healthTextScaledHeight * 0.5f;
+
         poseStack.pushPose();
         try {
+            // 文字放在最上层（比容器更靠近摄像机）
+            poseStack.translate(0, 0, -0.2f);
             poseStack.scale(textScale, textScale, textScale);
-            
-            font.drawInBatch(healthText, 
-                x / textScale, y / textScale, 
-                TEXT_COLOR, false, 
-                poseStack.last().pose(), bufferSource, 
+            font.drawInBatch(healthText,
+                x / textScale, y / textScale,
+                TEXT_COLOR, false,
+                poseStack.last().pose(), bufferSource,
                 Font.DisplayMode.NORMAL, 0, 0xF000F0);
-                
         } finally {
             poseStack.popPose();
         }

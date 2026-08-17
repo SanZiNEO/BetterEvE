@@ -23,10 +23,13 @@
     { "from": "*", "to": "neutral", "type": "neutral" }
   ],
   "waypoints": [
-    { "id": "red_waypoint_1", "factionId": "red", "order": 1, "x1": -50, "z1": -10, "x2": -30, "z2": 10 },
-    { "id": "red_waypoint_2", "factionId": "red", "order": 2, "x1": -20, "z1": -10, "x2": -10, "z2": 10 },
-    { "id": "blue_waypoint_1", "factionId": "blue", "order": 1, "x1": 30, "z1": -10, "x2": 50, "z2": 10 },
-    { "id": "blue_waypoint_2", "factionId": "blue", "order": 2, "x1": 10, "z1": -10, "x2": 20, "z2": 10 }
+    { "id": "red_waypoint_1", "factionId": "red", "x1": -50, "z1": -10, "x2": -30, "z2": 10 },
+    { "id": "red_waypoint_2", "factionId": "red", "x1": -20, "z1": -10, "x2": -10, "z2": 10 },
+    { "id": "blue_waypoint_1", "factionId": "blue", "x1": 30, "z1": -10, "x2": 50, "z2": 10 },
+    { "id": "blue_waypoint_2", "factionId": "blue", "x1": 10, "z1": -10, "x2": 20, "z2": 10 }
+  ],
+  "routes": [
+    { "id": "route_a", "waypoints": ["red_waypoint_1", "red_waypoint_2", "blue_waypoint_1", "blue_waypoint_2"] }
   ],
   "crystals": [
     {

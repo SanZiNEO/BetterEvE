@@ -49,6 +49,12 @@ public class FactionSyncHandler {
         boolean showHealthBar = FactionHelper.getEntityShowHealthBar(entity);
         NetworkManager.syncEntityHealthBarVisibilityToAll(entity, showHealthBar);
 
+        // 同步血条文字显示开关（Lv/血量数字可分别控制）
+        NetworkManager.syncEntityHealthBarTextVisibilityToAll(
+                entity,
+                FactionHelper.getEntityShowLevelText(entity),
+                FactionHelper.getEntityShowHealthText(entity));
+
         // 同步等级信息（实体加入世界后补发一次，替代原 SyncTimer 的全量遍历）
         NetworkManager.syncEntityLevelToAll(entity, EntityLevelSystem.getEntityLevel(entity));
     }
@@ -86,17 +92,21 @@ public class FactionSyncHandler {
         
         Player player = event.getEntity();
         
-        // 同步玩家附近的所有实体（半径32格）
-        player.level().getEntities(player, player.getBoundingBox().inflate(32.0), entity -> {
-            if (entity instanceof LivingEntity) {
+        // 同步玩家附近的所有实体（半径32格）：血条/文字开关对所有活体同步，阵营/等级只对非中立同步
+        player.level().getEntities(player, player.getBoundingBox().inflate(32.0), entity -> entity instanceof LivingEntity)
+            .forEach(entity -> {
+                NetworkManager.syncEntityHealthBarVisibility(entity, FactionHelper.getEntityShowHealthBar(entity), (net.minecraft.server.level.ServerPlayer) player);
+                NetworkManager.syncEntityHealthBarTextVisibility(
+                        entity,
+                        FactionHelper.getEntityShowLevelText(entity),
+                        FactionHelper.getEntityShowHealthText(entity),
+                        (net.minecraft.server.level.ServerPlayer) player);
                 String factionId = FactionHelper.getEntityFactionId(entity);
-                return !"neutral".equals(factionId);
-            }
-            return false;
-        }).forEach(entity -> {
-            NetworkManager.syncEntityFaction(entity, (net.minecraft.server.level.ServerPlayer) player);
-            NetworkManager.syncEntityLevel(entity, EntityLevelSystem.getEntityLevel(entity), (net.minecraft.server.level.ServerPlayer) player);
-        });
+                if (!"neutral".equals(factionId)) {
+                    NetworkManager.syncEntityFaction(entity, (net.minecraft.server.level.ServerPlayer) player);
+                    NetworkManager.syncEntityLevel(entity, EntityLevelSystem.getEntityLevel(entity), (net.minecraft.server.level.ServerPlayer) player);
+                }
+            });
     }
     
     /**
@@ -110,17 +120,21 @@ public class FactionSyncHandler {
         
         Player player = event.getEntity();
         
-        // 同步新维度中的实体
-        player.level().getEntities(player, player.getBoundingBox().inflate(32.0), entity -> {
-            if (entity instanceof LivingEntity) {
+        // 同步新维度中的实体：血条/文字开关对所有活体同步，阵营/等级只对非中立同步
+        player.level().getEntities(player, player.getBoundingBox().inflate(32.0), entity -> entity instanceof LivingEntity)
+            .forEach(entity -> {
+                NetworkManager.syncEntityHealthBarVisibility(entity, FactionHelper.getEntityShowHealthBar(entity), (net.minecraft.server.level.ServerPlayer) player);
+                NetworkManager.syncEntityHealthBarTextVisibility(
+                        entity,
+                        FactionHelper.getEntityShowLevelText(entity),
+                        FactionHelper.getEntityShowHealthText(entity),
+                        (net.minecraft.server.level.ServerPlayer) player);
                 String factionId = FactionHelper.getEntityFactionId(entity);
-                return !"neutral".equals(factionId);
-            }
-            return false;
-        }).forEach(entity -> {
-            NetworkManager.syncEntityFaction(entity, (net.minecraft.server.level.ServerPlayer) player);
-            NetworkManager.syncEntityLevel(entity, EntityLevelSystem.getEntityLevel(entity), (net.minecraft.server.level.ServerPlayer) player);
-        });
+                if (!"neutral".equals(factionId)) {
+                    NetworkManager.syncEntityFaction(entity, (net.minecraft.server.level.ServerPlayer) player);
+                    NetworkManager.syncEntityLevel(entity, EntityLevelSystem.getEntityLevel(entity), (net.minecraft.server.level.ServerPlayer) player);
+                }
+            });
     }
     
     /**

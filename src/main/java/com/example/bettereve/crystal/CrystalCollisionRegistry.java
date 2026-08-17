@@ -47,6 +47,15 @@ public class CrystalCollisionRegistry {
         return false;
     }
 
+    /** 检查某方块坐标是否被指定基地（crystalId）的碰撞箱占用 */
+    public static boolean isBlockedByCrystal(int blockX, int blockZ, String crystalId) {
+        if (crystalId == null || crystalId.isEmpty()) return false;
+        for (CrystalBox box : boxes) {
+            if (box.crystalId.equals(crystalId) && box.contains(blockX, blockZ)) return true;
+        }
+        return false;
+    }
+
     private static class CrystalBox {
         final String crystalId;
         final String factionId;

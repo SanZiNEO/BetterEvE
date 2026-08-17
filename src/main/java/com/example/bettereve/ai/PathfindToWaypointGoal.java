@@ -2,36 +2,41 @@ package com.example.bettereve.ai;
 
 import com.example.bettereve.crystal.CrystalCollisionRegistry;
 import com.example.bettereve.faction.FactionHelper;
+import com.example.bettereve.waypoint.Route;
+import com.example.bettereve.waypoint.RouteManager;
 import com.example.bettereve.waypoint.WaypointManager;
 import com.example.bettereve.waypoint.WaypointProgressRegistry;
-import net.minecraft.world.entity.LivingEntity;
 import com.example.bettereve.waypoint.WaypointRegion;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
+import net.minecraft.world.level.pathfinder.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * 兵线寻路 AI — 分 N 个阵营阶段，线性不循环、不走回头路：
- * 阶段 1（永远是本阵营）：本阵营 waypoint 按 order 从小到大依次走完；
- * 阶段 2..N（其他阵营，一次一个阵营，不混合）：阵营顺序按
- * "本阵营结束点（order 最大的 waypoint）→ 候选阵营结束点"的距离升序排列；
- * 其他阵营内部按 order 从大到小走完。
- * 全部阵营走完即结束。战斗优先：本 goal 只在 mob.getTarget() == null 时运行
- * （攻击目标选择器优先级 0 独立生效）。
+ * 兵线寻路 AI（新版路线系统）。
+ * <p>
+ * 生物只绑定一条 route，走完即终点：
+ * - 本阵营 waypoint 按 route 列表顺序走；
+ * - 敌方 waypoint 按 route 列表逆序走。
+ * 战斗优先：本 goal 只在 mob.getTarget() == null 时运行。
  */
 public class PathfindToWaypointGoal extends Goal {
     private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/PathGoal");
 
-    /** 调试日志上下文：生物名称、位置、阵营、当前攻击目标（id/名称/阵营/位置） */
+    /** 生物 NBT 持久化键：绑定的路线 id（卸载重生后仍走原路线） */
+    private static final String NBT_ROUTE_KEY = "bettereve:route_id";
+
+    /** 调试日志上下文 */
     private String logContext() {
         LivingEntity t = mob.getTarget();
         String targetDesc = t == null ? "null"
@@ -46,15 +51,15 @@ public class PathfindToWaypointGoal extends Goal {
     private final PathfinderMob mob;
     private final PathNavigation navigation;
 
-    private final List<String> stageOrder = new ArrayList<>(); // 阵营行走顺序（下标 0 = 本阵营）
-    private WaypointRegion currentTarget;      // 当前导航目标
-    private int repathTimer;                   // 导航完成后的重导航防抖（tick）
+    /** 当前 route 的实际行走计划（已按本阵营顺序/敌方逆序展开） */
+    private List<WaypointRegion> plan = new ArrayList<>();
+    private int nextIndex;
+    private WaypointRegion currentTarget;
+    private int repathTimer;
 
-    // 进度字段为运行期快照，权威数据在 WaypointProgressRegistry（方案 B：全局管理，防走回头路）
-    private int stageIndex;                    // 当前阶段
-    private int currentOrder;                  // 当前阶段内已到达的 order（升序起点 0；降序起点 MAX_VALUE）
-    private boolean finished;                  // 全部走完（线性终点）
-    private WaypointProgressRegistry.Progress progress; // 注册表条目缓存（start 时获取）
+    private boolean finished;
+    private WaypointProgressRegistry.Progress progress;
+    private String routeId;
 
     public PathfindToWaypointGoal(PathfinderMob mob) {
         this.mob = mob;
@@ -62,7 +67,6 @@ public class PathfindToWaypointGoal extends Goal {
         this.setFlags(EnumSet.of(Goal.Flag.MOVE));
     }
 
-    // 战斗优先：有攻击目标就不赶路；走完或中立则不再启动
     @Override
     public boolean canUse() {
         if (mob.getTarget() != null) return false;
@@ -73,33 +77,29 @@ public class PathfindToWaypointGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        // 导航完成/路径中断不在此停止，由 tick() 统一处理重导航；战斗打断立即让位
         return currentTarget != null && mob.getTarget() == null;
     }
 
     @Override
     public void start() {
         String selfId = FactionHelper.getEntityFactionId(mob);
-        // 全局进度（方案 B）：换阵营/首次自动重置，否则保留跨战斗打断的进度
         this.progress = WaypointProgressRegistry.getOrCreate(mob);
-        stageIndex = progress.stageIndex;
-        currentOrder = progress.currentOrder;
-        finished = progress.finished;
+        this.routeId = resolveRoute(selfId);
+        this.nextIndex = progress.nextIndex;
+        this.finished = progress.finished;
 
-        // 阵营顺序每次重算（确定性，无副作用）
-        rebuildStageOrder(selfId);
+        buildPlan(selfId, routeId);
 
         if (!finished) {
-            // 位置快进：当前位置已踏入后续区域（战斗拖拽/中途生成）→ 推进进度，不走回头路
             fastForwardByPosition();
             selectNextTarget();
             advanceWhileInside();
             if (currentTarget != null) {
-                navigateToFarthestEdge(currentTarget);
+                navigateToWaypoint(currentTarget);
             }
         }
-        LOGGER.debug("{} 寻路开始 阵营顺序={} 阶段={} order={} 进度={}",
-                logContext(), stageOrder, stageIndex, currentOrder, progress);
+        LOGGER.debug("{} 寻路开始 route={} nextIndex={} planSize={} 进度={}",
+                logContext(), routeId, nextIndex, plan.size(), progress);
     }
 
     @Override
@@ -112,130 +112,82 @@ public class PathfindToWaypointGoal extends Goal {
 
     @Override
     public void tick() {
-        if (mob.getTarget() != null) return; // 战斗中，等待 canContinueToUse 停止本 goal
+        if (mob.getTarget() != null) return;
         if (currentTarget == null) {
             selectNextTarget();
-            if (currentTarget != null) navigateToFarthestEdge(currentTarget);
+            if (currentTarget != null) navigateToWaypoint(currentTarget);
             return;
         }
-        // 到达区域 → 推进到下一个目标（可能连续跨越多个重叠区域）
         if (currentTarget.isInside(mob.getX(), mob.getZ())) {
             advanceWhileInside();
             return;
         }
-        // 导航完成但尚未踏入区域（路径中断/被卡住）→ 防抖重导航
         if (navigation.isDone()) {
             if (++repathTimer >= 20) {
                 repathTimer = 0;
-                navigateToFarthestEdge(currentTarget);
+                navigateToWaypoint(currentTarget);
             }
         }
     }
 
-    /** 当前阶段是否升序（阶段 0 本阵营升序；其他阵营降序） */
-    private boolean isAscendingStage() {
-        return stageIndex == 0;
-    }
-
-    /** 到达后推进：更新当前阶段进度 → 选下一个（或进入下一阵营）→ 导航 */
-    private void advanceWhileInside() {
-        while (currentTarget != null && currentTarget.isInside(mob.getX(), mob.getZ())) {
-            currentOrder = currentTarget.getOrder();
-            syncProgress();
-            selectNextTarget();
-            if (currentTarget != null) {
-                navigateToFarthestEdge(currentTarget);
-            }
-        }
-    }
-
-    private void selectNextTarget() {
-        if (stageIndex >= stageOrder.size()) {
+    /** 根据绑定 route 生成当前阵营的实际行走计划 */
+    private void buildPlan(String selfId, String routeId) {
+        plan.clear();
+        if (routeId == null) {
             finished = true;
             currentTarget = null;
             syncProgress();
-            LOGGER.debug("{} 所有阵营路径点已走完，寻路结束", logContext());
             return;
         }
-        String stageFaction = stageOrder.get(stageIndex);
-        // 本阵营（阶段 0）：order 升序；其他阵营：order 降序
-        WaypointRegion next = isAscendingStage()
-                ? WaypointManager.getNextWaypoint(stageFaction, currentOrder)
-                : WaypointManager.getPreviousWaypoint(stageFaction, currentOrder);
-        if (next != null) {
-            currentTarget = next;
+        Route route = RouteManager.getRoute(routeId);
+        if (route == null) {
+            LOGGER.warn("{} 绑定的路线 {} 不存在，寻路结束", logContext(), routeId);
+            finished = true;
+            currentTarget = null;
+            syncProgress();
             return;
         }
-        // 当前阵营走完 → 进入下一阵营（重置该阶段的 order 起点）
-        stageIndex++;
-        currentOrder = isAscendingStage() ? 0 : Integer.MAX_VALUE;
-        syncProgress();
-        LOGGER.debug("{} 阵营 {} 路径点走完，进入下一阵营 {}",
-                logContext(), stageFaction,
-                stageIndex < stageOrder.size() ? stageOrder.get(stageIndex) : "（终点）");
-        selectNextTarget(); // 递归：跳过无 waypoint 的阵营 / 到达终点
-    }
-
-    /** 重算阵营行走顺序：本阵营 → 其余按"本阵营结束点 → 候选阵营结束点"距离升序（相等按 id 字典序） */
-    private void rebuildStageOrder(String selfId) {
-        stageOrder.clear();
-        stageOrder.add(selfId);
-        WaypointRegion selfEnd = WaypointManager.getLastWaypoint(selfId);
-        Set<String> others = new HashSet<>();
-        for (WaypointRegion r : WaypointManager.getAllWaypoints()) {
-            if (!selfId.equals(r.getFactionId())) others.add(r.getFactionId());
+        plan = route.getPlanForFaction(selfId);
+        if (plan.isEmpty()) {
+            LOGGER.warn("{} 路线 {} 对阵营 {} 没有可用 waypoint，寻路结束", logContext(), routeId, selfId);
+            finished = true;
+            currentTarget = null;
+            syncProgress();
         }
-        List<String> sortedOthers = new ArrayList<>(others);
-        sortedOthers.sort(Comparator
-                .comparingDouble((String fid) -> {
-                    WaypointRegion end = WaypointManager.getLastWaypoint(fid);
-                    if (end == null || selfEnd == null) return 0.0;
-                    return end.distanceToSqr(selfEnd.getCenterX(), selfEnd.getCenterZ());
-                })
-                .thenComparing(Comparator.naturalOrder()));
-        stageOrder.addAll(sortedOthers);
     }
 
     /**
-     * 位置快进：从当前进度起向后扫描所有阶段的未到达区域，
-     * 只要当前位置已踏入其中（沿行进方向最靠前的），就把进度推进到该区域。
-     * 防止战斗拖拽/中途生成导致的走回头路（如被目标吸引拖到敌后，恢复后直接打敌后而非掉头重走）。
+     * 绑定路线优先级：进度缓存 → 实体 NBT → 就近选择。
+     * 绑定后写入 NBT 持久化。
+     */
+    private String resolveRoute(String selfId) {
+        if (progress.routeId != null && RouteManager.hasRoute(progress.routeId)) {
+            return progress.routeId;
+        }
+        String nbtRoute = mob.getPersistentData().getString(NBT_ROUTE_KEY);
+        if (!nbtRoute.isEmpty() && RouteManager.hasRoute(nbtRoute)) {
+            progress.routeId = nbtRoute;
+            return nbtRoute;
+        }
+        String route = RouteManager.selectNearestRoute(selfId, mob.getX(), mob.getZ());
+        progress.routeId = route;
+        if (route != null) {
+            mob.getPersistentData().putString(NBT_ROUTE_KEY, route);
+        }
+        return route;
+    }
+
+    /**
+     * 位置快进：从当前进度向后扫描计划，只要当前位置已踏入后续 waypoint，
+     * 就推进到该 waypoint 之后，防止战斗拖拽/中途生成导致走回头路。
      */
     private void fastForwardByPosition() {
         boolean advanced;
         do {
             advanced = false;
-            if (stageIndex >= stageOrder.size()) break;
-            String sf = stageOrder.get(stageIndex);
-            boolean asc = isAscendingStage();
-            // 本阶段所有未到达区域中，沿行进方向第一个包含当前位置的
-            WaypointRegion hit = null;
-            for (WaypointRegion r : WaypointManager.getAllWaypoints()) {
-                if (!sf.equals(r.getFactionId())) continue;
-                boolean unarrived = asc ? r.getOrder() > currentOrder : r.getOrder() < currentOrder;
-                if (!unarrived || !r.isInside(mob.getX(), mob.getZ())) continue;
-                if (hit == null || (asc ? r.getOrder() < hit.getOrder() : r.getOrder() > hit.getOrder())) {
-                    hit = r; // 升序取最小 order（下一步），降序取最大 order（下一步）
-                }
-            }
-            if (hit != null) {
-                currentOrder = hit.getOrder();
-                advanced = true;
-                continue;
-            }
-            // 本阶段无可快进区域 → 检查后续阶段（后续阶段均为降序）：任一区域包含当前位置则进入该阶段
-            for (int i = stageIndex + 1; i < stageOrder.size(); i++) {
-                String nf = stageOrder.get(i);
-                WaypointRegion stageHit = null;
-                for (WaypointRegion r : WaypointManager.getAllWaypoints()) {
-                    if (nf.equals(r.getFactionId()) && r.isInside(mob.getX(), mob.getZ())
-                            && (stageHit == null || r.getOrder() > stageHit.getOrder())) {
-                        stageHit = r; // 降序阶段入口 = order 最大者
-                    }
-                }
-                if (stageHit != null) {
-                    stageIndex = i;
-                    currentOrder = stageHit.getOrder();
+            for (int i = nextIndex; i < plan.size(); i++) {
+                if (plan.get(i).isInside(mob.getX(), mob.getZ())) {
+                    nextIndex = i + 1;
                     advanced = true;
                     break;
                 }
@@ -244,29 +196,106 @@ public class PathfindToWaypointGoal extends Goal {
         syncProgress();
     }
 
-    /** 将运行期进度快照写回全局注册表 */
+    /** 到达后推进：更新进度 → 选下一个 → 导航 */
+    private void advanceWhileInside() {
+        while (currentTarget != null && currentTarget.isInside(mob.getX(), mob.getZ())) {
+            nextIndex++;
+            syncProgress();
+            selectNextTarget();
+            if (currentTarget != null) {
+                navigateToWaypoint(currentTarget);
+            }
+        }
+    }
+
+    private void selectNextTarget() {
+        if (nextIndex >= plan.size()) {
+            finished = true;
+            currentTarget = null;
+            syncProgress();
+            LOGGER.debug("{} 路线走完，寻路结束", logContext());
+            return;
+        }
+        currentTarget = plan.get(nextIndex);
+    }
+
     private void syncProgress() {
         if (progress != null) {
-            progress.stageIndex = stageIndex;
-            progress.currentOrder = currentOrder;
+            progress.routeId = routeId;
+            progress.nextIndex = nextIndex;
             progress.finished = finished;
         }
     }
 
     /**
-     * 导航到目标区域的"最远边缘垂足点"（向区域内偏移 0.5 格）。
-     * 垂足点保证实体到达时已踏入区域（isInside 为 true），
-     * 0.5 格偏移防止停在边缘线上导致 navigation.isDone() 与 isInside 永远不一致。
-     * 原版 A* 寻路不感知实体，基地实体会挡住生物去路（互推卡死）；
-     * 因此额外做 XZ 路线推荐：若"生物当前位置 → 垂足点"的直线走廊穿过任一基地禁区
-     * （基地 a×a 占地 + 生物半宽 + 余量），则将目标点沿该边缘滑动到安全候选点，
-     * 让生物从基地侧面绕行进入区域。Y 轴完全交给原版导航（getGroundY 贴地）。
+     * 导航到 waypoint 区域：生成一组安全候选目标点，交给原版 A* 多目标寻路，
+     * 由 A* 自动选择当前最优可达点，避免“最远边绕路”和“最近边早停”。
      */
-    private void navigateToFarthestEdge(WaypointRegion target) {
+    private void navigateToWaypoint(WaypointRegion target) {
+        Set<BlockPos> targets = buildCandidateTargets(target);
+        Path path = navigation.createPath(targets, 2);
+        if (path != null) {
+            navigation.moveTo(path, 1.0);
+            LOGGER.debug("{} 导航->区域={} 候选点={} 路径长度={}",
+                    logContext(), target.getId(), targets.size(), path.getNodeCount());
+        } else {
+            // A* 找不到多目标路径时，退回旧的最远边单点方案，保证至少有目标可走
+            navigateToFallbackPoint(target);
+        }
+    }
+
+    /**
+     * 在 waypoint 区域内生成候选目标点：3x3 网格（25%/50%/75%），
+     * 剔除落在基地碰撞箱内的点；全部被剔除时退回区域中心。
+     * Y 坐标自动按地面计算，交给原版导航处理。
+     */
+    private Set<BlockPos> buildCandidateTargets(WaypointRegion target) {
+        Set<BlockPos> targets = new HashSet<>();
+        double x1 = target.getX1(), x2 = target.getX2();
+        double z1 = target.getZ1(), z2 = target.getZ2();
+
+        double[] fractions = {0.25, 0.5, 0.75};
+        for (double fx : fractions) {
+            for (double fz : fractions) {
+                int bx = (int) Math.floor(x1 + (x2 - x1) * fx);
+                int bz = (int) Math.floor(z1 + (z2 - z1) * fz);
+                if (CrystalCollisionRegistry.isBlockedAt(bx, bz)) {
+                    continue;
+                }
+                int by = getTargetY(bx + 0.5, bz + 0.5);
+                targets.add(new BlockPos(bx, by, bz));
+            }
+        }
+
+        if (targets.isEmpty()) {
+            int bx = (int) Math.floor((x1 + x2) / 2.0);
+            int bz = (int) Math.floor((z1 + z2) / 2.0);
+            int by = getTargetY(bx + 0.5, bz + 0.5);
+            targets.add(new BlockPos(bx, by, bz));
+        }
+        return targets;
+    }
+
+    /**
+     * 计算 (x,z) 处的地面站立 Y：从当前实体高度向下找第一个非空气方块，站到它上方。
+     */
+    private int getTargetY(double x, double z) {
+        BlockPos pos = BlockPos.containing(x, mob.getY(), z);
+        var level = mob.level();
+        while (pos.getY() > level.getMinBuildHeight() && level.getBlockState(pos).isAir()) {
+            pos = pos.below();
+        }
+        return pos.getY() + 1;
+    }
+
+    /**
+     * 导航到目标区域的"最远边缘垂足点"（向区域内偏移 0.5 格）。
+     * 作为多目标寻路失败时的兜底方案。
+     */
+    private void navigateToFallbackPoint(WaypointRegion target) {
         double mx = mob.getX(), mz = mob.getZ();
         double bestDist = -1;
         double bestX = 0, bestZ = 0;
-        // 被选中最远边的两个端点（路线推荐候选点滑动用）
         double ex1 = 0, ez1 = 0, ex2 = 0, ez2 = 0;
 
         double d = Math.abs(mx - target.getX1());
@@ -278,22 +307,14 @@ public class PathfindToWaypointGoal extends Goal {
         d = Math.abs(mz - target.getZ2());
         if (d > bestDist) { bestDist = d; bestX = Math.max(target.getX1(), Math.min(mx, target.getX2())); bestZ = target.getZ2() - 0.5; ex1 = target.getX1(); ez1 = target.getZ2(); ex2 = target.getX2(); ez2 = target.getZ2(); }
 
-        // XZ 路线推荐：直线走廊穿过基地禁区则沿边滑动目标点
         double[] recommended = recommendSafeTargetXZ(mx, mz, bestX, bestZ, ex1, ez1, ex2, ez2);
         bestX = recommended[0];
         bestZ = recommended[1];
 
-        LOGGER.debug("{} 导航->区域={} order={} 目标=({},{})",
-                logContext(), target.getId(), target.getOrder(),
-                String.format("%.0f", bestX), String.format("%.0f", bestZ));
+        LOGGER.debug("{} 导航->区域={} 目标=({},{})", logContext(), target.getId(), String.format("%.0f", bestX), String.format("%.0f", bestZ));
         navigation.moveTo(bestX, mob.getY(), bestZ, 1.0);
     }
 
-    /**
-     * XZ 路线推荐：候选点（原始垂足点 + 该边两个端点）中，取第一个
-     * "生物当前位置 → 候选点"直线走廊不穿过任何基地禁区（基地中心 ± a，即 2a×2a，如 3x10 → 6x6）的点。
-     * 找不到安全点（如生物已位于禁区内）时回退原始垂足点，行为不劣于原逻辑。
-     */
     private double[] recommendSafeTargetXZ(double mx, double mz, double footX, double footZ,
                                            double ex1, double ez1, double ex2, double ez2) {
         List<CrystalCollisionRegistry.CrystalFootprint> footprints = CrystalCollisionRegistry.getFootprints();
@@ -303,15 +324,10 @@ public class PathfindToWaypointGoal extends Goal {
         for (double[] cand : candidates) {
             boolean blocked = false;
             for (CrystalCollisionRegistry.CrystalFootprint fp : footprints) {
-                // 禁区 = 基地中心 ± a（水平边长翻倍，如 3x10 基地 → 6x6 禁区），保证走廊不蹭基地实体
                 double half = fp.edgeSize();
                 if (segmentIntersectsRect(mx, mz, cand[0], cand[1],
                         fp.centerX() - half, fp.centerZ() - half,
                         fp.centerX() + half, fp.centerZ() + half)) {
-                    LOGGER.debug("{} 候选点 ({},{}) 被基地 #{}（faction={} 中心=({},{}) a={}）禁区遮挡",
-                            logContext(), String.format("%.1f", cand[0]), String.format("%.1f", cand[1]),
-                            fp.crystalId(), fp.factionId(),
-                            String.format("%.1f", fp.centerX()), String.format("%.1f", fp.centerZ()), fp.edgeSize());
                     blocked = true;
                     break;
                 }
@@ -320,12 +336,9 @@ public class PathfindToWaypointGoal extends Goal {
                 return cand;
             }
         }
-        LOGGER.debug("{} 所有候选点均被基地禁区遮挡，回退原始垂足点 ({},{})",
-                logContext(), String.format("%.1f", footX), String.format("%.1f", footZ));
         return new double[]{footX, footZ};
     }
 
-    /** 线段与 XZ 平面轴对齐矩形是否相交（Liang-Barsky 裁剪，含端点在矩形内） */
     private static boolean segmentIntersectsRect(double x1, double z1, double x2, double z2,
                                                  double minX, double minZ, double maxX, double maxZ) {
         double dx = x2 - x1, dz = z2 - z1;

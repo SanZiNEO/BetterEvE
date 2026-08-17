@@ -163,6 +163,19 @@ public class BetterEvECommands {
                                     .then(Commands.argument("z", DoubleArgumentType.doubleArg())
                                         .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
                                             .executes(BetterEvECommands::executeSpawnEntitiesAtPosition)
+                                            .then(Commands.argument("routeId", StringArgumentType.word())
+                                                .suggests(ROUTE_ID_SUGGESTIONS)
+                                                .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRoute)
+                                                .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                                    .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndHealthBar)
+                                                    .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                                        .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndHealthBarAndNBT)
+                                                    )
+                                                )
+                                                .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                                    .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndNBT)
+                                                )
+                                            )
                                             .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
                                                 .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithHealthBar)
                                                 .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
@@ -215,6 +228,13 @@ public class BetterEvECommands {
     private static final SuggestionProvider<CommandSourceStack> FACTION_ID_SUGGESTIONS = (context, builder) -> {
         for (Faction faction : FactionRegistry.getAllFactions()) {
             builder.suggest(faction.getId(), Component.literal(faction.getName()));
+        }
+        return builder.buildFuture();
+    };
+
+    private static final SuggestionProvider<CommandSourceStack> ROUTE_ID_SUGGESTIONS = (context, builder) -> {
+        for (com.example.bettereve.waypoint.Route route : com.example.bettereve.waypoint.RouteManager.getAllRoutes()) {
+            builder.suggest(route.getId());
         }
         return builder.buildFuture();
     };
@@ -373,7 +393,35 @@ public class BetterEvECommands {
         return executeSpawnEntitiesAtPositionWithNBTInternal(context, nbt, true);
     }
 
+    private static int executeSpawnEntitiesAtPositionWithRoute(CommandContext<CommandSourceStack> context) {
+        String routeId = StringArgumentType.getString(context, "routeId");
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, null, true, routeId);
+    }
+
+    private static int executeSpawnEntitiesAtPositionWithRouteAndHealthBar(CommandContext<CommandSourceStack> context) {
+        boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
+        String routeId = StringArgumentType.getString(context, "routeId");
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, null, showHealthBar, routeId);
+    }
+
+    private static int executeSpawnEntitiesAtPositionWithRouteAndHealthBarAndNBT(CommandContext<CommandSourceStack> context) {
+        boolean showHealthBar = com.mojang.brigadier.arguments.BoolArgumentType.getBool(context, "showHealthBar");
+        CompoundTag nbt = CompoundTagArgument.getCompoundTag(context, "nbt");
+        String routeId = StringArgumentType.getString(context, "routeId");
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, nbt, showHealthBar, routeId);
+    }
+
+    private static int executeSpawnEntitiesAtPositionWithRouteAndNBT(CommandContext<CommandSourceStack> context) {
+        CompoundTag nbt = CompoundTagArgument.getCompoundTag(context, "nbt");
+        String routeId = StringArgumentType.getString(context, "routeId");
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, nbt, true, routeId);
+    }
+
     private static int executeSpawnEntitiesAtPositionWithNBTInternal(CommandContext<CommandSourceStack> context, CompoundTag nbt, boolean showHealthBar) {
+        return executeSpawnEntitiesAtPositionWithNBTInternal(context, nbt, showHealthBar, null);
+    }
+
+    private static int executeSpawnEntitiesAtPositionWithNBTInternal(CommandContext<CommandSourceStack> context, CompoundTag nbt, boolean showHealthBar, String routeId) {
         ResourceLocation entityRL = ResourceLocationArgument.getId(context, "entityType");
         String factionId = StringArgumentType.getString(context, "factionId");
         int level = IntegerArgumentType.getInteger(context, "level");
@@ -410,7 +458,15 @@ public class BetterEvECommands {
                         
                         // 设置血条可见性
                         FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
-                        
+                        // 默认显示 Lv 与血量文字（可通过 NBT 单独关闭）
+                        FactionHelper.setEntityShowLevelText(mob, true);
+                        FactionHelper.setEntityShowHealthText(mob, true);
+
+                        // 指定路线：写入 NBT，PathfindToWaypointGoal 会读取该键
+                        if (routeId != null && !routeId.isEmpty()) {
+                            mob.getPersistentData().putString("bettereve:route_id", routeId);
+                        }
+
                         // NBT 加载移到 equipment 初始化之前
                         if (nbt != null) {
                             mob.load(nbt);
@@ -419,6 +475,16 @@ public class BetterEvECommands {
                             if (nbt.contains("BetterEvE:ShowHealthBar")) {
                                 showHealthBar = nbt.getBoolean("BetterEvE:ShowHealthBar");
                                 FactionHelper.setEntityShowHealthBar(mob, showHealthBar);
+                            }
+                            if (nbt.contains("BetterEvE:ShowLevelText")) {
+                                FactionHelper.setEntityShowLevelText(mob, nbt.getBoolean("BetterEvE:ShowLevelText"));
+                            }
+                            if (nbt.contains("BetterEvE:ShowHealthText")) {
+                                FactionHelper.setEntityShowHealthText(mob, nbt.getBoolean("BetterEvE:ShowHealthText"));
+                            }
+                            if (nbt.contains("bettereve:route_id")) {
+                                routeId = nbt.getString("bettereve:route_id");
+                                mob.getPersistentData().putString("bettereve:route_id", routeId);
                             }
                         }
                         
@@ -501,6 +567,11 @@ public class BetterEvECommands {
                         
                         // 同步血条可见性到所有客户端
                         com.example.bettereve.network.NetworkManager.syncEntityHealthBarVisibilityToAll(mob, showHealthBar);
+                        // 同步血条文字显示开关到所有客户端
+                        com.example.bettereve.network.NetworkManager.syncEntityHealthBarTextVisibilityToAll(
+                                mob,
+                                FactionHelper.getEntityShowLevelText(mob),
+                                FactionHelper.getEntityShowHealthText(mob));
                     } else {
                         context.getSource().sendFailure(Component.literal("无效的生物类型: " + entityRL + " (必须是可生成的生物)"));
                         return 0;
@@ -513,7 +584,8 @@ public class BetterEvECommands {
         }
         
         String posString = String.format("%.1f, %.1f, %.1f", x, y, z);
-        String message = "Successfully spawned " + count + " " + entityRL + " (Faction: " + factionId + ", Level: " + level + ", Health Bar: " + (showHealthBar ? "Visible" : "Hidden") + ") at (" + posString + ")";
+        String routeMsg = (routeId == null || routeId.isEmpty()) ? "Auto" : routeId;
+        String message = "Successfully spawned " + count + " " + entityRL + " (Faction: " + factionId + ", Level: " + level + ", Health Bar: " + (showHealthBar ? "Visible" : "Hidden") + ", Route: " + routeMsg + ") at (" + posString + ")";
         context.getSource().sendSuccess(() -> Component.literal(message), true);
         return 1;
     }

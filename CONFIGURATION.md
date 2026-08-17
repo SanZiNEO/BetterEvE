@@ -41,8 +41,15 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 - `from` / `to`（支持通配符 `*`）/ `type`（`hostile` / `neutral`）
 - 同阵营不敌对；未定义的关系默认敌对
 
-### waypoints — 兵线路径点
-- `id` / `factionId` / `order` / `x1,z1,x2,z2`（XZ 矩形柱体，无限高）
+### waypoints — 兵线路径点区域
+- `id` / `factionId` / `x1,z1,x2,z2`（XZ 矩形柱体，无限高）
+- 只定义区域，不再承担路线/顺序；路线由 `routes` 集中定义
+
+### routes — 路线（集中定义）
+- `id` / `waypoints[]`（引用 waypoint 的 id 列表）
+- 所有阵营共用同一条 route
+- 行走规则：本阵营 waypoint 按数组顺序走，敌方 waypoint 按数组逆序走
+- 生物只绑定一条 route，走完即终点，不走回头路、不串其他 route
 
 ### crystals — 水晶基地
 - `id` / `factionId` / 位置 `x,y,z`
@@ -64,6 +71,13 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 - `targetingFocusRange` 近距离重扫距离（格，默认 10）
 - `targetingFocusInterval` 近距离重扫间隔（tick，默认 20）
 - `hudEnabled` HUD 显示总开关（默认 true）
+
+### 实体血条文字开关（NBT）
+- `BetterEvE:ShowLevelText`（布尔）— 是否显示该实体的 `Lv.x` 文字，默认 true
+- `BetterEvE:ShowHealthText`（布尔）— 是否显示该实体的血量数字，默认 true
+- 生成生物时可通过 NBT 参数设置，例如：
+  `{BetterEvE:ShowLevelText:0b, BetterEvE:ShowHealthText:1b}`
+- 血条整体是否显示仍由 `BetterEvE:ShowHealthBar` 控制
 
 ### keepAliveZone — 保活区域
 - `x1,z1,x2,z2` 矩形区域，区域内的生物禁止自然 despawn（直播地图无自然生成时使用）

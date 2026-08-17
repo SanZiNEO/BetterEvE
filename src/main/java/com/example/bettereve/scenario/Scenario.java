@@ -12,6 +12,7 @@ public class Scenario {
     private List<FactionDef> factions;
     private List<RelationDef> relations;
     private List<WaypointRegionDef> waypoints;
+    private List<RouteDef> routes;
     private List<CrystalTemplateDef> crystals;
     private List<PhaseDef> phases;
     private ScenarioOptions options;
@@ -29,6 +30,8 @@ public class Scenario {
     public void setRelations(List<RelationDef> relations) { this.relations = relations; }
     public List<WaypointRegionDef> getWaypoints() { return waypoints; }
     public void setWaypoints(List<WaypointRegionDef> waypoints) { this.waypoints = waypoints; }
+    public List<RouteDef> getRoutes() { return routes; }
+    public void setRoutes(List<RouteDef> routes) { this.routes = routes; }
     public List<CrystalTemplateDef> getCrystals() { return crystals; }
     public void setCrystals(List<CrystalTemplateDef> crystals) { this.crystals = crystals; }
     public List<PhaseDef> getPhases() { return phases; }
@@ -128,12 +131,15 @@ public class Scenario {
     public static class WaypointRegionDef {
         private String id;
         private String factionId;
+        private String lane; // 路线标识（a/b/c…）；缺省为 null → 归入默认路线（单一路线，旧剧本兼容）
         private int order;
         private double x1, z1, x2, z2;
         public String getId() { return id; }
         public void setId(String id) { this.id = id; }
         public String getFactionId() { return factionId; }
         public void setFactionId(String factionId) { this.factionId = factionId; }
+        public String getLane() { return lane; }
+        public void setLane(String lane) { this.lane = lane; }
         public int getOrder() { return order; }
         public void setOrder(int order) { this.order = order; }
         public double getX1() { return x1; }
@@ -144,6 +150,16 @@ public class Scenario {
         public void setX2(double x2) { this.x2 = x2; }
         public double getZ2() { return z2; }
         public void setZ2(double z2) { this.z2 = z2; }
+    }
+
+    public static class RouteDef {
+        private String id;
+        private List<String> waypoints;
+
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public List<String> getWaypoints() { return waypoints; }
+        public void setWaypoints(List<String> waypoints) { this.waypoints = waypoints; }
     }
 
     public static class CrystalTemplateDef {

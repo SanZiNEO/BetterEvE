@@ -12,6 +12,8 @@ public class FactionHelper {
     private static final Logger LOGGER = LogManager.getLogger("BetterEvE/FactionHelper");
     private static final String FACTION_NBT_KEY = "BetterEvE:FactionID";
     private static final String SHOW_HEALTH_BAR_NBT_KEY = "BetterEvE:ShowHealthBar";
+    private static final String SHOW_LEVEL_TEXT_NBT_KEY = "BetterEvE:ShowLevelText";
+    private static final String SHOW_HEALTH_TEXT_NBT_KEY = "BetterEvE:ShowHealthText";
 
     // 获取实体的阵营ID（支持 CrystalEntity 类型的特殊处理）
     public static String getEntityFactionId(Entity entity) {
@@ -86,6 +88,40 @@ public class FactionHelper {
         nbt.putBoolean(SHOW_HEALTH_BAR_NBT_KEY, showHealthBar);
         
         // NBT数据会自动保存，无需额外操作
+    }
+
+    // 获取实体是否显示 Lv 等级文字（纯NBT实现，默认 true）
+    public static boolean getEntityShowLevelText(Entity entity) {
+        if (entity == null) {
+            return true;
+        }
+        CompoundTag nbt = entity.getPersistentData();
+        return !nbt.contains(SHOW_LEVEL_TEXT_NBT_KEY) || nbt.getBoolean(SHOW_LEVEL_TEXT_NBT_KEY);
+    }
+
+    // 设置实体是否显示 Lv 等级文字（纯NBT实现）
+    public static void setEntityShowLevelText(Entity entity, boolean showLevelText) {
+        if (entity == null) {
+            return;
+        }
+        entity.getPersistentData().putBoolean(SHOW_LEVEL_TEXT_NBT_KEY, showLevelText);
+    }
+
+    // 获取实体是否显示血量数字（纯NBT实现，默认 true）
+    public static boolean getEntityShowHealthText(Entity entity) {
+        if (entity == null) {
+            return true;
+        }
+        CompoundTag nbt = entity.getPersistentData();
+        return !nbt.contains(SHOW_HEALTH_TEXT_NBT_KEY) || nbt.getBoolean(SHOW_HEALTH_TEXT_NBT_KEY);
+    }
+
+    // 设置实体是否显示血量数字（纯NBT实现）
+    public static void setEntityShowHealthText(Entity entity, boolean showHealthText) {
+        if (entity == null) {
+            return;
+        }
+        entity.getPersistentData().putBoolean(SHOW_HEALTH_TEXT_NBT_KEY, showHealthText);
     }
 
     // 获取实体所属的阵营

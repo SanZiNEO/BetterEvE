@@ -28,10 +28,10 @@ public class WaypointProgressRegistry {
     public static class Progress {
         /** 进度归属阵营（与当前阵营不一致即视为过期，重建） */
         public final String factionId;
-        /** 当前阶段（0 = 本阵营；1..N = 其他阵营，按 start 时排定的顺序） */
-        public int stageIndex;
-        /** 当前阶段内已到达的 order（寻路完成标记：升序阶段已走过 ≤ 该 order 的区域） */
-        public int currentOrder;
+        /** 绑定的路线 id（null = 尚未绑定，首次寻路时从 NBT 或就近选择） */
+        public String routeId;
+        /** 当前已推进到的 route 计划下标（下一个要去的 waypoint 是 plan.get(nextIndex)） */
+        public int nextIndex;
         /** 全部走完（线性终点） */
         public boolean finished;
         /** 最后活跃的游戏 tick（清理用） */
@@ -44,8 +44,8 @@ public class WaypointProgressRegistry {
 
         @Override
         public String toString() {
-            return "Progress{" + factionId + ", stage=" + stageIndex + ", order=" + currentOrder
-                    + ", finished=" + finished + "}";
+            return "Progress{" + factionId + ", route=" + routeId
+                    + ", nextIndex=" + nextIndex + ", finished=" + finished + "}";
         }
     }
 

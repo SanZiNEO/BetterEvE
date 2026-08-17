@@ -86,6 +86,15 @@ public class NetworkManager {
             HealthBarVisibilityPacket::decode,
             HealthBarVisibilityPacket::handle
         );
+
+        // 注册血条文字显示开关同步数据包
+        CHANNEL.registerMessage(
+            packetId++,
+            HealthBarTextVisibilityPacket.class,
+            HealthBarTextVisibilityPacket::encode,
+            HealthBarTextVisibilityPacket::decode,
+            HealthBarTextVisibilityPacket::handle
+        );
         
         // 注册水晶基地死亡同步数据包
         CHANNEL.registerMessage(
@@ -168,6 +177,28 @@ public class NetworkManager {
         
         // 发送给所有玩家
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+    }
+
+    /**
+     * 同步单个实体的 Lv/血量文字显示开关到客户端
+     */
+    public static void syncEntityHealthBarTextVisibility(Entity entity, boolean showLevelText, boolean showHealthText, ServerPlayer player) {
+        if (entity == null) {
+            return;
+        }
+        HealthBarTextVisibilityPacket packet = new HealthBarTextVisibilityPacket(entity.getUUID(), showLevelText, showHealthText);
+        if (player != null) {
+            CHANNEL.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+        } else {
+            CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+        }
+    }
+
+    /**
+     * 同步单个实体的 Lv/血量文字显示开关到所有客户端
+     */
+    public static void syncEntityHealthBarTextVisibilityToAll(Entity entity, boolean showLevelText, boolean showHealthText) {
+        syncEntityHealthBarTextVisibility(entity, showLevelText, showHealthText, null);
     }
     
     /**
