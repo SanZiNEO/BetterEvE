@@ -292,9 +292,10 @@ public class SimpleHealthBarRenderer {
     }
 
     private static boolean shouldShowLevelText(Entity entity, int level) {
-        // 无等级、或该阵营没启用等级系统 → 不显示 Lv
+        // 无等级不显示
         if (level <= 0) return false;
-        if (!EntityLevelSystem.isLevelSystemEnabled(entity)) return false;
+        // 基地默认不显示 Lv（自有血条）
+        if (entity instanceof CrystalEntity) return false;
         return HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.getEntityLevelTextVisibility(entity.getUUID());
     }
 
