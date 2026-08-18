@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import com.example.bettereve.waypoint.WaypointManager;
 import com.example.bettereve.phase.PhaseManager;
+import com.example.bettereve.faction.FactionRegistry;
+import com.example.bettereve.faction.FactionRelationManager;
 
 /**
  * 剧本管理器 — 加载/切换/运行时查询。
@@ -23,7 +25,9 @@ public class ScenarioManager {
         activeScenario = scenario;
         activeScenarioName = name;
         
-        // 将加载的剧本同步到 PhaseManager 和 WaypointManager
+        // 阵营注册表、阵营关系、阶段、路径点全部由剧本驱动
+        FactionRegistry.loadFromScenario(scenario);
+        FactionRelationManager.loadFromScenario(scenario);
         PhaseManager.loadFromScenario(scenario);
         WaypointManager.loadFromScenario(scenario);
 

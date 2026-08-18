@@ -99,7 +99,7 @@ public class CrystalSystem {
 
     public static void setCrystalFactionId(Entity entity, String factionId) {
         if (factionId == null) {
-            factionId = "neutral";
+            factionId = "";
         }
 
         if (entity instanceof CrystalEntity crystalEntity) {

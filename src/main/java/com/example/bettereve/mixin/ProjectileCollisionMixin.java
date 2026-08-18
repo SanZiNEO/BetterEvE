@@ -20,8 +20,8 @@ public abstract class ProjectileCollisionMixin {
         // 检查投掷物是否有阵营属性
         String projectileFactionId = FactionHelper.getEntityFactionId(projectile);
         
-        // 只有非中立阵营的投掷物才需要进行同阵营检查
-        if (!projectileFactionId.equals("neutral")) {
+        // 只有有阵营（非空）的投掷物才需要进行同阵营检查
+        if (projectileFactionId != null && !projectileFactionId.isEmpty()) {
             // 获取目标实体的阵营属性
             String targetFactionId = FactionHelper.getEntityFactionId(p_37250_);
             

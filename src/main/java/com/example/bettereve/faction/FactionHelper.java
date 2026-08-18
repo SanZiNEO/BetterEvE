@@ -15,51 +15,53 @@ public class FactionHelper {
     private static final String SHOW_LEVEL_TEXT_NBT_KEY = "BetterEvE:ShowLevelText";
     private static final String SHOW_HEALTH_TEXT_NBT_KEY = "BetterEvE:ShowHealthText";
 
-    // 获取实体的阵营ID（支持 CrystalEntity 类型的特殊处理）
+    // 获取实体的阵营ID（无阵营统一返回 ""，避免 null 进 NBT 崩溃）
     public static String getEntityFactionId(Entity entity) {
         if (entity == null) {
-            return "neutral";
+            return "";
         }
 
         // 特殊处理 CrystalEntity 类型
         if (entity instanceof com.example.bettereve.entity.CrystalEntity) {
             com.example.bettereve.entity.CrystalEntity crystalEntity = (com.example.bettereve.entity.CrystalEntity) entity;
             String factionId = crystalEntity.getFactionId();
-            return factionId.isEmpty() ? "neutral" : factionId;
+            return factionId != null && !factionId.isEmpty() ? factionId : "";
         }
 
         // 特殊处理 Player 类型 — 走 PlayerFactionData（使用独立的 NBT key）
         if (entity instanceof Player player) {
-            return PlayerFactionData.getPlayerFaction(player);
+            String factionId = PlayerFactionData.getPlayerFaction(player);
+            return factionId != null ? factionId : "";
         }
 
         // 其他实体使用 NBT 实现
         CompoundTag nbt = entity.getPersistentData();
         if (nbt.contains(FACTION_NBT_KEY)) {
-            return nbt.getString(FACTION_NBT_KEY);
+            String factionId = nbt.getString(FACTION_NBT_KEY);
+            return factionId.isEmpty() ? "" : factionId;
         }
 
-        return "neutral"; // 默认中立阵营
+        return ""; // 自然生成/未分配 = 无阵营
     }
 
-    // 设置实体的阵营ID（支持 CrystalEntity 类型的特殊处理）
+    // 设置实体的阵营ID（null/空 = 清除阵营）
     public static void setEntityFactionId(Entity entity, String factionId) {
         if (entity == null) {
             return;
         }
 
-        if (factionId == null) {
-            factionId = "neutral";
-        }
-
         // 特殊处理 CrystalEntity 类型
         if (entity instanceof com.example.bettereve.entity.CrystalEntity) {
             com.example.bettereve.entity.CrystalEntity crystalEntity = (com.example.bettereve.entity.CrystalEntity) entity;
-            crystalEntity.setFactionId(factionId);
+            crystalEntity.setFactionId(factionId == null ? "" : factionId);
         } else {
             // 其他实体使用 NBT 实现
             CompoundTag nbt = entity.getPersistentData();
-            nbt.putString(FACTION_NBT_KEY, factionId);
+            if (factionId == null || factionId.isEmpty()) {
+                nbt.remove(FACTION_NBT_KEY);
+            } else {
+                nbt.putString(FACTION_NBT_KEY, factionId);
+            }
         }
     }
 

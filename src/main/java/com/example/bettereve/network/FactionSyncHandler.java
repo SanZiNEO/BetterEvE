@@ -41,7 +41,7 @@ public class FactionSyncHandler {
         
         // 同步阵营信息
         String factionId = FactionHelper.getEntityFactionId(entity);
-        if (!"neutral".equals(factionId)) {
+        if (factionId != null && !factionId.isEmpty()) {
             NetworkManager.queueEntityForSync(entity);
         }
         
@@ -102,7 +102,7 @@ public class FactionSyncHandler {
                         FactionHelper.getEntityShowHealthText(entity),
                         (net.minecraft.server.level.ServerPlayer) player);
                 String factionId = FactionHelper.getEntityFactionId(entity);
-                if (!"neutral".equals(factionId)) {
+                if (factionId != null && !factionId.isEmpty()) {
                     NetworkManager.syncEntityFaction(entity, (net.minecraft.server.level.ServerPlayer) player);
                     NetworkManager.syncEntityLevel(entity, EntityLevelSystem.getEntityLevel(entity), (net.minecraft.server.level.ServerPlayer) player);
                 }
@@ -130,7 +130,7 @@ public class FactionSyncHandler {
                         FactionHelper.getEntityShowHealthText(entity),
                         (net.minecraft.server.level.ServerPlayer) player);
                 String factionId = FactionHelper.getEntityFactionId(entity);
-                if (!"neutral".equals(factionId)) {
+                if (factionId != null && !factionId.isEmpty()) {
                     NetworkManager.syncEntityFaction(entity, (net.minecraft.server.level.ServerPlayer) player);
                     NetworkManager.syncEntityLevel(entity, EntityLevelSystem.getEntityLevel(entity), (net.minecraft.server.level.ServerPlayer) player);
                 }

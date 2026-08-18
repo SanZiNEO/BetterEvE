@@ -1,19 +1,41 @@
 {
   "id": "simple_red_blue",
   "name": "简单红蓝对抗",
-  "description": "仅红蓝两阵营敌对，无基地、无阶段、无保活区，加载后即可自由对战。",
+  "description": "仅红蓝两阵营敌对，无基地、无阶段、无保活区，加载后即可自由对战。录视频用：1000级夸张数值，护甲低成长避免破不了防。",
   "factions": [
     {
       "id": "red",
       "name": "红队",
       "color": "#FF0000",
-      "showOnScoreboard": true
+      "showOnScoreboard": true,
+      "entitylvConfig": {
+        "maxLevel": 1000,
+        "healthBonus": 10.0,
+        "healthExponent": 2.0,
+        "attackBonus": 8.0,
+        "attackExponent": 2.0,
+        "armorBonus": 2.0,
+        "armorExponent": 0.7,
+        "knockbackBonus": 1.2,
+        "knockbackExponent": 1.0
+      }
     },
     {
       "id": "blue",
       "name": "蓝队",
       "color": "#0000FF",
-      "showOnScoreboard": true
+      "showOnScoreboard": true,
+      "entitylvConfig": {
+        "maxLevel": 1000,
+        "healthBonus": 10.0,
+        "healthExponent": 2.0,
+        "attackBonus": 8.0,
+        "attackExponent": 2.0,
+        "armorBonus": 2.0,
+        "armorExponent": 0.7,
+        "knockbackBonus": 1.2,
+        "knockbackExponent": 1.0
+      }
     }
   ],
   "relations": [
@@ -21,7 +43,6 @@
     { "from": "blue", "to": "red", "type": "hostile" }
   ],
   "options": {
-    "playersDefaultFaction": "neutral",
     "targetingRange": 64,
     "targetingFocusRange": 10,
     "targetingFocusInterval": 20,

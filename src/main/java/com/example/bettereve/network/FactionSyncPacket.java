@@ -73,14 +73,14 @@ public class FactionSyncPacket {
         switch (mode) {
             case SINGLE_ENTITY:
                 buffer.writeInt(entityId);
-                buffer.writeUtf(factionId != null ? factionId : "neutral");
+                buffer.writeUtf(factionId != null ? factionId : "");
                 break;
                 
             case BATCH_ENTITIES:
                 buffer.writeInt(entityFactions.size());
                 for (Map.Entry<Integer, String> entry : entityFactions.entrySet()) {
                     buffer.writeInt(entry.getKey());
-                    buffer.writeUtf(entry.getValue() != null ? entry.getValue() : "neutral");
+                    buffer.writeUtf(entry.getValue() != null ? entry.getValue() : "");
                 }
                 break;
                 

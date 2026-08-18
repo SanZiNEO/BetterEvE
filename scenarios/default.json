@@ -1,26 +1,25 @@
 {
   "id": "default",
   "name": "默认剧本",
-  "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方基地即为胜利。",
+  "description": "红蓝两队标准对战。沿中路兵线推进，摧毁敌方基地即为胜利。等级系统待定：暂未配置。",
   "keepAliveZone": { "x1": -60, "z1": -20, "x2": 60, "z2": 20 },
   "factions": [
     {
-      "id": "neutral", "name": "中立", "color": "#FFFFFF", "showOnScoreboard": false,
-      "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0, "armorBonus": 7.0, "knockbackBonus": 1.2, "healthExponent": 1.4, "attackExponent": 1.42, "armorExponent": 0.9, "knockbackExponent": 0.95 }
+      "id": "red",
+      "name": "红队",
+      "color": "#FF0000",
+      "showOnScoreboard": true
     },
     {
-      "id": "red", "name": "红队", "color": "#FF0000",
-      "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0, "armorBonus": 7.0, "knockbackBonus": 1.2, "healthExponent": 1.4, "attackExponent": 1.42, "armorExponent": 0.9, "knockbackExponent": 0.95 }
-    },
-    {
-      "id": "blue", "name": "蓝队", "color": "#0000FF",
-      "entitylvConfig": { "maxLevel": 500, "healthBonus": 10.0, "attackBonus": 10.0, "armorBonus": 7.0, "knockbackBonus": 1.2, "healthExponent": 1.4, "attackExponent": 1.42, "armorExponent": 0.9, "knockbackExponent": 0.95 }
+      "id": "blue",
+      "name": "蓝队",
+      "color": "#0000FF",
+      "showOnScoreboard": true
     }
   ],
   "relations": [
     { "from": "red", "to": "blue", "type": "hostile" },
-    { "from": "blue", "to": "red", "type": "hostile" },
-    { "from": "*", "to": "neutral", "type": "neutral" }
+    { "from": "blue", "to": "red", "type": "hostile" }
   ],
   "waypoints": [
     { "id": "red_waypoint_1", "factionId": "red", "x1": -50, "z1": -10, "x2": -30, "z2": 10 },
@@ -75,19 +74,17 @@
         { "delay": 0, "command": "bettereve crystal spawn blue_normal_tower" }
       ],
       "triggers": [
-        { "_comment": "红方基地被摧毁 → 蓝队胜利", "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "blue_victory" },
-        { "_comment": "蓝方基地被摧毁 → 红队胜利", "type": "crystal_destroyed", "targetId": "blue_base", "targetPhase": "red_victory" }
+        { "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "blue_victory" },
+        { "type": "crystal_destroyed", "targetId": "blue_base", "targetPhase": "red_victory" }
       ]
     },
     {
       "id": "blue_victory",
       "phaseType": "branch",
       "description": "蓝队胜利：显示胜利信息→清场→10秒倒计时→回到主循环",
-      "_comment": "只会在红方基地被摧毁时触发，与 red_victory 互斥",
       "commands": [
         { "delay": 0, "command": "title @a title \"§c§l红方基地被摧毁！蓝队获得最终胜利！\"" },
         { "delay": 0, "command": "title @a subtitle \"§7即将开始新的一局\"" },
-        { "delay": 0, "command": "kill @e[type=!player]" },
         { "delay": 0, "command": "kill @e[type=!player]" },
         { "delay": 0, "command": "title @a title \"§e10\"" },
         { "delay": 1, "command": "title @a title \"§e9\"" },
@@ -113,7 +110,6 @@
         { "delay": 0, "command": "title @a title \"§9§l蓝方基地被摧毁！红队获得最终胜利！\"" },
         { "delay": 0, "command": "title @a subtitle \"§7即将开始新的一局\"" },
         { "delay": 0, "command": "kill @e[type=!player]" },
-        { "delay": 0, "command": "kill @e[type=!player]" },
         { "delay": 0, "command": "title @a title \"§e10\"" },
         { "delay": 1, "command": "title @a title \"§e9\"" },
         { "delay": 2, "command": "title @a title \"§e8\"" },
@@ -132,9 +128,9 @@
     }
   ],
   "options": {
-    "playersDefaultFaction": "neutral",
     "targetingRange": 64,
     "targetingFocusRange": 10,
-    "targetingFocusInterval": 20
+    "targetingFocusInterval": 20,
+    "hudEnabled": true
   }
 }

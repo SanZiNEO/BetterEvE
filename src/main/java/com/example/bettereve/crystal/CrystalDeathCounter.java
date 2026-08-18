@@ -27,7 +27,7 @@ public class CrystalDeathCounter {
      */
     public static void addDeath(String factionId) {
         if (factionId == null || factionId.isEmpty()) {
-            factionId = "neutral";
+            factionId = "";
         }
         
         // 使用merge方法实现原子操作
@@ -42,7 +42,7 @@ public class CrystalDeathCounter {
      */
     public static int getDeathCount(String factionId) {
         if (factionId == null || factionId.isEmpty()) {
-            factionId = "neutral";
+            factionId = "";
         }
         
         return deathCounts.getOrDefault(factionId, 0);
@@ -50,14 +50,14 @@ public class CrystalDeathCounter {
     
     public static void addEntityKill(String factionId) {
         if (factionId == null || factionId.isEmpty()) {
-            factionId = "neutral";
+            factionId = "";
         }
         entityKillCounts.merge(factionId, 1, Integer::sum);
     }
     
     public static int getEntityKills(String factionId) {
         if (factionId == null || factionId.isEmpty()) {
-            factionId = "neutral";
+            factionId = "";
         }
         return entityKillCounts.getOrDefault(factionId, 0);
     }

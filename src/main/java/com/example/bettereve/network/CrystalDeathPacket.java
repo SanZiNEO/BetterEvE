@@ -48,7 +48,7 @@ public class CrystalDeathPacket {
     public void encode(FriendlyByteBuf buffer) {
         buffer.writeEnum(mode);
         if (mode == SyncMode.ADD_DEATH || mode == SyncMode.CLEAR_FACTION) {
-            buffer.writeUtf(factionId != null ? factionId : "neutral");
+            buffer.writeUtf(factionId != null ? factionId : "");
         }
     }
 

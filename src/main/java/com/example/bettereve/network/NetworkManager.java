@@ -399,7 +399,7 @@ public class NetworkManager {
      */
     public static void sendCrystalDeathToAll(String factionId) {
         if (factionId == null || factionId.isEmpty()) {
-            factionId = "neutral";
+            factionId = "";
         }
         CrystalDeathPacket packet = new CrystalDeathPacket(factionId);
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
@@ -407,7 +407,7 @@ public class NetworkManager {
     
     public static void sendEntityKillToAll(String factionId) {
         if (factionId == null || factionId.isEmpty()) {
-            factionId = "neutral";
+            factionId = "";
         }
         EntityKillPacket packet = new EntityKillPacket(factionId);
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
@@ -415,7 +415,7 @@ public class NetworkManager {
     
     public static void sendCrystalDeathToPlayer(String factionId, ServerPlayer player) {
         if (factionId == null || factionId.isEmpty()) {
-            factionId = "neutral";
+            factionId = "";
         }
         if (player == null) return;
         CrystalDeathPacket packet = new CrystalDeathPacket(factionId);

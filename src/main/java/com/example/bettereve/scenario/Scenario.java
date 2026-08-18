@@ -46,7 +46,7 @@ public class Scenario {
         private String name;
         private String color;
         private boolean showOnScoreboard = true;
-        private EntityLevelConfig entitylvConfig = new EntityLevelConfig();
+        private EntityLevelConfig entitylvConfig; // 没写 = 没有等级系统
         
         public FactionDef() {}
         public FactionDef(String id, String name, String color) {
@@ -283,7 +283,7 @@ public class Scenario {
     }
 
     public static class ScenarioOptions {
-        private String playersDefaultFaction = "neutral";
+        private String playersDefaultFaction; // 没写 = 玩家未分配（无阵营）
         private double targetingRange = 64.0;        // 常态巡敌距离（格），随地图设计配置
         private double targetingFocusRange = 10.0;   // 近距离重扫距离（格）：范围内出现非基地敌对目标即切换
         private int targetingFocusInterval = 20;     // 近距离重扫间隔（tick）

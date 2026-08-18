@@ -27,8 +27,8 @@ public class PlayerFactionTagRenderer {
         
         String factionId = PlayerFactionData.getPlayerFaction(player);
         Faction faction = FactionRegistry.getFaction(factionId);
-        if (faction == null || FactionRegistry.isNeutralFaction(factionId)) {
-            return;
+        if (faction == null) {
+            return; // 无阵营不显示标签
         }
         
         // 在名字前添加阵营颜色标记

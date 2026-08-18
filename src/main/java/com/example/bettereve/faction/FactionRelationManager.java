@@ -25,7 +25,6 @@ public class FactionRelationManager {
     
     // 阵营关系缓存: from -> to -> isHostile
     private static final Map<String, Map<String, Boolean>> relationCache = new HashMap<>();
-    private static boolean defaultHostile = true;
     private static boolean loaded = false;
 
     /**
@@ -56,13 +55,14 @@ public class FactionRelationManager {
      * 判断两个阵营是否敌对。
      */
     public static boolean isHostile(String factionId1, String factionId2) {
-        // 相同阵营永远不对敌对
-        if (Objects.equals(factionId1, factionId2)) {
+        // 无阵营/空阵营不参与任何敌对
+        if (factionId1 == null || factionId1.isEmpty()
+                || factionId2 == null || factionId2.isEmpty()) {
             return false;
         }
-        
-        // neutral 阵营不与任何人敌对
-        if ("neutral".equals(factionId1) || "neutral".equals(factionId2)) {
+
+        // 相同阵营永远不对敌对
+        if (Objects.equals(factionId1, factionId2)) {
             return false;
         }
         
@@ -88,8 +88,8 @@ public class FactionRelationManager {
         result = lookupRelation("*", factionId2);
         if (result != null) return result;
         
-        // 未定义 → 默认敌对
-        return defaultHostile;
+        // 剧本没定义的关系 → 默认不敌对
+        return false;
     }
     
     /**

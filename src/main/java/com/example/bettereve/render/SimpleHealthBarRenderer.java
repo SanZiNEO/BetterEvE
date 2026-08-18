@@ -67,11 +67,6 @@ public class SimpleHealthBarRenderer {
 
     private static final int TEXT_COLOR = 0xFFFFFFFF;
 
-    // 兜底阵营颜色（剧本 faction.color 缺失/解析失败时使用）
-    private static final int RED_FACTION_COLOR = 0xFFFF3232;
-    private static final int BLUE_FACTION_COLOR = 0xFF3264FF;
-    private static final int GREEN_FACTION_COLOR = 0xFF32C832;
-
     // 统一缩放因子，可通过配置或命令修改
     private static float GLOBAL_SCALE = 1.0f;
 
@@ -240,30 +235,27 @@ public class SimpleHealthBarRenderer {
      */
     private static int getFactionColor(Entity entity) {
         String factionId = ClientFactionCache.getCachedFactionId(entity);
-        if (factionId == null) {
+        if (factionId == null || factionId.isEmpty()) {
             factionId = FactionHelper.getEntityFactionId(entity);
         }
 
-        // 中立阵营固定用绿色兜底，避免 default.json 里 neutral=#FFFFFF 导致血条全白
-        if ("neutral".equals(factionId)) {
-            return GREEN_FACTION_COLOR;
+        // 无阵营 → 白色
+        if (factionId == null || factionId.isEmpty()) {
+            return 0xFFFFFFFF;
         }
 
+        // 只认剧本里的阵营 color；写入什么颜色就用什么颜色，没有兜底
         Scenario scenario = ScenarioManager.getActiveScenario();
         if (scenario != null && scenario.getFactions() != null) {
             for (Scenario.FactionDef def : scenario.getFactions()) {
                 if (factionId.equals(def.getId())) {
-                    // 直接使用剧本 hex 颜色；getColorInt() 解析失败时返回白色
                     return 0xFF000000 | def.getColorInt();
                 }
             }
         }
 
-        return switch (factionId) {
-            case "red" -> RED_FACTION_COLOR;
-            case "blue" -> BLUE_FACTION_COLOR;
-            default -> GREEN_FACTION_COLOR;
-        };
+        // 剧本里没有这个阵营 → 视为无阵营 → 白色
+        return 0xFFFFFFFF;
     }
 
     /**
@@ -300,7 +292,9 @@ public class SimpleHealthBarRenderer {
     }
 
     private static boolean shouldShowLevelText(Entity entity, int level) {
-        if (level < 0) return false;
+        // 无等级、或该阵营没启用等级系统 → 不显示 Lv
+        if (level <= 0) return false;
+        if (!EntityLevelSystem.isLevelSystemEnabled(entity)) return false;
         return HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.getEntityLevelTextVisibility(entity.getUUID());
     }
 

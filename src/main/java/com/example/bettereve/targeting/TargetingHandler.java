@@ -113,9 +113,9 @@ public class TargetingHandler {
                     && pathfinder.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
                 pathfinder.goalSelector.addGoal(5, new MeleeAttackGoal(pathfinder, 1.0, false));
             }
-            // 为非中立阵营生物替换导航器（A* 绕开基地）
+            // 为有阵营的生物替换导航器（A* 绕开基地）；无阵营（空串）不参与
             String factionId = FactionHelper.getEntityFactionId(mob);
-            if (!"neutral".equals(factionId)) {
+            if (factionId != null && !factionId.isEmpty()) {
                 replaceNavigation(pathfinder);
                 // 添加寻路 AI（优先级 2，低于近战攻击 Goal，仅在无攻击目标时运行）
                 pathfinder.goalSelector.addGoal(2, new PathfindToWaypointGoal(pathfinder));

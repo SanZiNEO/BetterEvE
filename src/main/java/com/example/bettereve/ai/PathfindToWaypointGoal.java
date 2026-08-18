@@ -75,7 +75,7 @@ public class PathfindToWaypointGoal extends Goal {
         if (mob.getTarget() != null) return false;
         if (finished) return false;
         String fid = FactionHelper.getEntityFactionId(mob);
-        return fid != null && !"neutral".equals(fid);
+        return fid != null && !fid.isEmpty(); // 只有有阵营的生物参与兵线寻路
     }
 
     @Override

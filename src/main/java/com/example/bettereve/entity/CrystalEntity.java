@@ -176,7 +176,7 @@ public class CrystalEntity extends Mob {
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
-        this.entityData.define(DATA_FACTION_ID, "neutral"); // 默认中立阵营
+        this.entityData.define(DATA_FACTION_ID, ""); // 默认无阵营
         this.entityData.define(DATA_MAX_HEALTH, 100);
         this.entityData.define(DATA_ARMOR, 0);
         this.entityData.define(DATA_ATTACK_DAMAGE, 10);
@@ -207,15 +207,11 @@ public class CrystalEntity extends Mob {
 
     // 阵营ID属性
     public void setFactionId(String factionId) {
-        if (factionId == null || factionId.isEmpty()) {
-            factionId = "neutral";
-        }
-        this.entityData.set(DATA_FACTION_ID, factionId);
+        this.entityData.set(DATA_FACTION_ID, factionId == null ? "" : factionId);
     }
 
     public String getFactionId() {
-        String factionId = this.entityData.get(DATA_FACTION_ID);
-        return factionId.isEmpty() ? "neutral" : factionId;
+        return this.entityData.get(DATA_FACTION_ID);
     }
 
     // 水晶模板ID属性（剧本中 CrystalTemplateDef 的 id）

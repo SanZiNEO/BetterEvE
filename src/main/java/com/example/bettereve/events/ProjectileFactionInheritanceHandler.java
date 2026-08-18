@@ -39,8 +39,8 @@ public class ProjectileFactionInheritanceHandler {
             // 获取发射者的阵营ID
             String factionId = FactionHelper.getEntityFactionId(owner);
             
-            // 如果发射者不是中立阵营，则设置投掷物的阵营与发射者相同
-            if (!factionId.equals("neutral")) {
+            // 发射者有阵营时，投掷物继承阵营；无阵营(空串)则不设置
+            if (factionId != null && !factionId.isEmpty()) {
                 FactionHelper.setEntityFactionId(projectile, factionId);
             }
 

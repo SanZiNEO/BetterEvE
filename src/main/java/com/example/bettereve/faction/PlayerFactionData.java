@@ -18,12 +18,12 @@ public class PlayerFactionData {
     public static String getPlayerFaction(Player player) {
         String faction = player.getPersistentData().getString(FACTION_KEY);
         if (faction == null || faction.isEmpty()) {
-            // 新玩家 — 返回剧本默认阵营
-            String defaultFaction = "neutral";
+            // 新玩家 — 剧本写了默认阵营就用，没写就是无阵营 ""
             if (ScenarioManager.isLoaded() && ScenarioManager.getActiveScenario().getOptions() != null) {
-                defaultFaction = ScenarioManager.getActiveScenario().getOptions().getPlayersDefaultFaction();
+                String defaultFaction = ScenarioManager.getActiveScenario().getOptions().getPlayersDefaultFaction();
+                return defaultFaction == null ? "" : defaultFaction;
             }
-            return defaultFaction;
+            return "";
         }
         return faction;
     }
@@ -44,7 +44,7 @@ public class PlayerFactionData {
      * 重置玩家阵营（剧本切换时调用）。
      */
     public static void resetToDefault(Player player) {
-        String defaultFaction = "neutral";
+        String defaultFaction = null;
         if (ScenarioManager.isLoaded() && ScenarioManager.getActiveScenario().getOptions() != null) {
             defaultFaction = ScenarioManager.getActiveScenario().getOptions().getPlayersDefaultFaction();
         }

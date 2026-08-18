@@ -95,8 +95,9 @@ public class DeathCounter extends SavedData {
     }
 
     public void incrementDeathCount(String worldId, String factionId, String entityType) {
+        String key = (factionId == null || factionId.isEmpty()) ? "" : factionId;
         Map<String, Map<String, Integer>> factionCounts = deathCounts.computeIfAbsent(worldId, k -> new HashMap<>());
-        Map<String, Integer> entityCounts = factionCounts.computeIfAbsent(factionId, k -> new HashMap<>());
+        Map<String, Integer> entityCounts = factionCounts.computeIfAbsent(key, k -> new HashMap<>());
         entityCounts.put(entityType, entityCounts.getOrDefault(entityType, 0) + 1);
     }
 

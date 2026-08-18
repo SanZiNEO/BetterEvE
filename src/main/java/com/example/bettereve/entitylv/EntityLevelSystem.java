@@ -46,7 +46,11 @@ public class EntityLevelSystem {
     public static void setEntityLevel(Entity entity, int level) {
         if (level < 0) level = 0;
         Scenario.EntityLevelConfig levelCfg = getEntityLevelConfig(entity);
-        if (levelCfg != null && level > levelCfg.getMaxLevel()) level = levelCfg.getMaxLevel();
+        // 剧本没配等级系统 → 完全不启用（不存、不加、不同步）
+        if (levelCfg == null) {
+            return;
+        }
+        if (level > levelCfg.getMaxLevel()) level = levelCfg.getMaxLevel();
         
         // 同时存储到内存和 NBT 中，确保持久性
         entityLevels.put(entity.getUUID(), level);
@@ -130,18 +134,23 @@ public class EntityLevelSystem {
      * 应用召唤等级属性（非线性增长，支持NBT属性突破上限）
      */
     /**
-     * 获取实体的等级配置（优先从剧本读取，fallback 到全局配置）。
+     * 获取实体的等级配置（只读剧本；剧本没配 = null = 无等级系统）
      */
-    private static Scenario.EntityLevelConfig getEntityLevelConfig(Entity entity) {
+    public static Scenario.EntityLevelConfig getEntityLevelConfig(Entity entity) {
         Scenario scenario = ScenarioManager.getActiveScenario();
         if (scenario == null || scenario.getFactions() == null || entity == null) return null;
         String factionId = com.example.bettereve.faction.FactionHelper.getEntityFactionId(entity);
         for (Scenario.FactionDef faction : scenario.getFactions()) {
-            if (faction.getId().equals(factionId)) {
+            if (faction.getId() != null && faction.getId().equals(factionId)) {
                 return faction.getEntityLevelConfig();
             }
         }
         return null;
+    }
+
+    /** 该实体所在阵营是否启用了等级系统 */
+    public static boolean isLevelSystemEnabled(Entity entity) {
+        return getEntityLevelConfig(entity) != null;
     }
     public static void applySpawnLevel(LivingEntity entity, int level) {
         if (level <= 0) return;
@@ -210,11 +219,14 @@ public class EntityLevelSystem {
     public static void applyProjectileLevel(AbstractArrow projectile, int level) {
         if (level <= 0) return;
 
-        // 尝试获取发射者的阵营等级配置
+        // 尝试获取发射者的阵营等级配置；剧本没配 → 箭无任何等级加成
         Entity owner = projectile.getOwner();
         Scenario.EntityLevelConfig cfg = owner != null ? getEntityLevelConfig(owner) : null;
-        double attackBonus = cfg != null ? cfg.getAttackBonus() / 100 : 0.1; // 默认10%
-        double attackExp = cfg != null ? cfg.getAttackExponent() : 1.42;
+        if (cfg == null) {
+            return;
+        }
+        double attackBonus = cfg.getAttackBonus() / 100;
+        double attackExp = cfg.getAttackExponent();
 
         double damageMultiplier = 1 + attackBonus * Math.pow(level, attackExp);
         double maxDamage = 200.0;
