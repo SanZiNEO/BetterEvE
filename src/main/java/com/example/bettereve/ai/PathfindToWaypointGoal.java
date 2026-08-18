@@ -33,6 +33,9 @@ import java.util.Set;
 public class PathfindToWaypointGoal extends Goal {
     private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/PathGoal");
 
+    /** 寻路调试日志总开关：排查目标问题时置为 false，减少刷屏 */
+    private static final boolean DEBUG_LOGGING = false;
+
     /** 生物 NBT 持久化键：绑定的路线 id（卸载重生后仍走原路线） */
     private static final String NBT_ROUTE_KEY = "bettereve:route_id";
 
@@ -98,14 +101,14 @@ public class PathfindToWaypointGoal extends Goal {
                 navigateToWaypoint(currentTarget);
             }
         }
-        LOGGER.debug("{} 寻路开始 route={} nextIndex={} planSize={} 进度={}",
+        if (DEBUG_LOGGING) LOGGER.debug("{} 寻路开始 route={} nextIndex={} planSize={} 进度={}",
                 logContext(), routeId, nextIndex, plan.size(), progress);
     }
 
     @Override
     public void stop() {
         if (mob.getTarget() != null) {
-            LOGGER.debug("{} 战斗中让位（stop）", logContext());
+            if (DEBUG_LOGGING) LOGGER.debug("{} 战斗中让位（stop）", logContext());
         }
         navigation.stop();
     }
@@ -213,7 +216,7 @@ public class PathfindToWaypointGoal extends Goal {
             finished = true;
             currentTarget = null;
             syncProgress();
-            LOGGER.debug("{} 路线走完，寻路结束", logContext());
+            if (DEBUG_LOGGING) LOGGER.debug("{} 路线走完，寻路结束", logContext());
             return;
         }
         currentTarget = plan.get(nextIndex);
@@ -236,7 +239,7 @@ public class PathfindToWaypointGoal extends Goal {
         Path path = navigation.createPath(targets, 2);
         if (path != null) {
             navigation.moveTo(path, 1.0);
-            LOGGER.debug("{} 导航->区域={} 候选点={} 路径长度={}",
+            if (DEBUG_LOGGING) LOGGER.debug("{} 导航->区域={} 候选点={} 路径长度={}",
                     logContext(), target.getId(), targets.size(), path.getNodeCount());
         } else {
             // A* 找不到多目标路径时，退回旧的最远边单点方案，保证至少有目标可走
@@ -311,7 +314,7 @@ public class PathfindToWaypointGoal extends Goal {
         bestX = recommended[0];
         bestZ = recommended[1];
 
-        LOGGER.debug("{} 导航->区域={} 目标=({},{})", logContext(), target.getId(), String.format("%.0f", bestX), String.format("%.0f", bestZ));
+        if (DEBUG_LOGGING) LOGGER.debug("{} 导航->区域={} 目标=({},{})", logContext(), target.getId(), String.format("%.0f", bestX), String.format("%.0f", bestZ));
         navigation.moveTo(bestX, mob.getY(), bestZ, 1.0);
     }
 

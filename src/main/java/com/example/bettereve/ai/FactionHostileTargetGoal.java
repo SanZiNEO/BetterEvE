@@ -7,6 +7,7 @@ import com.example.bettereve.scenario.ScenarioManager;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.monster.RangedAttackMob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,9 +29,15 @@ public class FactionHostileTargetGoal extends NearestAttackableTargetGoal<Living
     private int focusScanTimer; // 近距离重扫计时器（tick）
 
     public FactionHostileTargetGoal(Mob mob) {
-        // (mob, 目标类型, randomInterval=10, mustSee=false, mustReach=false, selector=null)
-        // mustSee=false：不检查视线（避免战斗中 LOS 短暂失效丢目标）
-        super(mob, LivingEntity.class, 10, false, false, null);
+        // (mob, 目标类型, randomInterval=10, mustSee=远程生物要求视线, mustReach=false, selector=null)
+        // 远程生物（骷髅/掠夺者等）必须看见目标，避免穿墙选敌导致射箭 AI 永远拉不满弓；
+        // 近战生物不强制视线，避免战斗中短暂遮挡就丢目标。
+        super(mob, LivingEntity.class, 10, mob instanceof RangedAttackMob, false, null);
+    }
+
+    /** 远程生物必须能看到目标才能将其当作攻击对象（保持原版射箭节奏）。 */
+    private boolean requiresLineOfSight() {
+        return this.mob instanceof RangedAttackMob;
     }
 
     // 目标中途失效时立即丢弃：目标阵营变化（如玩家切换阵营）或目标变为中立后不再追打。
@@ -79,7 +86,8 @@ public class FactionHostileTargetGoal extends NearestAttackableTargetGoal<Living
         for (LivingEntity e : this.mob.level().getEntitiesOfClass(
                 LivingEntity.class, this.getTargetSearchArea(range),
                 // 原版语义：创造/旁观玩家不可成为目标（canBeSeenAsEnemy），隐身且不发光者也不可见
-                e -> e != this.mob && e.isAlive() && e.canBeSeenAsEnemy() && e.canBeSeenByAnyone())) {
+                e -> e != this.mob && e.isAlive() && e.canBeSeenAsEnemy() && e.canBeSeenByAnyone()
+                        && (!requiresLineOfSight() || this.mob.getSensing().hasLineOfSight(e)))) {
             // 唯一判定标准：阵营敌对关系（同阵营/中立 → false 排除；未定义关系 → 默认敌对）
             if (!FactionHelper.isEntitiesHostile(this.mob, e)) continue;
             // 优先级：普通生物 > 基地（CrystalEntity）；同类内取最近
@@ -114,6 +122,7 @@ public class FactionHostileTargetGoal extends NearestAttackableTargetGoal<Living
                 LivingEntity.class, this.getTargetSearchArea(range),
                 e -> e != this.mob && e.isAlive() && e.canBeSeenAsEnemy() && e.canBeSeenByAnyone()
                         && !(e instanceof CrystalEntity)
+                        && (!requiresLineOfSight() || this.mob.getSensing().hasLineOfSight(e))
                         && FactionHelper.isEntitiesHostile(this.mob, e))) {
             double d = this.mob.distanceToSqr(e);
             if (d <= rangeSqr && d < bestDist) {

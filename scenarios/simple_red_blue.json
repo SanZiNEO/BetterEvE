@@ -1,0 +1,30 @@
+{
+  "id": "simple_red_blue",
+  "name": "简单红蓝对抗",
+  "description": "仅红蓝两阵营敌对，无基地、无阶段、无保活区，加载后即可自由对战。",
+  "factions": [
+    {
+      "id": "red",
+      "name": "红队",
+      "color": "#FF0000",
+      "showOnScoreboard": true
+    },
+    {
+      "id": "blue",
+      "name": "蓝队",
+      "color": "#0000FF",
+      "showOnScoreboard": true
+    }
+  ],
+  "relations": [
+    { "from": "red", "to": "blue", "type": "hostile" },
+    { "from": "blue", "to": "red", "type": "hostile" }
+  ],
+  "options": {
+    "playersDefaultFaction": "neutral",
+    "targetingRange": 64,
+    "targetingFocusRange": 10,
+    "targetingFocusInterval": 20,
+    "hudEnabled": true
+  }
+}

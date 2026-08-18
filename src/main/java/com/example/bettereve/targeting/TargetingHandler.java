@@ -11,27 +11,16 @@ import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
-import net.minecraft.world.entity.ai.goal.AvoidEntityGoal;
-import net.minecraft.world.entity.ai.goal.BreakDoorGoal;
-import net.minecraft.world.entity.ai.goal.BreedGoal;
-import net.minecraft.world.entity.ai.goal.EatBlockGoal;
-import net.minecraft.world.entity.ai.goal.FleeSunGoal;
-import net.minecraft.world.entity.ai.goal.FollowParentGoal;
-import net.minecraft.world.entity.ai.goal.InteractGoal;
-import net.minecraft.world.entity.ai.goal.MoveThroughVillageGoal;
-import net.minecraft.world.entity.ai.goal.MoveTowardsRestrictionGoal;
-import net.minecraft.world.entity.ai.goal.OpenDoorGoal;
-import net.minecraft.world.entity.ai.goal.PanicGoal;
-import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
-import net.minecraft.world.entity.ai.goal.RestrictSunGoal;
-import net.minecraft.world.entity.ai.goal.TemptGoal;
+import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
+import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
+import net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.RangedAttackMob;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.MobSpawnEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -107,25 +96,22 @@ public class TargetingHandler {
         mob.targetSelector.addGoal(0, new FactionHostileTargetGoal(mob));
         
         // 添加近战攻击 Goal（如无远程攻击）
+        // 注意：不再删除原版移动/行为 Goal，尽量保留生物原本的攻击与走位习惯。
         if (mob instanceof PathfinderMob pathfinder) {
-            // 完全覆盖原版/模组干扰 AI：移除会与兵线寻路、阵营战斗冲突的移动类 goal
-            pathfinder.goalSelector.removeAllGoals(g ->
-                g instanceof RandomStrollGoal || g instanceof PanicGoal
-                || g instanceof FleeSunGoal || g instanceof RestrictSunGoal
-                || g instanceof AvoidEntityGoal || g instanceof TemptGoal
-                || g instanceof FollowParentGoal || g instanceof BreedGoal
-                || g instanceof EatBlockGoal || g instanceof MoveTowardsRestrictionGoal
-                || g instanceof MoveThroughVillageGoal || g instanceof BreakDoorGoal
-                || g instanceof OpenDoorGoal || g instanceof InteractGoal
-            );
             boolean hasRanged = pathfinder.goalSelector.getAvailableGoals().stream()
-                    .anyMatch(g -> g.getGoal() instanceof RangedAttackGoal);
+                    .anyMatch(g -> g.getGoal() instanceof RangedAttackGoal
+                            || g.getGoal() instanceof RangedBowAttackGoal
+                            || g.getGoal() instanceof RangedCrossbowAttackGoal);
             boolean hasMelee = pathfinder.goalSelector.getAvailableGoals().stream()
                     .anyMatch(g -> g.getGoal() instanceof MeleeAttackGoal);
-            // 只有带攻击属性（ATTACK_DAMAGE）的生物才加近战攻击，
-            // 否则 MeleeAttackGoal.tick 读取该属性时抛 "Can't find attribute" 崩溃（如动物）
-            if (!hasRanged && !hasMelee && pathfinder.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
-                pathfinder.goalSelector.addGoal(1, new MeleeAttackGoal(pathfinder, 1.0, false));
+            // 只有带攻击属性（ATTACK_DAMAGE）且确实没有任何攻击手段的生物才补近战攻击，
+            // 否则 MeleeAttackGoal.tick 读取该属性时抛 "Can't find attribute" 崩溃（如动物）；
+            // 自带远程攻击的生物（RangedAttackMob，如骷髅）绝不补近战，否则会顶掉原版射箭 AI。
+            // 优先级用较低的 5，避免抢走原版/其它模组生物自身的攻击逻辑。
+            if (!hasRanged && !hasMelee
+                    && !(pathfinder instanceof RangedAttackMob)
+                    && pathfinder.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
+                pathfinder.goalSelector.addGoal(5, new MeleeAttackGoal(pathfinder, 1.0, false));
             }
             // 为非中立阵营生物替换导航器（A* 绕开基地）
             String factionId = FactionHelper.getEntityFactionId(mob);

@@ -20,6 +20,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.joml.Matrix4f;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -78,6 +79,37 @@ public class SimpleHealthBarRenderer {
     private static final Set<UUID> renderedThisFrame = new HashSet<>();
     private static final Map<UUID, Float> healthCache = new HashMap<>();
 
+    // Oculus/Iris 阴影 pass 检测（反射调用，避免硬依赖）
+    private static final Method IRIS_API_GET_INSTANCE;
+    private static final Method IRIS_IS_RENDERING_SHADOW_PASS;
+
+    static {
+        Method getInstance = null;
+        Method isRenderingShadowPass = null;
+        try {
+            Class<?> irisApi = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+            getInstance = irisApi.getMethod("getInstance");
+            isRenderingShadowPass = irisApi.getMethod("isRenderingShadowPass");
+        } catch (Throwable ignored) {
+            // Oculus/Iris 未安装时保持无影响
+        }
+        IRIS_API_GET_INSTANCE = getInstance;
+        IRIS_IS_RENDERING_SHADOW_PASS = isRenderingShadowPass;
+    }
+
+    /** 是否正处于 Oculus/Iris 的阴影 pass；非 Oculus 环境始终 false。 */
+    private static boolean isRenderingShadowPass() {
+        if (IRIS_API_GET_INSTANCE == null || IRIS_IS_RENDERING_SHADOW_PASS == null) {
+            return false;
+        }
+        try {
+            Object api = IRIS_API_GET_INSTANCE.invoke(null);
+            return Boolean.TRUE.equals(IRIS_IS_RENDERING_SHADOW_PASS.invoke(api));
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static void onFrameStart() {
         renderedThisFrame.clear();
     }
@@ -108,6 +140,12 @@ public class SimpleHealthBarRenderer {
                                             MultiBufferSource bufferSource, Camera camera,
                                             float partialTick, double camX, double camY, double camZ) {
         if (!shouldShowHealthBar(entity)) {
+            return;
+        }
+
+        // 阴影 pass 中既不要绘制也不要标记本帧已渲染，
+        // 否则 Oculus/Iris 会先渲染近处实体，导致主视角血条被跳过。
+        if (isRenderingShadowPass()) {
             return;
         }
 
