@@ -40,8 +40,7 @@ public class ClearDeathCountPacket {
             buffer.writeBoolean(true);
             buffer.writeUtf(factionId);
         } else {
-            buffer.writeBoolean(true);
-            buffer.writeUtf("all"); // 客户端读不到实际 factionId 没关系，仅用于传输
+            buffer.writeBoolean(false); // 修复：原来两分支都写 true，且丢失 factionId
         }
     }
 

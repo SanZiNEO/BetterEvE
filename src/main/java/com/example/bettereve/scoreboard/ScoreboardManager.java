@@ -1,6 +1,5 @@
 package com.example.bettereve.scoreboard;
 
-import com.example.bettereve.counter.DeathCounter;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
 import net.minecraft.network.chat.Component;

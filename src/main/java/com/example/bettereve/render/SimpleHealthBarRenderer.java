@@ -19,6 +19,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.joml.Matrix4f;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -35,6 +37,7 @@ import java.util.UUID;
  * 视觉布局保留旧版：背景层 + 填充层 + 容器层 + Lv 文字 + 血量数字。
  */
 public class SimpleHealthBarRenderer {
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/HealthBar");
 
     private static final float BAR_TOTAL_WIDTH = 80.0f;
     private static final float BAR_TOTAL_HEIGHT = 10.0f;
@@ -119,14 +122,32 @@ public class SimpleHealthBarRenderer {
 
     public static boolean shouldShowHealthBar(Entity entity) {
         if (entity == null || !(entity instanceof LivingEntity)) {
+            // 诊断：投掷物若本不该有血条却出现了，说明它其实是 LivingEntity 子类。
+            // ProjectileSlashEntity 这类"名字像投射物、实际是 Mob"的实体就会走到这里。
+            if (entity != null && entity instanceof net.minecraft.world.entity.projectile.Projectile) {
+                LOGGER.debug("[血条] 投掷物被判定为无血条: {}", entity.getType());
+            }
             return false;
         }
         if (entity instanceof Player) {
             return false;
         }
-        return com.example.bettereve.network.HealthBarVisibilityPacket.ClientHealthBarVisibilityCache
+        boolean visible = com.example.bettereve.network.HealthBarVisibilityPacket.ClientHealthBarVisibilityCache
                 .getEntityHealthBarVisibility(entity.getUUID());
+        // 诊断：打印非 Mob 的 LivingEntity（这类最容易意外显示血条）
+        if (debugLogged.add(entity.getUUID())) {
+            LOGGER.info("[血条] {} type={} 是Mob={} 是投射物={} 显示={}",
+                    entity.getName().getString(), entity.getType(),
+                    entity instanceof net.minecraft.world.entity.Mob,
+                    entity instanceof net.minecraft.world.entity.projectile.Projectile,
+                    visible);
+        }
+        return visible;
     }
+
+    /** 诊断用：每个实体只打印一次，避免刷屏 */
+    private static final java.util.Set<java.util.UUID> debugLogged =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     /**
      * 世界空间血条渲染入口，由 LevelRendererMixin 在实体渲染完成后调用。

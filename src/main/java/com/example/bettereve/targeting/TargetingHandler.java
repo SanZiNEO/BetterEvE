@@ -10,13 +10,8 @@ import com.example.bettereve.scenario.ScenarioManager;
 import com.example.bettereve.faction.FactionHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
-import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
-import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
-import net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.RangedAttackMob;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.MobSpawnEvent;
 import net.minecraftforge.eventbus.api.Event;
@@ -95,29 +90,15 @@ public class TargetingHandler {
         // 添加阵营目标选择器（优先级最高）
         mob.targetSelector.addGoal(0, new FactionHostileTargetGoal(mob));
         
-        // 添加近战攻击 Goal（如无远程攻击）
-        // 注意：不再删除原版移动/行为 Goal，尽量保留生物原本的攻击与走位习惯。
+        // 不再给任何生物补近战攻击 Goal：保留各生物原本的攻击方式，
+        // 避免“补近战”误伤原生远程生物（如骷髅只拉弓不射箭）。
+        // 仅对 non-neutral 阵营替换导航器并添加兵线寻路。
         if (mob instanceof PathfinderMob pathfinder) {
-            boolean hasRanged = pathfinder.goalSelector.getAvailableGoals().stream()
-                    .anyMatch(g -> g.getGoal() instanceof RangedAttackGoal
-                            || g.getGoal() instanceof RangedBowAttackGoal
-                            || g.getGoal() instanceof RangedCrossbowAttackGoal);
-            boolean hasMelee = pathfinder.goalSelector.getAvailableGoals().stream()
-                    .anyMatch(g -> g.getGoal() instanceof MeleeAttackGoal);
-            // 只有带攻击属性（ATTACK_DAMAGE）且确实没有任何攻击手段的生物才补近战攻击，
-            // 否则 MeleeAttackGoal.tick 读取该属性时抛 "Can't find attribute" 崩溃（如动物）；
-            // 自带远程攻击的生物（RangedAttackMob，如骷髅）绝不补近战，否则会顶掉原版射箭 AI。
-            // 优先级用较低的 5，避免抢走原版/其它模组生物自身的攻击逻辑。
-            if (!hasRanged && !hasMelee
-                    && !(pathfinder instanceof RangedAttackMob)
-                    && pathfinder.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
-                pathfinder.goalSelector.addGoal(5, new MeleeAttackGoal(pathfinder, 1.0, false));
-            }
             // 为有阵营的生物替换导航器（A* 绕开基地）；无阵营（空串）不参与
             String factionId = FactionHelper.getEntityFactionId(mob);
             if (factionId != null && !factionId.isEmpty()) {
                 replaceNavigation(pathfinder);
-                // 添加寻路 AI（优先级 2，低于近战攻击 Goal，仅在无攻击目标时运行）
+                // 添加寻路 AI（优先级 2，仅在无攻击目标时运行）
                 pathfinder.goalSelector.addGoal(2, new PathfindToWaypointGoal(pathfinder));
             }
         }

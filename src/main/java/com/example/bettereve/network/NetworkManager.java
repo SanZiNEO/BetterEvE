@@ -430,4 +430,18 @@ public class NetworkManager {
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
         LOGGER.debug("Sent clear crystal death counts packet to all clients");
     }
+
+    /**
+     * 清除客户端计分板数据（HUD 真实数据源 = CrystalDeathCounter）
+     *
+     * @param factionId null 或空 = 清除全部阵营；否则只清该阵营的死亡分与击败数
+     */
+    public static void clearCrystalDeathCounter(String factionId) {
+        ClearDeathCountPacket packet = (factionId == null || factionId.isEmpty())
+                ? new ClearDeathCountPacket()
+                : new ClearDeathCountPacket(factionId);
+        CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+        LOGGER.debug("Sent clear scoreboard packet to all clients, faction={}",
+                factionId == null || factionId.isEmpty() ? "ALL" : factionId);
+    }
 }

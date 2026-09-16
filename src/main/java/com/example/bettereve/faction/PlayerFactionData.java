@@ -50,4 +50,20 @@ public class PlayerFactionData {
         }
         setPlayerFaction(player, defaultFaction);
     }
+
+    /**
+     * 彻底清除玩家的阵营数据（无视剧本的默认阵营）。
+     *
+     * 与 setPlayerFaction(player, "") 等价 —— 直接把持久化键从玩家 NBT 里删掉。
+     * 注意：getPlayerFaction 在键不存在时会回落到剧本的 playersDefaultFaction，
+     * 所以若剧本配了默认阵营，清除后读到的会是那个默认值而不是空。
+     *
+     * @return 清除前该玩家实际生效的阵营ID（用于指令回显），本来就无阵营则返回 ""
+     */
+    public static String clearPlayerFaction(Player player) {
+        String previous = getPlayerFaction(player);
+        player.getPersistentData().remove(FACTION_KEY);
+        LOGGER.info("Cleared faction for player {} (previous={})", player.getName().getString(), previous);
+        return previous;
+    }
 }

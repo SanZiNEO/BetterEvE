@@ -56,12 +56,15 @@ public class EntityLevelSystem {
         entityLevels.put(entity.getUUID(), level);
         entity.getPersistentData().putInt(NBT_LEVEL_KEY, level);
         
-        // 如果是生物，应用属性加成
-        if (entity instanceof LivingEntity) {
-            applySpawnLevel((LivingEntity) entity, level);
-        } else if (entity instanceof AbstractArrow) {
-            // 为投掷物应用属性加成
-            applyProjectileLevel((AbstractArrow) entity, level);
+        // 应用属性加成。注意判定顺序：
+        // 有些"投射物"其实是 LivingEntity 子类（咒术回战的 projectile_slash 就是 PathfinderMob），
+        // 所以必须先判投射物，再判生物，否则这类实体会走生物加成、拿不到投掷物的伤害加成。
+        if (entity instanceof AbstractArrow arrow) {
+            applyProjectileLevel(arrow, level);
+        } else if (entity instanceof Projectile projectile) {
+            applyGenericProjectileLevel(projectile, level);
+        } else if (entity instanceof LivingEntity living) {
+            applySpawnLevel(living, level);
         }
         
         // 同步到客户端
@@ -239,6 +242,23 @@ public class EntityLevelSystem {
         double finalPierce = Math.min(pierceBonus, maxPierce);
         byte currentPierce = projectile.getPierceLevel();
         projectile.setPierceLevel((byte) Math.max((int) finalPierce, currentPierce));
+    }
+
+    /**
+     * 非箭类投射物的等级加成。
+     *
+     * 说明：Projectile 与 LivingEntity 在类层级上互不相交（Projectile extends Entity），
+     * 所以走到这里的都是"纯 Entity 投射物"。原版 Projectile 没有统一的伤害接口
+     * （只有 AbstractArrow 有 getBaseDamage/setBaseDamage），也没有可写的伤害字段，
+     * 因此这类投射物无法施加等级加成。
+     *
+     * 例外情况已在上层分支处理：像咒术回战 projectile_slash 那种"名字像投射物、
+     * 实际是 PathfinderMob"的实体，因为它是 Mob 而不是 Projectile，会走
+     * applySpawnLevel 拿到生物加成，不会落到这里。
+     */
+    public static void applyGenericProjectileLevel(Projectile projectile, int level) {
+        // 纯 Entity 投射物没有可施加的等级加成字段，保持原样。
+        // 保留此方法作为将来接入模组专属伤害接口的接入点。
     }
     /**
      * 检查实体是否有自定义NBT属性

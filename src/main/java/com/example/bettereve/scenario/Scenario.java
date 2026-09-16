@@ -1,6 +1,7 @@
 package com.example.bettereve.scenario;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 剧本数据模型 — 一个 JSON 文件定义一个完整的游戏模式。
@@ -283,11 +284,33 @@ public class Scenario {
     }
 
     public static class ScenarioOptions {
+        // ==================== 代码内默认值（模组自带配置，无需额外配置文件） ====================
+        /** 召唤物是否默认继承宿主阵营 */
+        public static final boolean DEFAULT_SUMMON_INHERIT_FACTION = true;
+        /** 召唤物是否默认不显示血条。默认 false = 显示血条（便于观察继承效果）；
+         *  想隐藏时在剧本 options.summon.hideHealthBar 写 true。 */
+        public static final boolean DEFAULT_SUMMON_HIDE_HEALTH_BAR = false;
+        /** 召唤物默认是否计分 */
+        public static final boolean DEFAULT_SUMMON_COUNTS_FOR_SCORE = false;
+        /** 指令召唤默认阵型 */
+        public static final Formation DEFAULT_SPAWN_FORMATION = Formation.CIRCLE;
+        /** 阵型默认半径（格） */
+        public static final double DEFAULT_SPAWN_RADIUS = 2.0;
+        /** 阵型默认间距（格，直线/网格用） */
+        public static final double DEFAULT_SPAWN_SPACING = 2.0;
+        /** 默认张角（度，360 = 整圆；<=0 退化为直线） */
+        public static final double DEFAULT_SPAWN_ARC = 360.0;
+
         private String playersDefaultFaction; // 没写 = 玩家未分配（无阵营）
         private double targetingRange = 64.0;        // 常态巡敌距离（格），随地图设计配置
         private double targetingFocusRange = 10.0;   // 近距离重扫距离（格）：范围内出现非基地敌对目标即切换
         private int targetingFocusInterval = 20;     // 近距离重扫间隔（tick）
         private boolean hudEnabled = true;           // 全局 HUD 总开关（原 BetterEvEConfig.global_hudEnabled 迁入）
+
+        // ==================== 召唤物机制（原模组配置迁入剧本） ====================
+        private SummonConfig summon;
+        // ==================== 指令召唤阵型（原模组配置迁入剧本） ====================
+        private SpawnLayout spawnLayout;
 
         public String getPlayersDefaultFaction() { return playersDefaultFaction; }
         public void setPlayersDefaultFaction(String playersDefaultFaction) { this.playersDefaultFaction = playersDefaultFaction; }
@@ -299,5 +322,106 @@ public class Scenario {
         public void setTargetingFocusInterval(int targetingFocusInterval) { this.targetingFocusInterval = targetingFocusInterval; }
         public boolean isHudEnabled() { return hudEnabled; }
         public void setHudEnabled(boolean hudEnabled) { this.hudEnabled = hudEnabled; }
+        public SummonConfig getSummon() { return summon; }
+        public void setSummon(SummonConfig summon) { this.summon = summon; }
+        public SpawnLayout getSpawnLayout() { return spawnLayout; }
+        public void setSpawnLayout(SpawnLayout spawnLayout) { this.spawnLayout = spawnLayout; }
+    }
+
+    /**
+     * 召唤物机制配置。剧本未写 summon 段时，全部使用代码内默认值。
+     */
+    public static class SummonConfig {
+        /** 召唤物机制总开关默认值 */
+        public static final boolean DEFAULT_ENABLED = true;
+
+        private Boolean enabled;                  // 总开关，默认 true
+        private Boolean inheritFaction;           // 继承宿主阵营，默认 true
+        private Boolean hideHealthBar;            // 召唤物不显示血条，默认 true
+        private Boolean countsForScore;           // 召唤物计分，默认 false（不计分）
+        private Map<String, Boolean> healthBarOverrides; // 按实体类型覆盖血条，优先级最高
+
+        public boolean isEnabled() {
+            return enabled == null ? DEFAULT_ENABLED : enabled;
+        }
+        public boolean isInheritFaction() {
+            return inheritFaction == null ? ScenarioOptions.DEFAULT_SUMMON_INHERIT_FACTION : inheritFaction;
+        }
+        public boolean isHideHealthBar() {
+            return hideHealthBar == null ? ScenarioOptions.DEFAULT_SUMMON_HIDE_HEALTH_BAR : hideHealthBar;
+        }
+        public boolean isCountsForScore() {
+            return countsForScore == null ? ScenarioOptions.DEFAULT_SUMMON_COUNTS_FOR_SCORE : countsForScore;
+        }
+        public Map<String, Boolean> getHealthBarOverrides() { return healthBarOverrides; }
+
+        public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+        public void setInheritFaction(Boolean inheritFaction) { this.inheritFaction = inheritFaction; }
+        public void setHideHealthBar(Boolean hideHealthBar) { this.hideHealthBar = hideHealthBar; }
+        public void setCountsForScore(Boolean countsForScore) { this.countsForScore = countsForScore; }
+        public void setHealthBarOverrides(Map<String, Boolean> healthBarOverrides) { this.healthBarOverrides = healthBarOverrides; }
+    }
+
+    /**
+     * 指令召唤阵型配置。剧本未写 spawnLayout 段时使用代码内默认值（圆形）。
+     */
+    public static class SpawnLayout {
+        private Formation formation;      // 阵型，默认 circle
+        private Double radius;            // 半径（圆/方/菱/三角）
+        private Double spacing;           // 间距（直线/网格）
+        private Double arc;               // 张角（度）：360 整圆，180 半圆，<=0 退化直线
+        private Double width;             // 矩形宽（X 方向）
+        private Double depth;             // 矩形深（Z 方向）
+
+        public Formation getFormation() {
+            return formation == null ? ScenarioOptions.DEFAULT_SPAWN_FORMATION : formation;
+        }
+        public double getRadius() {
+            return radius == null ? ScenarioOptions.DEFAULT_SPAWN_RADIUS : radius;
+        }
+        public double getSpacing() {
+            return spacing == null ? ScenarioOptions.DEFAULT_SPAWN_SPACING : spacing;
+        }
+        public double getArc() {
+            return arc == null ? ScenarioOptions.DEFAULT_SPAWN_ARC : arc;
+        }
+        public double getWidth() {
+            return width == null ? getRadius() * 2.0 : width;
+        }
+        public double getDepth() {
+            return depth == null ? getRadius() * 2.0 : depth;
+        }
+
+        public void setFormation(Formation formation) { this.formation = formation; }
+        public void setRadius(Double radius) { this.radius = radius; }
+        public void setSpacing(Double spacing) { this.spacing = spacing; }
+        public void setArc(Double arc) { this.arc = arc; }
+        public void setWidth(Double width) { this.width = width; }
+        public void setDepth(Double depth) { this.depth = depth; }
+    }
+
+    /**
+     * 阵型枚举。JSON 中用 snake_case 字符串：circle / square / diamond / rectangle /
+     * triangle / line_x / line_z / grid / point
+     */
+    public enum Formation {
+        /** 圆形（默认）：以召唤点为圆心，arc 控制张角 */
+        @com.google.gson.annotations.SerializedName("circle") CIRCLE,
+        /** 正方形边框（以召唤点为中心） */
+        @com.google.gson.annotations.SerializedName("square") SQUARE,
+        /** 菱形边框（以召唤点为中心，45° 旋转的正方形） */
+        @com.google.gson.annotations.SerializedName("diamond") DIAMOND,
+        /** 矩形边框（width × depth，以召唤点为中心） */
+        @com.google.gson.annotations.SerializedName("rectangle") RECTANGLE,
+        /** 三角形三顶点起排 */
+        @com.google.gson.annotations.SerializedName("triangle") TRIANGLE,
+        /** 朝 X 方向的直线 */
+        @com.google.gson.annotations.SerializedName("line_x") LINE_X,
+        /** 朝 Z 方向的直线 */
+        @com.google.gson.annotations.SerializedName("line_z") LINE_Z,
+        /** 方形网格填充（多生物密集排列） */
+        @com.google.gson.annotations.SerializedName("grid") GRID,
+        /** 全部重叠在召唤点（count=1 的等价行为） */
+        @com.google.gson.annotations.SerializedName("point") POINT
     }
 }

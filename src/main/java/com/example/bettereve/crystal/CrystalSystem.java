@@ -1,12 +1,12 @@
 package com.example.bettereve.crystal;
 
-import com.example.bettereve.counter.DeathCounter;
 import com.example.bettereve.entity.CrystalEntity;
 import com.example.bettereve.entity.CrystalEntityType;
 import com.example.bettereve.phase.PhaseManager;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
+import com.example.bettereve.faction.SummonRule;
 import com.example.bettereve.network.NetworkManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -31,6 +31,8 @@ import java.util.List;
 public class CrystalSystem {
     private static final String CRYSTAL_NBT_KEY = "BetterEvE:CrystalFaction";
     private static final String CRYSTAL_HEALTH_NBT_KEY = "BetterEvE:CrystalHealth";
+    private static final org.apache.logging.log4j.Logger LOGGER =
+            org.apache.logging.log4j.LogManager.getLogger("BetterEvE/CrystalSystem");
 
     @SubscribeEvent
     public static void onLivingAttack(LivingAttackEvent event) {
@@ -78,11 +80,25 @@ public class CrystalSystem {
             String crystalDefId = crystal.getCrystalDefId();
             PhaseManager.checkTriggers("crystal_destroyed", attackerFaction, crystalDefId.isEmpty() ? null : crystalDefId, 0);
             
-        } else {
+        } else if (SummonRule.countsForScoreboard(victim)) {
+            // 召唤物不计分：被击杀的若是召唤物则跳过累加。
+            // 开关见剧本 options.summon.countsForScore（默认 false）。
             String victimFaction = FactionHelper.getEntityFactionId(victim);
             if (!attackerFaction.equals(victimFaction)) {
                 NetworkManager.sendEntityKillToAll(attackerFaction);
             }
+        } else {
+            // 诊断：多部件生物按"整体结算"，这里能看出是哪一部分、被谁打死的。
+            // 用于确认长条 boss 的"最后一节死亡"实际由哪个实体触发。
+            LOGGER.info("[计分跳过] victim={} uuid={} 是多部件部件={} 是多部件主体={} 召唤物={} 攻击者={} 位置=({}, {}, {})",
+                    victim.getType(), victim.getUUID(),
+                    com.example.bettereve.faction.SummonedMarker.isMultipartPiece(victim),
+                    com.example.bettereve.faction.SummonedMarker.isMultipartRoot(victim),
+                    com.example.bettereve.faction.SummonedMarker.isSummoned(victim),
+                    attacker.getType(),
+                    String.format("%.1f", victim.getX()),
+                    String.format("%.1f", victim.getY()),
+                    String.format("%.1f", victim.getZ()));
         }
     }
     public static boolean isCrystalEntity(Entity entity) {

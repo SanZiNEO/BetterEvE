@@ -117,13 +117,14 @@ public class CrystalDeathCounter {
     }
     
     /**
-     * 清除指定阵营的死亡计数
+     * 清除指定阵营的死亡计数与击败数（HUD 上该阵营的两个数字一起归零）
      * @param factionId 阵营ID
      */
     public static void clearFaction(String factionId) {
         if (factionId != null) {
             deathCounts.remove(factionId);
-            LOGGER.debug("Cleared death count for faction {}", factionId);
+            entityKillCounts.remove(factionId);
+            LOGGER.debug("Cleared death count and kill count for faction {}", factionId);
         }
     }
     

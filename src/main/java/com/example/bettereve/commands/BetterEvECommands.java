@@ -16,7 +16,6 @@ import com.example.bettereve.scenario.ScenarioIO;
 import com.example.bettereve.scenario.ScenarioManager;
 import com.example.bettereve.scoreboard.ScoreboardManager;
 import com.example.bettereve.waypoint.WaypointVisualizer;
-import com.example.bettereve.counter.DeathCounter;
 import com.example.bettereve.faction.PlayerFactionData;
 import com.example.bettereve.network.NetworkManager;
 import com.mojang.brigadier.CommandDispatcher;
@@ -57,6 +56,8 @@ import net.minecraft.world.DifficultyInstance;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
+
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class BetterEvECommands {
     private static final Logger LOGGER = LogManager.getLogger("BetterEvE/Commands");
@@ -88,6 +89,11 @@ public class BetterEvECommands {
                             .suggests(FACTION_ID_SUGGESTIONS)
                             .requires(source -> source.hasPermission(2))
                             .executes(BetterEvECommands::executeFactionSetPlayer))))
+                .then(Commands.literal("clear")
+                    .executes(BetterEvECommands::executeFactionClearSelf)
+                    .then(Commands.argument("player", net.minecraft.commands.arguments.EntityArgument.player())
+                        .requires(source -> source.hasPermission(2))
+                        .executes(BetterEvECommands::executeFactionClearPlayer)))
                 .then(Commands.literal("my").executes(BetterEvECommands::executeFactionMy))
             )  // close faction
             .then(Commands.literal("scenario")
@@ -438,13 +444,20 @@ public class BetterEvECommands {
         }
         
         EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(entityRL);
-        
+
+        // 阵型偏移：默认圆形（见 Scenario.ScenarioOptions.DEFAULT_SPAWN_FORMATION），
+        // 剧本可用 options.spawnLayout 覆盖；count=1 时全部阵型退化为原点。
+        List<SpawnFormation.Offset> offsets = SpawnFormation.compute(count, resolveSpawnLayout());
+
         for (int i = 0; i < count; i++) {
             try {
                 if (entityType != null) {
                     Entity entityObj = entityType.create(serverLevel);
                     if (entityObj instanceof Mob mob) {
-                        mob.setPos(x + i, y, z);
+                        SpawnFormation.Offset off = offsets.get(i);
+                        double px = x + off.x();
+                        double pz = z + off.z();
+                        mob.setPos(px, y, pz);
                         
                         DifficultyInstance difficulty = serverLevel.getCurrentDifficultyAt(new BlockPos((int)x, (int)y, (int)z));
                         
@@ -470,7 +483,7 @@ public class BetterEvECommands {
                         // NBT 加载移到 equipment 初始化之前
                         if (nbt != null) {
                             mob.load(nbt);
-                            mob.setPos(x + i, y, z);
+                            mob.setPos(px, y, pz);
                             // 如果NBT数据中有血条可见性设置，覆盖之前的值
                             if (nbt.contains("BetterEvE:ShowHealthBar")) {
                                 showHealthBar = nbt.getBoolean("BetterEvE:ShowHealthBar");
@@ -585,32 +598,46 @@ public class BetterEvECommands {
         
         String posString = String.format("%.1f, %.1f, %.1f", x, y, z);
         String routeMsg = (routeId == null || routeId.isEmpty()) ? "Auto" : routeId;
-        String message = "Successfully spawned " + count + " " + entityRL + " (Faction: " + factionId + ", Level: " + level + ", Health Bar: " + (showHealthBar ? "Visible" : "Hidden") + ", Route: " + routeMsg + ") at (" + posString + ")";
+        String formationMsg = count > 1 ? resolveSpawnLayout().getFormation().name().toLowerCase() : "point";
+        String message = "Successfully spawned " + count + " " + entityRL + " (Faction: " + factionId + ", Level: " + level + ", Health Bar: " + (showHealthBar ? "Visible" : "Hidden") + ", Route: " + routeMsg + ", Formation: " + formationMsg + ") at (" + posString + ")";
         context.getSource().sendSuccess(() -> Component.literal(message), true);
         return 1;
     }
 
+    /**
+     * 清除所有阵营的计分板数据。
+     * HUD 的真实数据源是客户端的 CrystalDeathCounter（由数据包驱动），
+     * 因此必须发包通知所有客户端归零，服务器侧的 SavedData 与 HUD 无关。
+     */
+    /**
+     * 取当前剧本的召唤阵型配置。
+     * 未加载剧本、或剧本未写 options.spawnLayout 时，返回代码内默认值（圆形）。
+     */
+    private static Scenario.SpawnLayout resolveSpawnLayout() {
+        Scenario scenario = ScenarioManager.getActiveScenario();
+        if (scenario != null && scenario.getOptions() != null && scenario.getOptions().getSpawnLayout() != null) {
+            return scenario.getOptions().getSpawnLayout();
+        }
+        return new Scenario.SpawnLayout();
+    }
+
     private static int clearAllScoreboards(CommandContext<CommandSourceStack> context) {
-        ServerLevel serverLevel = context.getSource().getLevel();
-        String worldId = serverLevel.dimension().location().toString();
-        
-        DeathCounter counter = DeathCounter.getInstance(serverLevel);
-        counter.resetDeathCounts(worldId, null);
-        
-        forceRefreshScoreboard(serverLevel);
-        
-        context.getSource().sendSuccess(() -> 
-            Component.literal("已清除所有阵营的记分板数据并刷新显示"), 
+        // factionId = null → 清除全部阵营的死亡分与击败数
+        com.example.bettereve.network.NetworkManager.clearCrystalDeathCounter(null);
+
+        context.getSource().sendSuccess(() ->
+            Component.literal("已清除所有阵营的计分板数据（得分与击败数）"),
             true
         );
         return 1;
     }
 
+    /**
+     * 清除指定阵营的计分板数据（死亡分 + 击败数）。
+     */
     private static int clearFactionScoreboard(CommandContext<CommandSourceStack> context) {
         String factionName = StringArgumentType.getString(context, "factionName");
-        ServerLevel serverLevel = context.getSource().getLevel();
-        String worldId = serverLevel.dimension().location().toString();
-        
+
         Faction targetFaction = null;
         for (Faction faction : FactionRegistry.getAllFactions()) {
             if (faction.getName().equals(factionName)) {
@@ -618,52 +645,21 @@ public class BetterEvECommands {
                 break;
             }
         }
-        
+
         if (targetFaction == null) {
             context.getSource().sendFailure(Component.literal("未找到阵营: " + factionName));
             return 0;
         }
-        
-        DeathCounter counter = DeathCounter.getInstance(serverLevel);
-        counter.resetDeathCounts(worldId, targetFaction.getId());
-        
-        forceRefreshScoreboard(serverLevel);
-        
-        context.getSource().sendSuccess(() -> 
-            Component.literal("已清除阵营 " + factionName + " 的记分板数据并刷新显示"), 
+
+        com.example.bettereve.network.NetworkManager.clearCrystalDeathCounter(targetFaction.getId());
+
+        context.getSource().sendSuccess(() ->
+            Component.literal("已清除阵营 " + factionName + " 的计分板数据（得分与击败数）"),
             true
         );
         return 1;
     }
 
-    private static void forceRefreshScoreboard(ServerLevel serverLevel) {
-        Scoreboard scoreboard = serverLevel.getScoreboard();
-        Objective objective = scoreboard.getObjective("bettereve_deaths");
-        
-        if (objective != null) {
-            scoreboard.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, null);
-            scoreboard.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, objective);
-            
-            for (Faction faction : FactionRegistry.getAllFactions()) {
-                Score score = scoreboard.getOrCreatePlayerScore(faction.getName(), objective);
-                score.setScore(0);
-            }
-            
-            updateScoreboardForAllPlayers(serverLevel, scoreboard, objective);
-        }
-    }
-
-    private static void updateScoreboardForAllPlayers(ServerLevel serverLevel, Scoreboard scoreboard, Objective objective) {
-        for (ServerPlayer player : serverLevel.getServer().getPlayerList().getPlayers()) {
-            if (player.level() == serverLevel) {
-                for (Faction faction : FactionRegistry.getAllFactions()) {
-                    Score score = scoreboard.getOrCreatePlayerScore(faction.getName(), objective);
-                    score.setScore(0);
-                }
-            }
-        }
-    }
-    
     private static int executeSetHealthBarScale(CommandContext<CommandSourceStack> context) {
         double scale = DoubleArgumentType.getDouble(context, "scale");
         HealthBarScalePacket.sendToAllClients((float) scale);
@@ -974,6 +970,47 @@ public class BetterEvECommands {
         Faction faction = FactionRegistry.getFaction(factionId);
         String name = faction != null ? faction.getName() : factionId;
         context.getSource().sendSuccess(() -> Component.literal("当前阵营: " + name + " (" + factionId + ")"), false);
+        return 1;
+    }
+
+    /** /bettereve faction clear —— 清除自己的阵营 */
+    private static int executeFactionClearSelf(CommandContext<CommandSourceStack> context) {
+        Entity sourceEntity = context.getSource().getEntity();
+        if (!(sourceEntity instanceof Player player)) {
+            context.getSource().sendFailure(Component.literal("只有玩家可以清除自己的阵营，管理员可用 /bettereve faction clear <玩家>"));
+            return 0;
+        }
+        return clearFactionFor(context, player);
+    }
+
+    /** /bettereve faction clear <玩家> —— 清除指定玩家的阵营（需权限 2） */
+    private static int executeFactionClearPlayer(CommandContext<CommandSourceStack> context) {
+        Player target;
+        try {
+            target = net.minecraft.commands.arguments.EntityArgument.getPlayer(context, "player");
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            context.getSource().sendFailure(Component.literal("找不到该玩家: " + e.getMessage()));
+            return 0;
+        }
+        return clearFactionFor(context, target);
+    }
+
+    /** 共同的清除逻辑：删持久化键 + 立刻同步到所有客户端（否则血条/头顶颜色会留着旧阵营） */
+    private static int clearFactionFor(CommandContext<CommandSourceStack> context, Player target) {
+        String previous = PlayerFactionData.clearPlayerFaction(target);
+        // syncEntityImmediately 内部即 syncEntityFactionToAll，立即推包，
+        // 避免客户端还缓存着旧阵营颜色
+        FactionSyncHandler.syncEntityImmediately(target);
+
+        String name = target.getName().getString();
+        if (previous == null || previous.isEmpty()) {
+            context.getSource().sendSuccess(() ->
+                    Component.literal(name + " 本来就没有阵营"), false);
+        } else {
+            final String prev = previous;
+            context.getSource().sendSuccess(() ->
+                    Component.literal("已清除 " + name + " 的阵营（原为: " + prev + "）"), true);
+        }
         return 1;
     }
 
