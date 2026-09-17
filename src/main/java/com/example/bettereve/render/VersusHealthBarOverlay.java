@@ -221,7 +221,7 @@ public class VersusHealthBarOverlay {
                 x, y + barTopInRow - NAME_GAP - font.lineHeight,
                 groupWidth, mirrored, 1.0f, TEX_HEAD_JUNCTION);
 
-        drawBar(graphics, x, y, groupWidth, healthPercent(main), color, style, mirrored, true);
+        drawBar(graphics, x, y, groupWidth, healthPercent(main), color, style, mirrored, true, main);
         // 推进到主血条下缘（端头圆在水平方向只延伸到交界处，纵向不与次血条重叠）
         y += barTopInRow + TEX_BAR_H + BAR_V_GAP;
 
@@ -246,7 +246,7 @@ public class VersusHealthBarOverlay {
             graphics.pose().pushPose();
             graphics.pose().translate(barX, y, 0);
             graphics.pose().scale(SUB_SCALE, SUB_SCALE, 1.0f);   // 正缩放，不翻转绕序
-            drawBar(graphics, 0, 0, logicalWidth, healthPercent(sub), color, style, mirrored, false);
+            drawBar(graphics, 0, 0, logicalWidth, healthPercent(sub), color, style, mirrored, false, null);
             graphics.pose().popPose();
 
             y += Math.round(TEX_BAR_H * SUB_SCALE) + BAR_V_GAP;
@@ -289,11 +289,13 @@ public class VersusHealthBarOverlay {
      * 镜像不靠 pose 翻转（负缩放会反转三角形绕序导致被背面剔除），而是直接计算坐标：
      * 端头固定在屏幕外侧，血条主体向内延伸，填充锚定在端头一侧。
      *
-     * @param withHead 主血条为 true；次要血条为 false（纯矩形条）
-     * @param mirrored 右侧阵营为 true：端头在右
+     * @param withHead   主血条为 true；次要血条为 false（纯矩形条）
+     * @param mirrored   右侧阵营为 true：端头在右
+     * @param dollEntity 要画进端头圆里的生物（null = 不画）
      */
     private static void drawBar(GuiGraphics graphics, int x, int y, int width,
-                                float percent, int color, String style, boolean mirrored, boolean withHead) {
+                                float percent, int color, String style, boolean mirrored, boolean withHead,
+                                LivingEntity dollEntity) {
         // 端头比血条高，血条在行内垂直居中
         int barTop = y + (withHead ? (TEX_HEAD_SIZE - TEX_BAR_H) / 2 : 0);
 
@@ -337,6 +339,11 @@ public class VersusHealthBarOverlay {
             graphics.blit(TEX_HEAD_OUT, headX, y, 0.0f, 0.0f,
                     TEX_HEAD_SIZE, TEX_HEAD_SIZE, TEX_HEAD_SIZE, TEX_HEAD_SIZE);
             clearTint();
+            // 纸娃娃画在圆内（端头之后，否则会被不透明的圆面盖住）
+            if (dollEntity != null) {
+                EntityDollRenderer.renderInCircle(graphics,
+                        headX + TEX_HEAD_CX, y + TEX_HEAD_SIZE / 2, dollEntity);
+            }
         }
     }
 
