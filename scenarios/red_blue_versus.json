@@ -59,6 +59,7 @@
     "healthBarHealthText": true,
     "versusHealthBar": true,
     "versusHealthBarSubCount": 2,
-    "versusHealthBarStyle": "plain"
+    "versusHealthBarStyle": "plain",
+    "versusHealthBarHealthText": true
   }
 }

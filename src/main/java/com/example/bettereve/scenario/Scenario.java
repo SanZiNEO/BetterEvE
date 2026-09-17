@@ -313,6 +313,7 @@ public class Scenario {
         private boolean versusHealthBar = false;     // 格斗血条（顶部阵营血条）总开关
         private int versusHealthBarSubCount = 2;     // 每个阵营最多显示几条次要血条
         private String versusHealthBarStyle = "plain"; // 格斗血条填充样式：plain / stripe / grid
+        private boolean versusHealthBarHealthText = true; // 主血条名字旁是否显示「当前/上限」血量
 
         // ==================== 召唤物机制（原模组配置迁入剧本） ====================
         private SummonConfig summon;
@@ -343,6 +344,8 @@ public class Scenario {
         public void setVersusHealthBarSubCount(int versusHealthBarSubCount) { this.versusHealthBarSubCount = versusHealthBarSubCount; }
         public String getVersusHealthBarStyle() { return versusHealthBarStyle; }
         public void setVersusHealthBarStyle(String versusHealthBarStyle) { this.versusHealthBarStyle = versusHealthBarStyle; }
+        public boolean isVersusHealthBarHealthText() { return versusHealthBarHealthText; }
+        public void setVersusHealthBarHealthText(boolean versusHealthBarHealthText) { this.versusHealthBarHealthText = versusHealthBarHealthText; }
         public SummonConfig getSummon() { return summon; }
         public void setSummon(SummonConfig summon) { this.summon = summon; }
         public SpawnLayout getSpawnLayout() { return spawnLayout; }

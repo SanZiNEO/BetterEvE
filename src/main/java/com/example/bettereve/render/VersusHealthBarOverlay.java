@@ -68,8 +68,12 @@ public class VersusHealthBarOverlay {
     private static final float SUB_LENGTH_RATIO = 0.4f;
     /** 次要血条的整体缩放（视觉尺寸小于主血条） */
     private static final float SUB_SCALE = 0.6f;
+    /** 主血条名字/血量文字的字号比例 */
+    private static final float MAIN_NAME_SCALE = 1.25f;
     /** 次要血条名字的字号比例 */
-    private static final float SUB_NAME_SCALE = 0.75f;
+    private static final float SUB_NAME_SCALE = 1.0f;
+    /** 名字与血量文字之间的间距 */
+    private static final int NAME_VALUE_GAP = 6;
     /** 名字颜色 */
     private static final int NAME_COLOR = 0xFFFFFFFF;
 
@@ -158,6 +162,7 @@ public class VersusHealthBarOverlay {
 
         int subCount = Math.max(0, options.getVersusHealthBarSubCount());
         String style = options.getVersusHealthBarStyle();
+        boolean showHealthText = options.isVersusHealthBarHealthText();
         int count = active.size();
         int groupWidth = computeGroupWidth(screenWidth, count);
 
@@ -169,18 +174,18 @@ public class VersusHealthBarOverlay {
         // 左侧阵营：从最左向右排
         for (int i = 0; i < leftCount; i++) {
             int x = SIDE_MARGIN + i * (groupWidth + GROUP_GAP);
-            renderGroup(graphics, mc.font, active.get(i), x, groupWidth, subCount, false, style);
+            renderGroup(graphics, mc.font, active.get(i), x, groupWidth, subCount, false, style, showHealthText);
         }
         // 中间阵营：水平居中
         if (centerIndex >= 0) {
             int x = (screenWidth - groupWidth) / 2;
-            renderGroup(graphics, mc.font, active.get(centerIndex), x, groupWidth, subCount, false, style);
+            renderGroup(graphics, mc.font, active.get(centerIndex), x, groupWidth, subCount, false, style, showHealthText);
         }
         // 右侧阵营：镜像，从最右向左排
         for (int i = 0; i < rightCount; i++) {
             int idx = leftCount + (centerIndex >= 0 ? 1 : 0) + i;
             int x = screenWidth - SIDE_MARGIN - groupWidth - (rightCount - 1 - i) * (groupWidth + GROUP_GAP);
-            renderGroup(graphics, mc.font, active.get(idx), x, groupWidth, subCount, true, style);
+            renderGroup(graphics, mc.font, active.get(idx), x, groupWidth, subCount, true, style, showHealthText);
         }
     }
 
@@ -200,7 +205,8 @@ public class VersusHealthBarOverlay {
      * @param mirrored 右侧阵营为 true：整体水平翻转（端头仍在屏幕外侧）
      */
     private static void renderGroup(GuiGraphics graphics, Font font, Scenario.FactionDef def,
-                                    int x, int groupWidth, int subCount, boolean mirrored, String style) {
+                                    int x, int groupWidth, int subCount, boolean mirrored, String style,
+                                    boolean showHealthText) {
         List<LivingEntity> members = factionMembers.get(def.getId());
         if (members == null || members.isEmpty()) return;
 
@@ -214,12 +220,12 @@ public class VersusHealthBarOverlay {
         int y = TOP_MARGIN;
 
         // ==================== 行 1：主血条 ====================
-        // 端头比血条高，横条在行内垂直居中；名字紧贴横条上缘（不是行顶，否则会飘到端头上方）
+        // 端头比血条高，横条在行内垂直居中；名字+血量紧贴横条上缘（不是行顶，否则会飘到端头上方）
         int barTopInRow = (TEX_HEAD_SIZE - TEX_BAR_H) / 2;
+        int labelH = Math.round(font.lineHeight * MAIN_NAME_SCALE);
         LivingEntity main = members.get(0);
-        drawName(graphics, font, main.getName(),
-                x, y + barTopInRow - NAME_GAP - font.lineHeight,
-                groupWidth, mirrored, 1.0f, TEX_HEAD_JUNCTION);
+        drawMainLabel(graphics, font, main, x, y + barTopInRow - NAME_GAP - labelH,
+                groupWidth, mirrored, TEX_HEAD_JUNCTION, showHealthText);
 
         drawBar(graphics, x, y, groupWidth, healthPercent(main), color, style, mirrored, true, main);
         // 推进到主血条下缘（端头圆在水平方向只延伸到交界处，纵向不与次血条重叠）
@@ -254,10 +260,53 @@ public class VersusHealthBarOverlay {
     }
 
     /**
+     * 绘制主血条的名字 + 血量文字。
+     * <p>
+     * 名字贴着端头侧的交界处，血量在名字内侧：
+     * 左队 {@code ⋯ [名字] [血量]}，右队镜像为 {@code [血量] [名字] ⋯}。
+     * 整块以交界处为基准对齐，所以镜像后左右对称。
+     *
+     * @param x              血条组左缘
+     * @param width          血条组宽度
+     * @param junctionInset  端头圆占据的宽度（交界处相对条组边缘的内缩量）
+     * @param showHealthText 是否显示「当前/上限」血量
+     */
+    private static void drawMainLabel(GuiGraphics graphics, Font font, LivingEntity entity,
+                                      int x, int y, int width, boolean mirrored,
+                                      int junctionInset, boolean showHealthText) {
+        Component name = entity.getName();
+        int nameW = Math.round(font.width(name) * MAIN_NAME_SCALE);
+
+        Component health = showHealthText ? Component.literal(formatHealth(entity)) : null;
+        int healthW = health == null ? 0 : Math.round(font.width(health) * MAIN_NAME_SCALE);
+        int gap = health == null ? 0 : NAME_VALUE_GAP;
+
+        if (mirrored) {
+            // 右队：[血量] 间距 [名字] ⋯ 整块右缘对齐交界处
+            int nameX = x + width - junctionInset - nameW;
+            drawScaledString(graphics, font, name, nameX, y, MAIN_NAME_SCALE);
+            if (health != null) {
+                drawScaledString(graphics, font, health, nameX - gap - healthW, y, MAIN_NAME_SCALE);
+            }
+        } else {
+            // 左队：⋯ [名字] 间距 [血量] 整块左缘对齐交界处
+            int nameX = x + junctionInset;
+            drawScaledString(graphics, font, name, nameX, y, MAIN_NAME_SCALE);
+            if (health != null) {
+                drawScaledString(graphics, font, health, nameX + nameW + gap, y, MAIN_NAME_SCALE);
+            }
+        }
+    }
+
+    /** 血量文字：「当前/上限」，向上取整（与头顶血条口径一致）。 */
+    private static String formatHealth(LivingEntity entity) {
+        return (long) Math.ceil(entity.getHealth()) + "/" + (long) Math.ceil(entity.getMaxHealth());
+    }
+
+    /**
      * 绘制名字。
      * <p>
      * 对齐基准是「名字所属横条的可见区」：镜像侧右对齐，否则左对齐。
-     * {@code inset} 用于扣除端头圆占据的宽度（主血条的名字要跳过圆，落在横条正上方）。
      *
      * @param x     血条组左缘
      * @param width 血条组宽度
@@ -270,10 +319,16 @@ public class VersusHealthBarOverlay {
         int textX = mirrored
                 ? x + width - inset - textWidth
                 : x + inset;
+        drawScaledString(graphics, font, name, textX, y, scale);
+    }
+
+    /** 按 {@code scale} 缩放绘制一行文字（带阴影）。 */
+    private static void drawScaledString(GuiGraphics graphics, Font font, Component text,
+                                         int x, int y, float scale) {
         graphics.pose().pushPose();
-        graphics.pose().translate(textX, y, 0);
+        graphics.pose().translate(x, y, 0);
         graphics.pose().scale(scale, scale, 1.0f);
-        graphics.drawString(font, name, 0, 0, NAME_COLOR, true);
+        graphics.drawString(font, text, 0, 0, NAME_COLOR, true);
         graphics.pose().popPose();
     }
 
