@@ -132,7 +132,10 @@ public class Scenario {
     public static class WaypointRegionDef {
         private String id;
         private String factionId;
-        private String lane; // 路线标识（a/b/c…）；缺省为 null → 归入默认路线（单一路线，旧剧本兼容）
+        // ⚠️ lane / order 是 routes[] 之前的旧路线模型：仍会被解析进 WaypointRegion，
+        // 但已无任何逻辑读取（WaypointManager 里那几个按 lane 查询的方法外部零调用）。
+        // 行走顺序请用剧本的 routes[]。见 CONFIGURATION.md「已知未接线」。
+        private String lane;
         private int order;
         private double x1, z1, x2, z2;
         public String getId() { return id; }
@@ -204,7 +207,8 @@ public class Scenario {
     }
     public static class PhaseDef {
         private String id;
-        private String phaseType = "point"; // "loop" | "branch" | "point"
+        // ⚠️ 会被解析，但无任何代码读取（阶段流程实际由 triggers 驱动）。见 CONFIGURATION.md「已知未接线」。
+        private String phaseType = "point";
         private String description;
         private AnnounceDef announce;
         private List<CommandDef> commands;
@@ -231,7 +235,10 @@ public class Scenario {
 
 
     public static class TriggerDef {
-        private String type;       // "base_destroyed" | "entity_death_count" | "timer" | "custom"
+        // 生效取值："crystal_destroyed"（按 targetId 匹配水晶模板）| "timer"（threshold = 秒）
+        // 另有 base_destroyed / entity_death_count / custom 三个分支仍在 switch 中，
+        // 但全项目无调用点，写了无效。详见 CONFIGURATION.md「已知未接线」。
+        private String type;
         private String factionId;
         private String targetId;
         private int threshold;

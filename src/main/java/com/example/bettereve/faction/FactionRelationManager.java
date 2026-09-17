@@ -12,13 +12,14 @@ import java.util.Objects;
 
 /**
  * 阵营关系管理器 — 从当前活跃 Scenario 加载阵营关系，提供敌对判定。
- * 
- * 判定规则：
- * 1. 同阵营 → 不敌对
- * 2. neutral 阵营 → 不与任何人敌对
- * 3. 精确匹配 relation 定义 → 按定义
- * 4. 通配符 * 匹配 → 按定义
- * 5. 未定义 → 默认敌对
+ *
+ * 判定规则（与 isHostile 实现一致，勿凭记忆改）：
+ * 1. 双方都无阵营 → 不敌对（同类不互攻）
+ * 2. 仅一方无阵营 → 敌对（无阵营生物是"混乱生物"，见谁打谁）
+ * 3. 同阵营 → 不敌对
+ * 4. 精确匹配 relation 定义（from→to，再反向 to→from）→ 按定义
+ * 5. 通配符 * 匹配（*→from，再 *→to）→ 按定义
+ * 6. 未定义 → 不敌对
  */
 public class FactionRelationManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(FactionRelationManager.class);

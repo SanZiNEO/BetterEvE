@@ -40,6 +40,26 @@ BetterEvE 是一个 Minecraft Forge 1.20.1 阵营 PvP/PvE Mod，专注于构建�
 - 粒子柱可视化显示区域位置
 - 阵营实体自动沿路径推进，战斗优先于赶路
 
+### 召唤物阵营继承
+- 召唤物、投掷物自动继承召唤者的阵营，无需模组适配
+- 痕迹驱动：`TraceableEntity.getOwner` → `OwnableEntity` → owner UUID 反查 → NBT 召唤者痕迹（跨模组主通道）
+- 零反射、不做附近实体扫描（避免混战中误判归属）
+- 加入世界时判定一次，未命中则挂起到服务器 tick 末再判一次（部分模组在 `spawn()` 之后才写召唤者 NBT）
+- 可按剧本 `options.summon` 开关、按实体类型覆盖血条显示
+
+### 实体等级系统
+- 每个阵营独立配置等级参数（`factions[].entitylvConfig`），不写则该阵营无等级
+- 等级影响血量 / 攻击 / 护甲 / 击退，按指数曲线成长
+
+### 血条与 HUD
+- 头顶血条：可缩放，可显示 `Lv` 文字与血量数字，支持按生物 NBT 逐个覆盖
+- 格斗血条：顶部阵营血条（主血条 + 每个阵营若干条次要血条），填充样式 `plain` / `stripe` / `grid`
+- 计分板 HUD：屏幕顶部显示各阵营积分
+
+### 保活区域
+- 剧本声明一个矩形区域，区域内生物禁止自然 despawn、chunk 常驻（运行时 ticket，不写盘）
+- 用于直播地图无自然生成的场景
+
 ## 技术说明
 
 - 所有反射调用已移除
@@ -59,7 +79,6 @@ BetterEvE/
 │   │   ├── java/com/example/bettereve/
 │   │   │   ├── ai/          # AI 目标选择器 + 寻路
 │   │   │   ├── commands/    # 指令处理
-│   │   │   ├── counter/     # 死亡计数持久化
 │   │   │   ├── crystal/     # 水晶基地系统
 │   │   │   ├── entity/      # 自定义实体
 │   │   │   ├── entitylv/    # 实体等级系统
@@ -77,5 +96,7 @@ BetterEvE/
 │   │       └── bettereve.mixins.json
 │   └── test/
 ├── build.gradle
-└── README.md
+├── CONFIGURATION.md    # 剧本字段与指令的完整参考（含「已知未接线」清单）
+├── MOD_OVERVIEW.md     # 本文件
+└── TESTING_GUIDE.md    # 逐步测试清单
 ```
