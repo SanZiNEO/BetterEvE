@@ -7,7 +7,6 @@ import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
 import com.example.bettereve.mixin.MobAccessor;
-import com.example.bettereve.network.HealthBarScalePacket;
 import com.example.bettereve.network.FactionSyncHandler;
 import com.example.bettereve.network.CrystalDeathPacket;
 import com.example.bettereve.phase.PhaseManager;
@@ -216,11 +215,6 @@ public class BetterEvECommands {
                 )
             )
             .then(Commands.literal("healthbar")
-                .then(Commands.literal("scale")
-                    .then(Commands.argument("scale", DoubleArgumentType.doubleArg(0.1, 3.0))
-                        .executes(BetterEvECommands::executeSetHealthBarScale)
-                    )
-                )
                 .then(Commands.literal("reset")
                     .executes(BetterEvECommands::executeResetHealthBarScale)
                 )
@@ -660,35 +654,22 @@ public class BetterEvECommands {
         return 1;
     }
 
-    private static int executeSetHealthBarScale(CommandContext<CommandSourceStack> context) {
-        double scale = DoubleArgumentType.getDouble(context, "scale");
-        HealthBarScalePacket.sendToAllClients((float) scale);
-        
-        context.getSource().sendSuccess(() -> 
-            Component.literal("血条缩放已设置为: " + String.format("%.1f", scale) + "x"), 
-            true
-        );
-        
-        return 1;
-    }
-    
     private static int executeResetHealthBarScale(CommandContext<CommandSourceStack> context) {
-        HealthBarScalePacket.sendResetToAllClients();
-        
-        context.getSource().sendSuccess(() -> 
-            Component.literal("血条缩放已重置为默认值: 1.0x"), 
-            true
-        );
-        
-        return 1;
-    }
-    
-    private static int executeGetHealthBarScale(CommandContext<CommandSourceStack> context) {
-        context.getSource().sendSuccess(() -> 
-            Component.literal("当前血条缩放: 1.0x (服务器端无法直接获取客户端渲染状态)"), 
+        context.getSource().sendSuccess(() ->
+            Component.literal("血条缩放已由剧本 options.healthBarScale 控制，请修改剧本后 /bettereve scenario reload"),
             false
         );
-        
+
+        return 1;
+    }
+
+    private static int executeGetHealthBarScale(CommandContext<CommandSourceStack> context) {
+        float scale = com.example.bettereve.render.SimpleHealthBarRenderer.getGlobalScale();
+        context.getSource().sendSuccess(() ->
+            Component.literal("当前血条缩放: " + String.format("%.2f", scale) + "x（来自剧本 options.healthBarScale）"),
+            false
+        );
+
         return 1;
     }
     

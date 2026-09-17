@@ -33,7 +33,11 @@ public class ScenarioManager {
 
         // 保活区域强制加载：区域内 chunk 常驻，生物不卸载、AI 不冻结（运行时 ticket，不写盘）
         KeepAliveZoneManager.bind(KeepAliveZoneManager.getServerLevel(), scenario.getKeepAliveZone());
-        
+
+        // 切换剧本时清空格斗血条的主血条绑定，避免跨剧本残留
+        net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> () -> com.example.bettereve.render.VersusHealthBarOverlay.resetBindings());
+
         LOGGER.info("Loaded scenario: {} ({})", name, scenario.getName());
     }
 

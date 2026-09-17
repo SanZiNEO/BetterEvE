@@ -306,6 +306,13 @@ public class Scenario {
         private double targetingFocusRange = 10.0;   // 近距离重扫距离（格）：范围内出现非基地敌对目标即切换
         private int targetingFocusInterval = 20;     // 近距离重扫间隔（tick）
         private boolean hudEnabled = true;           // 全局 HUD 总开关（原 BetterEvEConfig.global_hudEnabled 迁入）
+        private boolean overheadHealthBar = true;    // 实体头顶血条总开关（与格斗血条相互独立）
+        private float healthBarScale = 1.0f;         // 头顶血条缩放倍率（0.1~3.0）
+        private boolean healthBarLevelText = true;   // 头顶血条是否显示 Lv 文字（生物 NBT 优先）
+        private boolean healthBarHealthText = true;  // 头顶血条是否显示血量数字（生物 NBT 优先）
+        private boolean versusHealthBar = false;     // 格斗血条（顶部阵营血条）总开关
+        private int versusHealthBarSubCount = 2;     // 每个阵营最多显示几条次要血条
+        private String versusHealthBarStyle = "plain"; // 格斗血条填充样式：plain / stripe / grid
 
         // ==================== 召唤物机制（原模组配置迁入剧本） ====================
         private SummonConfig summon;
@@ -322,6 +329,20 @@ public class Scenario {
         public void setTargetingFocusInterval(int targetingFocusInterval) { this.targetingFocusInterval = targetingFocusInterval; }
         public boolean isHudEnabled() { return hudEnabled; }
         public void setHudEnabled(boolean hudEnabled) { this.hudEnabled = hudEnabled; }
+        public boolean isOverheadHealthBar() { return overheadHealthBar; }
+        public void setOverheadHealthBar(boolean overheadHealthBar) { this.overheadHealthBar = overheadHealthBar; }
+        public float getHealthBarScale() { return healthBarScale; }
+        public void setHealthBarScale(float healthBarScale) { this.healthBarScale = healthBarScale; }
+        public boolean isHealthBarLevelText() { return healthBarLevelText; }
+        public void setHealthBarLevelText(boolean healthBarLevelText) { this.healthBarLevelText = healthBarLevelText; }
+        public boolean isHealthBarHealthText() { return healthBarHealthText; }
+        public void setHealthBarHealthText(boolean healthBarHealthText) { this.healthBarHealthText = healthBarHealthText; }
+        public boolean isVersusHealthBar() { return versusHealthBar; }
+        public void setVersusHealthBar(boolean versusHealthBar) { this.versusHealthBar = versusHealthBar; }
+        public int getVersusHealthBarSubCount() { return versusHealthBarSubCount; }
+        public void setVersusHealthBarSubCount(int versusHealthBarSubCount) { this.versusHealthBarSubCount = versusHealthBarSubCount; }
+        public String getVersusHealthBarStyle() { return versusHealthBarStyle; }
+        public void setVersusHealthBarStyle(String versusHealthBarStyle) { this.versusHealthBarStyle = versusHealthBarStyle; }
         public SummonConfig getSummon() { return summon; }
         public void setSummon(SummonConfig summon) { this.summon = summon; }
         public SpawnLayout getSpawnLayout() { return spawnLayout; }

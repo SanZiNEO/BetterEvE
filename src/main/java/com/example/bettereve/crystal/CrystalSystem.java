@@ -61,7 +61,13 @@ public class CrystalSystem {
     public static void onLivingDeath(LivingDeathEvent event) {
         Entity victim = event.getEntity();
         if (victim.level().isClientSide()) return;
-        
+
+        // 格斗血条死亡通知：与计分板链路独立，不受攻击者/计分开关影响。
+        // 只要死亡实体带阵营就通知客户端，供其判断主血条绑定是否失效。
+        if (!FactionHelper.getEntityFactionId(victim).isEmpty()) {
+            NetworkManager.sendVersusBarDeathToAll(victim.getId());
+        }
+
         net.minecraft.world.damagesource.DamageSource source = event.getSource();
         Entity attacker = source.getEntity();
         if (attacker == null) return;

@@ -13,3 +13,5 @@ search_nbt_args.class
 /.vscode
 /example
 /logs
+/.venv-assets
+__pycache__/

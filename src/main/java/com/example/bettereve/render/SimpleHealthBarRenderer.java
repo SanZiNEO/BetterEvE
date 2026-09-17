@@ -70,8 +70,8 @@ public class SimpleHealthBarRenderer {
 
     private static final int TEXT_COLOR = 0xFFFFFFFF;
 
-    // 统一缩放因子，可通过配置或命令修改
-    private static float GLOBAL_SCALE = 1.0f;
+    // 统一缩放因子，由剧本 options.healthBarScale 控制
+    private static final float DEFAULT_SCALE = 1.0f;
 
     // 每帧已渲染实体缓存，防止同一实体被多次绘制
     private static final Set<UUID> renderedThisFrame = new HashSet<>();
@@ -112,12 +112,14 @@ public class SimpleHealthBarRenderer {
         renderedThisFrame.clear();
     }
 
-    public static void setGlobalScale(float scale) {
-        GLOBAL_SCALE = Math.max(0.1f, Math.min(3.0f, scale));
-    }
-
+    /** 当前血条缩放：读剧本 options.healthBarScale，剧本未加载时回退 1.0。 */
     public static float getGlobalScale() {
-        return GLOBAL_SCALE;
+        Scenario scenario = ScenarioManager.getActiveScenario();
+        if (scenario == null || scenario.getOptions() == null) {
+            return DEFAULT_SCALE;
+        }
+        float scale = scenario.getOptions().getHealthBarScale();
+        return Math.max(0.1f, Math.min(3.0f, scale));
     }
 
     public static boolean shouldShowHealthBar(Entity entity) {
@@ -130,6 +132,12 @@ public class SimpleHealthBarRenderer {
             return false;
         }
         if (entity instanceof Player) {
+            return false;
+        }
+        // 剧本总开关：与格斗血条相互独立，关闭时所有实体头顶血条一律不渲染
+        var scenario = ScenarioManager.getActiveScenario();
+        if (scenario != null && scenario.getOptions() != null
+                && !scenario.getOptions().isOverheadHealthBar()) {
             return false;
         }
         boolean visible = com.example.bettereve.network.HealthBarVisibilityPacket.ClientHealthBarVisibilityCache
@@ -190,7 +198,7 @@ public class SimpleHealthBarRenderer {
         String levelText = showLevelText ? "Lv." + level : "";
         String healthText = showHealthText ? (int) Math.ceil(living.getHealth()) + "/" + (int) Math.ceil(living.getMaxHealth()) : "";
 
-        float finalScale = GLOBAL_SCALE * WORLD_SCALE_BASE;
+        float finalScale = getGlobalScale() * WORLD_SCALE_BASE;
 
         // 普通生物：血条在碰撞箱正上方。
         // 基地实体：碰撞箱在底部、模型在碰撞箱上方，血条要再抬高“模型高度 × modelScale”。
@@ -317,11 +325,35 @@ public class SimpleHealthBarRenderer {
         if (level <= 0) return false;
         // 基地默认不显示 Lv（自有血条）
         if (entity instanceof CrystalEntity) return false;
-        return HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.getEntityLevelTextVisibility(entity.getUUID());
+        // 优先级：生物 NBT（已同步进客户端缓存）> 剧本 healthBarLevelText
+        UUID uuid = entity.getUUID();
+        if (HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.hasData(uuid)) {
+            return HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.getEntityLevelTextVisibility(uuid);
+        }
+        return scenarioLevelText();
     }
 
     private static boolean shouldShowHealthText(Entity entity) {
-        return HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.getEntityHealthTextVisibility(entity.getUUID());
+        // 优先级：生物 NBT（已同步进客户端缓存）> 剧本 healthBarHealthText
+        UUID uuid = entity.getUUID();
+        if (HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.hasData(uuid)) {
+            return HealthBarTextVisibilityPacket.ClientHealthBarTextVisibilityCache.getEntityHealthTextVisibility(uuid);
+        }
+        return scenarioHealthText();
+    }
+
+    /** 剧本 healthBarLevelText；剧本未加载时回退 true。 */
+    private static boolean scenarioLevelText() {
+        Scenario scenario = ScenarioManager.getActiveScenario();
+        return scenario == null || scenario.getOptions() == null
+                || scenario.getOptions().isHealthBarLevelText();
+    }
+
+    /** 剧本 healthBarHealthText；剧本未加载时回退 true。 */
+    private static boolean scenarioHealthText() {
+        Scenario scenario = ScenarioManager.getActiveScenario();
+        return scenario == null || scenario.getOptions() == null
+                || scenario.getOptions().isHealthBarHealthText();
     }
 
     private static void renderHealthFill(PoseStack poseStack, MultiBufferSource bufferSource,

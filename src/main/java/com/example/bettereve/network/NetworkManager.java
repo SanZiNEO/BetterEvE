@@ -69,15 +69,6 @@ public class NetworkManager {
             LevelSyncPacket::handle
         );
         
-        // 注册血条缩放同步数据包
-        CHANNEL.registerMessage(
-            packetId++,
-            HealthBarScalePacket.class,
-            HealthBarScalePacket::encode,
-            HealthBarScalePacket::decode,
-            HealthBarScalePacket::handle
-        );
-        
         // 注册血条可见性同步数据包
         CHANNEL.registerMessage(
             packetId++,
@@ -120,6 +111,15 @@ public class NetworkManager {
             EntityKillPacket::encode,
             EntityKillPacket::new,
             EntityKillPacket::handle
+        );
+
+        // 注册格斗血条死亡通知数据包
+        CHANNEL.registerMessage(
+            packetId++,
+            VersusBarDeathPacket.class,
+            VersusBarDeathPacket::encode,
+            VersusBarDeathPacket::new,
+            VersusBarDeathPacket::handle
         );
     }
     /**
@@ -410,6 +410,17 @@ public class NetworkManager {
             factionId = "";
         }
         EntityKillPacket packet = new EntityKillPacket(factionId);
+        CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+    }
+
+    /**
+     * 发送格斗血条死亡通知到所有客户端。
+     * 与计分板链路独立，所有带阵营的生物死亡都发送，不受计分开关影响。
+     *
+     * @param victimEntityId 死亡实体的网络 ID（两端一致）
+     */
+    public static void sendVersusBarDeathToAll(int victimEntityId) {
+        VersusBarDeathPacket packet = new VersusBarDeathPacket(victimEntityId);
         CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
     }
     

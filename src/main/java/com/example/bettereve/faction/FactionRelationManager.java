@@ -53,12 +53,24 @@ public class FactionRelationManager {
 
     /**
      * 判断两个阵营是否敌对。
+     * <p>
+     * 无阵营生物是"混乱生物"：见谁打谁（含基地），但同类之间互不攻击。
+     * 之所以这样设计，是因为模组的召唤机制无法穷举 —— 各模组用自定义 NBT
+     * （JujutsuCraft 的 OWNER_UUID/friend_num 等）维系归属，逐个适配是无底洞。
+     * 让无阵营生物按"敌视一切"参与战斗，既能让它们正常打架、正常死亡，
+     * 又不必知道任何模组的内部约定。
      */
     public static boolean isHostile(String factionId1, String factionId2) {
-        // 无阵营/空阵营不参与任何敌对
-        if (factionId1 == null || factionId1.isEmpty()
-                || factionId2 == null || factionId2.isEmpty()) {
+        boolean empty1 = factionId1 == null || factionId1.isEmpty();
+        boolean empty2 = factionId2 == null || factionId2.isEmpty();
+
+        // 双方都无阵营 → 同类不互攻
+        if (empty1 && empty2) {
             return false;
+        }
+        // 仅一方无阵营 → 混乱生物敌视一切
+        if (empty1 || empty2) {
+            return true;
         }
 
         // 相同阵营永远不对敌对

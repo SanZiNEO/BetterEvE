@@ -52,6 +52,8 @@
     "targetingRange": 64,
     "targetingFocusRange": 10,
     "targetingFocusInterval": 20,
-    "hudEnabled": true
+    "hudEnabled": true,
+    "versusHealthBar": true,
+    "versusHealthBarSubCount": 2
   }
 }
