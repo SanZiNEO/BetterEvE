@@ -1,0 +1,64 @@
+{
+  "id": "red_blue_versus",
+  "name": "红蓝格斗对战",
+  "description": "红蓝两阵营格斗对战。顶部格斗血条（端头圆内渲染生物纸娃娃），关闭计分板与实体头顶血条。录视频用：1000级夸张数值，护甲低成长避免破不了防。",
+  "keepAliveZone": {
+    "x1": -64,
+    "z1": -64,
+    "x2": 80,
+    "z2": 48
+  },
+  "factions": [
+    {
+      "id": "red",
+      "name": "红队",
+      "color": "#FF0000",
+      "showOnScoreboard": true,
+      "entitylvConfig": {
+        "maxLevel": 1000,
+        "healthBonus": 10.0,
+        "healthExponent": 2.0,
+        "attackBonus": 8.0,
+        "attackExponent": 2.0,
+        "armorBonus": 2.0,
+        "armorExponent": 0.7,
+        "knockbackBonus": 1.2,
+        "knockbackExponent": 1.0
+      }
+    },
+    {
+      "id": "blue",
+      "name": "蓝队",
+      "color": "#0000FF",
+      "showOnScoreboard": true,
+      "entitylvConfig": {
+        "maxLevel": 1000,
+        "healthBonus": 10.0,
+        "healthExponent": 2.0,
+        "attackBonus": 8.0,
+        "attackExponent": 2.0,
+        "armorBonus": 2.0,
+        "armorExponent": 0.7,
+        "knockbackBonus": 1.2,
+        "knockbackExponent": 1.0
+      }
+    }
+  ],
+  "relations": [
+    { "from": "red", "to": "blue", "type": "hostile" },
+    { "from": "blue", "to": "red", "type": "hostile" }
+  ],
+  "options": {
+    "targetingRange": 256,
+    "targetingFocusRange": 10,
+    "targetingFocusInterval": 20,
+    "hudEnabled": false,
+    "overheadHealthBar": false,
+    "healthBarScale": 1.0,
+    "healthBarLevelText": true,
+    "healthBarHealthText": true,
+    "versusHealthBar": true,
+    "versusHealthBarSubCount": 2,
+    "versusHealthBarStyle": "plain"
+  }
+}

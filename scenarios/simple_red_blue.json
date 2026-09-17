@@ -1,12 +1,12 @@
 {
   "id": "simple_red_blue",
   "name": "简单红蓝对抗",
-  "description": "仅红蓝两阵营敌对，无基地、无阶段、无保活区，加载后即可自由对战。录视频用：1000级夸张数值，护甲低成长避免破不了防。",
+  "description": "红蓝两阵营基础对战。显示计分板与实体头顶血条，不显示顶部格斗血条。录视频用：1000级夸张数值，护甲低成长避免破不了防。",
   "keepAliveZone": {
-    "x1": -54,
-    "z1": -59,
-    "x2": 71,
-    "z2": -54
+    "x1": -64,
+    "z1": -64,
+    "x2": 80,
+    "z2": 48
   },
   "factions": [
     {
@@ -49,11 +49,16 @@
     { "from": "blue", "to": "red", "type": "hostile" }
   ],
   "options": {
-    "targetingRange": 64,
+    "targetingRange": 256,
     "targetingFocusRange": 10,
     "targetingFocusInterval": 20,
     "hudEnabled": true,
-    "versusHealthBar": true,
-    "versusHealthBarSubCount": 2
+    "overheadHealthBar": true,
+    "healthBarScale": 1.0,
+    "healthBarLevelText": true,
+    "healthBarHealthText": true,
+    "versusHealthBar": false,
+    "versusHealthBarSubCount": 2,
+    "versusHealthBarStyle": "plain"
   }
 }
