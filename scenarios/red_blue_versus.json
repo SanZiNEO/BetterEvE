@@ -3,10 +3,10 @@
   "name": "红蓝格斗对战",
   "description": "红蓝两阵营格斗对战。顶部格斗血条（端头圆内渲染生物纸娃娃），关闭计分板与实体头顶血条。录视频用：1000级夸张数值，护甲低成长避免破不了防。",
   "keepAliveZone": {
-    "x1": -64,
-    "z1": -64,
-    "x2": 80,
-    "z2": 48
+    "x1": -101,
+    "z1": -101,
+    "x2": 101,
+    "z2": 101
   },
   "factions": [
     {
@@ -49,7 +49,7 @@
     { "from": "blue", "to": "red", "type": "hostile" }
   ],
   "options": {
-    "targetingRange": 256,
+    "targetingRange": 320,
     "targetingFocusRange": 10,
     "targetingFocusInterval": 20,
     "hudEnabled": false,
