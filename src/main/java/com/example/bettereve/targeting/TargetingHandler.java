@@ -5,6 +5,7 @@ import com.example.bettereve.entity.CrystalEntity;
 import com.example.bettereve.waypoint.WaypointProgressRegistry;
 import com.example.bettereve.mixin.MobAccessor;
 import com.example.bettereve.ai.PathfindToWaypointGoal;
+import com.example.bettereve.scenario.KeepAliveMarker;
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioManager;
 import com.example.bettereve.faction.FactionHelper;
@@ -46,6 +47,11 @@ public class TargetingHandler {
     @SubscribeEvent
     public static void onMobDespawn(MobSpawnEvent.AllowDespawn event) {
         Mob mob = event.getEntity();
+        // 单生物防清除标记：与区域判定并列，没配 keepAliveZone 的剧本也生效
+        if (KeepAliveMarker.isMarked(mob)) {
+            event.setResult(Event.Result.DENY);
+            return;
+        }
         Scenario scenario = ScenarioManager.getActiveScenario();
         if (scenario == null || scenario.getKeepAliveZone() == null) {
             return;

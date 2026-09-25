@@ -207,6 +207,17 @@
 在该区域内 `/summon minecraft:zombie`，然后跑远（>128 格）
 预期：生物不自然消失（区域内 chunk 常驻）
 
+**单生物防清除（不依赖场地）**：
+
+```
+/bettereve spawn minecraft:zombie red 1 0 -59 0 1            ← 对照组（不带标记）
+/bettereve spawn minecraft:zombie red 1 5 -59 0 1 true       ← 标记组
+```
+把玩家 `/tp` 到约 60 格外（区块仍在模拟距离内、超过 32 格），等 60 秒
+预期：对照组被原版清除，标记组仍在
+`/data get entity @e[type=zombie,limit=1]` 应能看到 `PersistenceRequired:1b`
+与 `ForgeData.BetterEvE:KeepAlive:1b`；`save-all` 后退出重进世界，标记仍在
+
 ### 13. EnderDragonMixin
 
 ```

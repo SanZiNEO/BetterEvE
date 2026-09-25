@@ -224,6 +224,9 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 
 - `x1,z1,x2,z2` 矩形区域，区域内生物禁止自然 despawn（直播地图无自然生成时使用）
 - 区域内 chunk 常驻（运行时 ticket，不写盘）
+- 单生物防清除（不配场地也能用）：`/bettereve spawn ... <count> true`，只作用于该生物
+  - 实现：`setPersistenceRequired()`（原版机制）+ `BetterEvE:KeepAlive` 标记（`AllowDespawn` 里再拦一道）
+  - 与区域制互补：本标记只保证"不被清除"；要让远处的生物继续 tick 仍需 `keepAliveZone` 的 chunk 常驻
 
 ## 生物 NBT 键
 
@@ -235,6 +238,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `BetterEvE:ShowLevelText` | 布尔 | true | 是否显示 `Lv.x` 文字 |
 | `BetterEvE:ShowHealthText` | 布尔 | true | 是否显示血量数字 |
 | `bettereve:route_id` | 字符串 | 无 | 绑定的路线 id（卸载重生后仍走原路线） |
+| `BetterEvE:KeepAlive` | 布尔 | false | 单生物防清除标记：带此标记的生物不被原版 despawn 清除（`spawn ... true` 会写入） |
 
 示例：`{BetterEvE:ShowLevelText:0b, BetterEvE:ShowHealthText:1b}`
 
@@ -269,7 +273,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `/bettereve waypoint visualize` | 切换路径点粒子柱可视化 |
 | `/bettereve crystal create <factionId> <x> <y> <z> <health> <attackDamage> <armor> <attackRange> <attackCycle> <size> <modelScale> [showHealthBar] [crystalId]` | 现场创建水晶 |
 | `/bettereve crystal spawn <crystalId>` | 按剧本模板生成水晶 |
-| `/bettereve spawn <entityType> <factionId> <level> <x> <y> <z> <count> [routeId] [showHealthBar] [nbt]` | 按阵型批量生成生物 |
+| `/bettereve spawn <entityType> <factionId> <level> <x> <y> <z> <count> [keepAlive] [routeId] [showHealthBar] [nbt]` | 按阵型批量生成生物；`keepAlive: true` = 该生物不被原版 despawn 清除（不依赖 `keepAliveZone`） |
 
 ### 计分与血条
 
