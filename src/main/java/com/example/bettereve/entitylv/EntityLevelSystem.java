@@ -1,5 +1,8 @@
 package com.example.bettereve.entitylv;
 
+import com.example.bettereve.faction.FactionHelper;
+import com.example.bettereve.faction.ProjectileRule;
+import com.example.bettereve.faction.SummonedMarker;
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioManager;
 import net.minecraft.nbt.CompoundTag;
@@ -11,15 +14,21 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.fml.common.Mod;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class EntityLevelSystem {
     private static final Map<UUID, Integer> entityLevels = new HashMap<>();
     private static final String NBT_LEVEL_KEY = "BetterEvE_Level";
+    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/Level");
+    private static final Set<String> WARNED_MISSING_TABLES = new HashSet<>();
 
     /**
      * 获取实体等级（支持所有实体类型，包括投掷物）
@@ -137,18 +146,61 @@ public class EntityLevelSystem {
      * 应用召唤等级属性（非线性增长，支持NBT属性突破上限）
      */
     /**
-     * 获取实体的等级配置（只读剧本；剧本没配 = null = 无等级系统）
+     * 获取实体的等级配置（只读剧本；剧本没配 = null = 无等级系统）。
+     *
+     * 解析顺序（越具体越优先）：
+     * ① 实体类型覆盖表 levelTableOverrides[modid:name]
+     * ② 投掷物专用表 options.projectile.levelTable
+     * ③ 召唤物专用表 options.summon.levelTable
+     * ④ 阵营表 factions[].levelTable
      */
     public static Scenario.EntityLevelConfig getEntityLevelConfig(Entity entity) {
         Scenario scenario = ScenarioManager.getActiveScenario();
-        if (scenario == null || scenario.getFactions() == null || entity == null) return null;
-        String factionId = com.example.bettereve.faction.FactionHelper.getEntityFactionId(entity);
+        if (scenario == null || entity == null) return null;
+
+        // ① 按实体类型覆盖（最具体）
+        Map<String, String> overrides = scenario.getLevelTableOverrides();
+        if (overrides != null) {
+            Scenario.EntityLevelConfig cfg = tableByName(scenario, overrides.get(entity.getType().toString()));
+            if (cfg != null) return cfg;
+        }
+
+        Scenario.ScenarioOptions opts = scenario.getOptions();
+
+        // ② 投掷物自己的表
+        if (ProjectileRule.isProjectileLike(entity)) {
+            Scenario.EntityLevelConfig cfg = tableByName(scenario,
+                    opts != null && opts.getProjectile() != null ? opts.getProjectile().getLevelTable() : null);
+            if (cfg != null) return cfg;
+        }
+
+        // ③ 召唤物自己的表
+        if (SummonedMarker.isSummoned(entity)) {
+            Scenario.EntityLevelConfig cfg = tableByName(scenario,
+                    opts != null && opts.getSummon() != null ? opts.getSummon().getLevelTable() : null);
+            if (cfg != null) return cfg;
+        }
+
+        // ④ 阵营表
+        if (scenario.getFactions() == null) return null;
+        String factionId = FactionHelper.getEntityFactionId(entity);
         for (Scenario.FactionDef faction : scenario.getFactions()) {
             if (faction.getId() != null && faction.getId().equals(factionId)) {
-                return faction.getEntityLevelConfig();
+                return tableByName(scenario, faction.getLevelTable());
             }
         }
         return null;
+    }
+
+    /** 按名字取等级表；名字为空返回 null，名字存在但查不到表则告警一次并返回 null */
+    private static Scenario.EntityLevelConfig tableByName(Scenario scenario, String name) {
+        if (name == null || name.isEmpty()) return null;
+        Map<String, Scenario.EntityLevelConfig> tables = scenario.getLevelTables();
+        Scenario.EntityLevelConfig cfg = tables == null ? null : tables.get(name);
+        if (cfg == null && WARNED_MISSING_TABLES.add(name)) {
+            LOGGER.warn("等级表 '{}' 未在 scenario.levelTables 中定义，该路径回退到下一优先级", name);
+        }
+        return cfg;
     }
 
     /** 该实体所在阵营是否启用了等级系统 */
@@ -222,9 +274,9 @@ public class EntityLevelSystem {
     public static void applyProjectileLevel(AbstractArrow projectile, int level) {
         if (level <= 0) return;
 
-        // 尝试获取发射者的阵营等级配置；剧本没配 → 箭无任何等级加成
-        Entity owner = projectile.getOwner();
-        Scenario.EntityLevelConfig cfg = owner != null ? getEntityLevelConfig(owner) : null;
+        // 按投掷物自身查配置：setEntityLevel 也按实体自己解析，
+        // 这里再按 owner 查会出现"同一实体两处用不同表"的不一致。
+        Scenario.EntityLevelConfig cfg = getEntityLevelConfig(projectile);
         if (cfg == null) {
             return;
         }
@@ -232,7 +284,7 @@ public class EntityLevelSystem {
         double attackExp = cfg.getAttackExponent();
 
         double damageMultiplier = 1 + attackBonus * Math.pow(level, attackExp);
-        double maxDamage = 200.0;
+        double maxDamage = cfg.getMaxDamage();
         double finalDamage = Math.min(damageMultiplier, maxDamage);
         double currentDamage = projectile.getBaseDamage();
         projectile.setBaseDamage(currentDamage * finalDamage);

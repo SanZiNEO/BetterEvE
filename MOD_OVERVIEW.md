@@ -48,7 +48,9 @@ BetterEvE 是一个 Minecraft Forge 1.20.1 阵营 PvP/PvE Mod，专注于构建�
 - 可按剧本 `options.summon` 开关、按实体类型覆盖血条显示
 
 ### 实体等级系统
-- 每个阵营独立配置等级参数（`factions[].entitylvConfig`），不写则该阵营无等级
+- 等级参数写在剧本顶层命名表 `levelTables`，阵营用 `factions[].levelTable` 引用，不写则该阵营无等级
+- `levelTableOverrides` 可按实体类型（`modid:name`）覆盖，给单只 boss 单独一套成长曲线
+- 召唤物 / 投掷物可各配一张专用表（`options.summon.levelTable` / `options.projectile.levelTable`）
 - 等级影响血量 / 攻击 / 护甲 / 击退，按指数曲线成长
 
 ### 血条与 HUD

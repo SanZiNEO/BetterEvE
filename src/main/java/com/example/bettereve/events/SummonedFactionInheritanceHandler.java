@@ -183,7 +183,7 @@ public class SummonedFactionInheritanceHandler {
         // ②b 继承等级 —— 必须在设完阵营之后：
         // EntityLevelSystem.setEntityLevel 会按"实体自己的阵营"去剧本查等级配置，
         // 阵营还没写进去的话查不到配置，加成会整个失效。
-        if (summoner != null) {
+        if (SummonRule.inheritLevel() && summoner != null) {
             int summonerLevel = EntityLevelSystem.getEntityLevel(summoner);
             if (summonerLevel > 0) {
                 EntityLevelSystem.setEntityLevel(living, summonerLevel);

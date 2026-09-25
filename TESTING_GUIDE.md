@@ -160,13 +160,15 @@
   `[召唤继承] <实体> 继承阵营 <阵营> ← 主体 <召唤者> (REASON)`
   - `REASON` 取值：`OWNER`（原版投掷物/恼鬼）/ `OWNER_UUID`（可驯服体系）/ `OWNER_NBT`（跨模组 NBT 痕迹，主通道）/ `TARGET`（目标反推）/ `PARENT`（多部件部件）/ `MANUAL`（指令显式指定）
 - 若召唤者本身有等级，召唤物同时继承等级：`[召唤继承] <实体> 继承等级 <等级> ← 主体 <召唤者> (REASON)`
+- 可用 `options.summon.inheritLevel: false` 单独关掉等级继承（阵营继承不受影响）：
+  召唤物仍有阵营色，但头顶不再显示 `Lv.`
 
 **无归属证据的召唤物不会被继承**（设计铁律：证据不存在时什么都不做，宁可漏绝不误判）。
 
 ### 11. 等级（EntityLevel）系统
 
-`default` 剧本的阵营**没有配 `entitylvConfig`**，所以没有等级。
-用 `simple_red_blue` 剧本（红蓝都配了 `maxLevel: 1000`）验证：
+`default` 剧本的阵营**没有配 `levelTable`**，所以没有等级。
+用 `simple_red_blue` 剧本（红蓝都引用 `levelTables.standard`，`maxLevel: 1000`）验证：
 
 ```
 /bettereve scenario load simple_red_blue
@@ -174,6 +176,30 @@
 /bettereve spawn minecraft:zombie blue 1 10 60 0 1
 ```
 预期：等级高的僵尸血量/攻击明显更高，头顶血条显示 `Lv.500`
+
+**多套表 + 实体类型覆盖**：顶层加一张弱化表，让僵尸单独引用它：
+
+```json
+"levelTables": {
+  "standard": { ...原有九项... },
+  "weak": { "maxLevel": 1000, "healthBonus": 0.01, "healthExponent": 2.0,
+            "attackBonus": 0.01, "attackExponent": 2.0, "armorBonus": 0.01, "armorExponent": 0.7,
+            "knockbackBonus": 0.0, "knockbackExponent": 1.0 }
+},
+"levelTableOverrides": { "minecraft:zombie": "weak" }
+```
+重新加载剧本后分别生成 `minecraft:zombie` 与 `minecraft:skeleton`（都设 level 500）：
+预期：僵尸血量接近基础值（`weak` 表），骷髅远高于僵尸（`standard` 表）；
+两者头顶都显示 `Lv.500` —— 差异来自表而不是等级。
+
+**投掷物开关**：`options` 里写 `"projectile": { "inheritFaction": true, "inheritLevel": false }`，
+生成 `minecraft:skeleton red 500` 让它射箭：
+预期：箭仍继承阵营色，但箭伤接近基础值；改回 `inheritLevel: true` 后箭伤显著放大
+（level 500 时攻击倍率封顶 200×）。`enabled: false` 时箭连阵营都不继承。
+
+**缺表告警**：把 `levelTableOverrides` 的值改成不存在的表名，加载剧本并生成该实体：
+预期：日志出现一次 `等级表 '<名字>' 未在 scenario.levelTables 中定义`，实体回退到阵营表（仍显示 `Lv.`），
+同一名字不重复告警。
 
 ### 12. 保活区域
 

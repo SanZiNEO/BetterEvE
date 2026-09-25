@@ -40,6 +40,12 @@ public final class SummonRule {
         return cfg == null || cfg.isInheritFaction();
     }
 
+    /** 召唤物是否继承宿主等级 */
+    public static boolean inheritLevel() {
+        Scenario.SummonConfig cfg = config();
+        return cfg == null || cfg.isInheritLevel();
+    }
+
     /** 召唤物是否计分 */
     public static boolean countsForScore() {
         Scenario.SummonConfig cfg = config();

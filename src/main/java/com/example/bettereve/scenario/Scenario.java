@@ -18,6 +18,10 @@ public class Scenario {
     private List<PhaseDef> phases;
     private ScenarioOptions options;
     private KeepAliveZone keepAliveZone;
+    /** 命名等级表：表名 → 成长参数。阵营 / 召唤物 / 投掷物 / 实体类型覆盖都按名字引用 */
+    private Map<String, EntityLevelConfig> levelTables;
+    /** 按实体类型（modid:name）覆盖等级表名，优先级高于一切分段配置 */
+    private Map<String, String> levelTableOverrides;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -41,13 +45,17 @@ public class Scenario {
     public KeepAliveZone getKeepAliveZone() { return keepAliveZone; }
     public void setKeepAliveZone(KeepAliveZone keepAliveZone) { this.keepAliveZone = keepAliveZone; }
     public void setOptions(ScenarioOptions options) { this.options = options; }
+    public Map<String, EntityLevelConfig> getLevelTables() { return levelTables; }
+    public void setLevelTables(Map<String, EntityLevelConfig> levelTables) { this.levelTables = levelTables; }
+    public Map<String, String> getLevelTableOverrides() { return levelTableOverrides; }
+    public void setLevelTableOverrides(Map<String, String> levelTableOverrides) { this.levelTableOverrides = levelTableOverrides; }
 
     public static class FactionDef {
         private String id;
         private String name;
         private String color;
         private boolean showOnScoreboard = true;
-        private EntityLevelConfig entitylvConfig; // 没写 = 没有等级系统
+        private String levelTable; // 引用 levelTables 里的表名；不写 = 该阵营没有等级系统
         
         public FactionDef() {}
         public FactionDef(String id, String name, String color) {
@@ -66,8 +74,8 @@ public class Scenario {
         }
         public boolean isShowOnScoreboard() { return showOnScoreboard; }
         public void setShowOnScoreboard(boolean showOnScoreboard) { this.showOnScoreboard = showOnScoreboard; }
-        public EntityLevelConfig getEntityLevelConfig() { return entitylvConfig; }
-        public void setEntityLevelConfig(EntityLevelConfig config) { this.entitylvConfig = config; }
+        public String getLevelTable() { return levelTable; }
+        public void setLevelTable(String levelTable) { this.levelTable = levelTable; }
     }
 
     public static class EntityLevelConfig {
@@ -80,6 +88,7 @@ public class Scenario {
         private double attackExponent = 1.42;
         private double armorExponent = 0.9;
         private double knockbackExponent = 0.95;
+        private double maxDamage = 200.0; // 投掷物伤害倍率上限（箭伤 = 箭速 × 基础伤害 × 本倍率，超过即截断）
         public int getMaxLevel() { return maxLevel; }
         public void setMaxLevel(int maxLevel) { this.maxLevel = maxLevel; }
         public double getHealthBonus() { return healthBonus; }
@@ -98,6 +107,8 @@ public class Scenario {
         public void setArmorExponent(double armorExponent) { this.armorExponent = armorExponent; }
         public double getKnockbackExponent() { return knockbackExponent; }
         public void setKnockbackExponent(double knockbackExponent) { this.knockbackExponent = knockbackExponent; }
+        public double getMaxDamage() { return maxDamage; }
+        public void setMaxDamage(double maxDamage) { this.maxDamage = maxDamage; }
     }
 
     public static class KeepAliveZone {
@@ -299,6 +310,14 @@ public class Scenario {
         public static final boolean DEFAULT_SUMMON_HIDE_HEALTH_BAR = false;
         /** 召唤物默认是否计分 */
         public static final boolean DEFAULT_SUMMON_COUNTS_FOR_SCORE = false;
+        /** 召唤物是否默认继承宿主等级 */
+        public static final boolean DEFAULT_SUMMON_INHERIT_LEVEL = true;
+        /** 投掷物机制总开关默认值 */
+        public static final boolean DEFAULT_PROJECTILE_ENABLED = true;
+        /** 投掷物是否默认继承宿主阵营 */
+        public static final boolean DEFAULT_PROJECTILE_INHERIT_FACTION = true;
+        /** 投掷物是否默认继承宿主等级 */
+        public static final boolean DEFAULT_PROJECTILE_INHERIT_LEVEL = true;
         /** 指令召唤默认阵型 */
         public static final Formation DEFAULT_SPAWN_FORMATION = Formation.CIRCLE;
         /** 阵型默认半径（格） */
@@ -324,6 +343,8 @@ public class Scenario {
 
         // ==================== 召唤物机制（原模组配置迁入剧本） ====================
         private SummonConfig summon;
+        // ==================== 投掷物机制（原投掷物继承 handler 内置行为迁入剧本） ====================
+        private ProjectileConfig projectile;
         // ==================== 指令召唤阵型（原模组配置迁入剧本） ====================
         private SpawnLayout spawnLayout;
 
@@ -355,6 +376,8 @@ public class Scenario {
         public void setVersusHealthBarHealthText(boolean versusHealthBarHealthText) { this.versusHealthBarHealthText = versusHealthBarHealthText; }
         public SummonConfig getSummon() { return summon; }
         public void setSummon(SummonConfig summon) { this.summon = summon; }
+        public ProjectileConfig getProjectile() { return projectile; }
+        public void setProjectile(ProjectileConfig projectile) { this.projectile = projectile; }
         public SpawnLayout getSpawnLayout() { return spawnLayout; }
         public void setSpawnLayout(SpawnLayout spawnLayout) { this.spawnLayout = spawnLayout; }
     }
@@ -368,8 +391,10 @@ public class Scenario {
 
         private Boolean enabled;                  // 总开关，默认 true
         private Boolean inheritFaction;           // 继承宿主阵营，默认 true
+        private Boolean inheritLevel;             // 继承宿主等级，默认 true
         private Boolean hideHealthBar;            // 召唤物不显示血条，默认 true
         private Boolean countsForScore;           // 召唤物计分，默认 false（不计分）
+        private String levelTable;                // 召唤物专用等级表名；不写 = 走阵营表
         private Map<String, Boolean> healthBarOverrides; // 按实体类型覆盖血条，优先级最高
 
         public boolean isEnabled() {
@@ -377,6 +402,9 @@ public class Scenario {
         }
         public boolean isInheritFaction() {
             return inheritFaction == null ? ScenarioOptions.DEFAULT_SUMMON_INHERIT_FACTION : inheritFaction;
+        }
+        public boolean isInheritLevel() {
+            return inheritLevel == null ? ScenarioOptions.DEFAULT_SUMMON_INHERIT_LEVEL : inheritLevel;
         }
         public boolean isHideHealthBar() {
             return hideHealthBar == null ? ScenarioOptions.DEFAULT_SUMMON_HIDE_HEALTH_BAR : hideHealthBar;
@@ -388,9 +416,38 @@ public class Scenario {
 
         public void setEnabled(Boolean enabled) { this.enabled = enabled; }
         public void setInheritFaction(Boolean inheritFaction) { this.inheritFaction = inheritFaction; }
+        public void setInheritLevel(Boolean inheritLevel) { this.inheritLevel = inheritLevel; }
         public void setHideHealthBar(Boolean hideHealthBar) { this.hideHealthBar = hideHealthBar; }
         public void setCountsForScore(Boolean countsForScore) { this.countsForScore = countsForScore; }
         public void setHealthBarOverrides(Map<String, Boolean> healthBarOverrides) { this.healthBarOverrides = healthBarOverrides; }
+        public String getLevelTable() { return levelTable; }
+        public void setLevelTable(String levelTable) { this.levelTable = levelTable; }
+    }
+
+    /**
+     * 投掷物机制配置。剧本未写 projectile 段时，全部使用代码内默认值。
+     */
+    public static class ProjectileConfig {
+        private Boolean enabled;         // 总开关，默认 true
+        private Boolean inheritFaction;  // 继承宿主阵营，默认 true
+        private Boolean inheritLevel;    // 继承宿主等级，默认 true
+        private String levelTable;       // 投掷物专用等级表名；不写 = 走阵营表
+
+        public boolean isEnabled() {
+            return enabled == null ? ScenarioOptions.DEFAULT_PROJECTILE_ENABLED : enabled;
+        }
+        public boolean isInheritFaction() {
+            return inheritFaction == null ? ScenarioOptions.DEFAULT_PROJECTILE_INHERIT_FACTION : inheritFaction;
+        }
+        public boolean isInheritLevel() {
+            return inheritLevel == null ? ScenarioOptions.DEFAULT_PROJECTILE_INHERIT_LEVEL : inheritLevel;
+        }
+        public String getLevelTable() { return levelTable; }
+
+        public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+        public void setInheritFaction(Boolean inheritFaction) { this.inheritFaction = inheritFaction; }
+        public void setInheritLevel(Boolean inheritLevel) { this.inheritLevel = inheritLevel; }
+        public void setLevelTable(String levelTable) { this.levelTable = levelTable; }
     }
 
     /**

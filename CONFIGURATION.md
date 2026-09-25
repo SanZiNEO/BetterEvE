@@ -19,6 +19,8 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
   "name": "默认剧本",
   "description": "红蓝两队标准对战",
   "keepAliveZone": { "x1": -60, "z1": -20, "x2": 60, "z2": 20 },
+  "levelTables": { ... },
+  "levelTableOverrides": { ... },
   "factions": [ ... ],
   "relations": [ ... ],
   "waypoints": [ ... ],
@@ -32,10 +34,47 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 ### factions — 阵营
 
 - `id` / `name` / `color`（`#RRGGBB`）/ `showOnScoreboard`（是否显示在计分板）
-- `entitylvConfig` — 该阵营的等级参数（**不写 = 该阵营没有等级系统**）：
-  - `maxLevel` 等级上限（默认 500）
-  - `healthBonus` / `attackBonus` / `armorBonus` / `knockbackBonus` — 每级加成
-  - `healthExponent` / `attackExponent` / `armorExponent` / `knockbackExponent` — 成长指数
+- `levelTable` — 引用顶层 `levelTables` 里的表名（**不写 = 该阵营没有等级系统**）
+
+### levelTables — 命名等级表
+
+顶层字典：表名 → 等级参数。阵营、召唤物、投掷物、实体类型覆盖都按名字引用同一批表。
+
+- `maxLevel` 等级上限（默认 500）
+- `healthBonus` / `attackBonus` / `armorBonus` / `knockbackBonus` — 每级加成
+- `healthExponent` / `attackExponent` / `armorExponent` / `knockbackExponent` — 成长指数
+- `maxDamage` — 投掷物伤害倍率上限（默认 200）：箭伤 = 箭速 × 箭基础伤害 × 倍率，倍率超过此值即截断
+
+```json
+"levelTables": {
+  "standard": {
+    "maxLevel": 1000,
+    "healthBonus": 10.0, "healthExponent": 2.0,
+    "attackBonus": 8.0, "attackExponent": 2.0,
+    "armorBonus": 2.0, "armorExponent": 0.7,
+    "knockbackBonus": 1.2, "knockbackExponent": 1.0
+  }
+}
+```
+
+### levelTableOverrides — 按实体类型覆盖等级表
+
+- 键是实体类型 `modid:name`（如 `minecraft:zombie`），值是要用的表名
+- 优先级最高，可以给单只 boss 单独一套成长曲线
+
+```json
+"levelTableOverrides": { "minecraft:zombie": "weak" }
+```
+
+**等级表解析优先级**（`EntityLevelSystem.getEntityLevelConfig`，越具体越优先）：
+
+1. `levelTableOverrides[实体类型]`
+2. `options.projectile.levelTable`（投掷物）
+3. `options.summon.levelTable`（召唤物）
+4. `factions[].levelTable`（实体所属阵营）
+
+某一层写了名字、但 `levelTables` 里没有这张表 → 记一次 warn 日志并回退到下一优先级；
+全部落空 = 该实体没有等级系统（不存等级、不加成、不同步）。
 
 ### relations — 阵营关系
 
@@ -128,6 +167,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `versusHealthBarStyle` | `plain` | 格斗血条填充样式：`plain` / `stripe` / `grid` |
 | `versusHealthBarHealthText` | true | 主血条名字旁是否显示「当前/上限」血量 |
 | `summon` | 见下 | 召唤物机制 |
+| `projectile` | 见下 | 投掷物机制 |
 | `spawnLayout` | 见下 | 指令召唤阵型 |
 
 #### options.summon — 召唤物机制
@@ -136,17 +176,38 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 |---|---|---|
 | `enabled` | true | 总开关 |
 | `inheritFaction` | true | 召唤物是否继承宿主阵营 |
+| `inheritLevel` | true | 召唤物是否继承宿主等级（与阵营继承独立） |
 | `hideHealthBar` | false | 召唤物是否隐藏血条（默认 false = 显示，便于观察继承效果） |
 | `countsForScore` | false | 召唤物击杀是否计分 |
 | `healthBarOverrides` | 无 | 按实体类型覆盖血条，优先级最高 |
+| `levelTable` | 无 | 召唤物专用等级表名（不写 = 走阵营表） |
 
 ```json
 "summon": {
   "inheritFaction": true,
+  "inheritLevel": true,
   "countsForScore": false,
   "healthBarOverrides": { "jujutsucraft:projectile_slash": false }
 }
 ```
+
+#### options.projectile — 投掷物机制
+
+| 字段 | 默认 | 说明 |
+|---|---|---|
+| `enabled` | true | 总开关：关掉后阵营与等级都不继承 |
+| `inheritFaction` | true | 投掷物是否继承宿主阵营 |
+| `inheritLevel` | true | 投掷物是否继承宿主等级（与阵营继承独立） |
+| `levelTable` | 无 | 投掷物专用等级表名（不写 = 走阵营表） |
+
+```json
+"projectile": {
+  "inheritFaction": true,
+  "inheritLevel": false
+}
+```
+
+`inheritLevel: false` 时箭仍带阵营色（阵营继承照常），只是不再吃等级加成。
 
 #### options.spawnLayout — 指令召唤阵型
 
@@ -239,7 +300,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 |---|---|
 | `targeting_defaultFollowRange` 寻敌范围 | 剧本 `options.targetingRange`（更细：常态 + 近距离重扫两档） |
 | `crystal_defaultHealth` 水晶血量 | 剧本 `crystals[].health`（每水晶独立） |
-| 等级参数（healthBonus / attackBonus / maxLevel） | 剧本 `factions[].entitylvConfig`（每阵营独立） |
+| 等级参数（healthBonus / attackBonus / maxLevel） | 剧本 `levelTables`（命名表）+ `factions[].levelTable`（阵营引用） |
 | `global_hudEnabled` HUD 开关 | 剧本 `options.hudEnabled` |
 | 渲染配置（血条显示等） | 剧本 `options.overheadHealthBar` / `healthBarScale` / `healthBarLevelText` / `healthBarHealthText` / `versusHealthBar*` |
 | 召唤物机制配置 | 剧本 `options.summon` |

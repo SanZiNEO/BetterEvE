@@ -8,40 +8,33 @@
     "x2": 101,
     "z2": 101
   },
+  "levelTables": {
+    "standard": {
+      "maxLevel": 1000,
+      "healthBonus": 10.0,
+      "healthExponent": 2.0,
+      "attackBonus": 8.0,
+      "attackExponent": 2.0,
+      "armorBonus": 2.0,
+      "armorExponent": 0.7,
+      "knockbackBonus": 1.2,
+      "knockbackExponent": 1.0
+    }
+  },
   "factions": [
     {
       "id": "red",
       "name": "红队",
       "color": "#FF0000",
       "showOnScoreboard": true,
-      "entitylvConfig": {
-        "maxLevel": 1000,
-        "healthBonus": 10.0,
-        "healthExponent": 2.0,
-        "attackBonus": 8.0,
-        "attackExponent": 2.0,
-        "armorBonus": 2.0,
-        "armorExponent": 0.7,
-        "knockbackBonus": 1.2,
-        "knockbackExponent": 1.0
-      }
+      "levelTable": "standard"
     },
     {
       "id": "blue",
       "name": "蓝队",
       "color": "#0000FF",
       "showOnScoreboard": true,
-      "entitylvConfig": {
-        "maxLevel": 1000,
-        "healthBonus": 10.0,
-        "healthExponent": 2.0,
-        "attackBonus": 8.0,
-        "attackExponent": 2.0,
-        "armorBonus": 2.0,
-        "armorExponent": 0.7,
-        "knockbackBonus": 1.2,
-        "knockbackExponent": 1.0
-      }
+      "levelTable": "standard"
     }
   ],
   "relations": [
