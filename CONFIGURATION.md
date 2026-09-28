@@ -273,7 +273,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `/bettereve waypoint visualize` | 切换路径点粒子柱可视化 |
 | `/bettereve crystal create <factionId> <x> <y> <z> <health> <attackDamage> <armor> <attackRange> <attackCycle> <size> <modelScale> [showHealthBar] [crystalId]` | 现场创建水晶 |
 | `/bettereve crystal spawn <crystalId>` | 按剧本模板生成水晶 |
-| `/bettereve spawn <entityType> <factionId> <level> <x> <y> <z> <count> [keepAlive] [routeId] [showHealthBar] [nbt]` | 按阵型批量生成生物；`keepAlive: true` = 该生物不被原版 despawn 清除（不依赖 `keepAliveZone`） |
+| `/bettereve spawn <entityType> <factionId> <level> <x> <y> <z> <count> [keepAlive] [routeId] [showHealthBar] [nbt]` | 按阵型批量生成生物；坐标与原生 `/summon` 一致，支持 `~`（相对执行位置）与 `^`（局部坐标）；`keepAlive: true` = 该生物不被原版 despawn 清除（不依赖 `keepAliveZone`） |
 
 ### 计分与血条
 

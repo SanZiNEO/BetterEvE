@@ -119,6 +119,41 @@ public final class SummonRule {
     }
 
     /**
+     * 按实体类型查询剧本指定的强制阵营。
+     *
+     * 用途：某些实体在模组内部就被清空归属（如咒术回战的茈，cnt2==2.0 分支把
+     * OWNER_UUID 写成空串），继承链拿不到证据，会被当成中立生物见谁打谁。
+     * 剧本可点名把这类实体直接钉死到某个阵营：
+     * <pre>
+     * "options": { "summon": { "factionOverrides": {
+     *     "jujutsucraft:purple": "gojo"
+     * }}}
+     * </pre>
+     * 强制优先级高于一切继承逻辑；未配置的类型不受影响。
+     *
+     * @return 阵营 id；未配置返回 null
+     */
+    public static String factionOverrideFor(Entity entity) {
+        Scenario.SummonConfig cfg = config();
+        if (cfg == null || entity == null) {
+            return null;
+        }
+        Map<String, String> overrides = cfg.getFactionOverrides();
+        if (overrides == null || overrides.isEmpty()) {
+            return null;
+        }
+        ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        if (key == null) {
+            return null;
+        }
+        String override = overrides.get(key.toString());
+        if (override == null) {
+            override = overrides.get(key.getPath()); // 允许只写实体名不写命名空间
+        }
+        return override == null || override.isEmpty() ? null : override;
+    }
+
+    /**
      * 实体是否应计入计分板。
      *
      * 多部件生物（虚空蠕虫等长条 boss）按"整体结算"处理：

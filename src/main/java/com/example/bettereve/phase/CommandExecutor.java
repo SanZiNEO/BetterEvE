@@ -1,7 +1,9 @@
 package com.example.bettereve.phase;
 
 import com.example.bettereve.scenario.Scenario;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import com.example.bettereve.Bettereve;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -21,6 +23,28 @@ public class CommandExecutor {
 
     // 延迟指令队列：targetTick -> List<command>
     private static final java.util.Map<Integer, java.util.List<String>> pendingCommands = new java.util.HashMap<>();
+
+    // 剧本指令的执行者 = 加载剧本的那个玩家（原版语义：谁敲的谁执行）。
+    // 服务端 source 的世界位置在世界原点，`~` 会解析到原点而不是玩家；
+    // 换成玩家 source 后，剧本里直接写 `bettereve spawn … ~-10 ~ ~` 就跟玩家自己敲一样。
+    private static java.util.UUID sourcePlayerId = null;
+
+    /** 记录执行剧本指令的玩家（加载剧本时调用）。 */
+    public static void setSourcePlayer(ServerPlayer player) {
+        sourcePlayerId = player == null ? null : player.getUUID();
+    }
+
+    /** 每次执行现取玩家 source：位置、朝向、维度都是当下的（玩家一直在动）。 */
+    private static CommandSourceStack source(MinecraftServer server) {
+        if (sourcePlayerId != null) {
+            ServerPlayer player = server.getPlayerList().getPlayer(sourcePlayerId);
+            if (player != null) {
+                // 剧本指令最高只要求权限 2（gamerule/title 等），加载剧本时玩家已通过该检查
+                return player.createCommandSourceStack().withMaximumPermission(2);
+            }
+        }
+        return server.createCommandSourceStack();
+    }
 
     /**
      * 执行指令列表，每个指令支持 delay 延迟（秒）。
@@ -78,8 +102,7 @@ public class CommandExecutor {
             String trimmed = part.trim();
             if (trimmed.isEmpty()) continue;
             try {
-                server.getCommands().performPrefixedCommand(
-                        server.createCommandSourceStack(), trimmed);
+                server.getCommands().performPrefixedCommand(source(server), trimmed);
             } catch (Exception e) {
                 LOGGER.error("Failed to execute command: {}", trimmed, e);
             }

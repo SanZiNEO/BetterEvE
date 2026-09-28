@@ -347,6 +347,8 @@ public class Scenario {
         private ProjectileConfig projectile;
         // ==================== 指令召唤阵型（原模组配置迁入剧本） ====================
         private SpawnLayout spawnLayout;
+        // ==================== 剧本裁决规则（代码提供能力，剧本写具体实例） ====================
+        private Rules rules;
 
         public String getPlayersDefaultFaction() { return playersDefaultFaction; }
         public void setPlayersDefaultFaction(String playersDefaultFaction) { this.playersDefaultFaction = playersDefaultFaction; }
@@ -380,6 +382,8 @@ public class Scenario {
         public void setProjectile(ProjectileConfig projectile) { this.projectile = projectile; }
         public SpawnLayout getSpawnLayout() { return spawnLayout; }
         public void setSpawnLayout(SpawnLayout spawnLayout) { this.spawnLayout = spawnLayout; }
+        public Rules getRules() { return rules; }
+        public void setRules(Rules rules) { this.rules = rules; }
     }
 
     /**
@@ -396,6 +400,7 @@ public class Scenario {
         private Boolean countsForScore;           // 召唤物计分，默认 false（不计分）
         private String levelTable;                // 召唤物专用等级表名；不写 = 走阵营表
         private Map<String, Boolean> healthBarOverrides; // 按实体类型覆盖血条，优先级最高
+        private Map<String, String> factionOverrides;    // 按实体类型强制阵营，优先级最高
 
         public boolean isEnabled() {
             return enabled == null ? DEFAULT_ENABLED : enabled;
@@ -414,12 +419,15 @@ public class Scenario {
         }
         public Map<String, Boolean> getHealthBarOverrides() { return healthBarOverrides; }
 
+        public Map<String, String> getFactionOverrides() { return factionOverrides; }
+
         public void setEnabled(Boolean enabled) { this.enabled = enabled; }
         public void setInheritFaction(Boolean inheritFaction) { this.inheritFaction = inheritFaction; }
         public void setInheritLevel(Boolean inheritLevel) { this.inheritLevel = inheritLevel; }
         public void setHideHealthBar(Boolean hideHealthBar) { this.hideHealthBar = hideHealthBar; }
         public void setCountsForScore(Boolean countsForScore) { this.countsForScore = countsForScore; }
         public void setHealthBarOverrides(Map<String, Boolean> healthBarOverrides) { this.healthBarOverrides = healthBarOverrides; }
+        public void setFactionOverrides(Map<String, String> factionOverrides) { this.factionOverrides = factionOverrides; }
         public String getLevelTable() { return levelTable; }
         public void setLevelTable(String levelTable) { this.levelTable = levelTable; }
     }
@@ -511,5 +519,106 @@ public class Scenario {
         @com.google.gson.annotations.SerializedName("grid") GRID,
         /** 全部重叠在召唤点（count=1 的等价行为） */
         @com.google.gson.annotations.SerializedName("point") POINT
+    }
+
+    /**
+     * 剧本裁决规则：把"剧本特例"从代码里抽出来。
+     *
+     * 代码只提供规则种类与执行器（见 ScenarioRuleHandler），
+     * 具体针对哪个实体、满足什么状态、杀几次，全部写在剧本的 options.rules 段里。
+     */
+    public static class Rules {
+        private List<LethalHit> lethalHits;   // 命中裁决：指定攻击者打到指定受害者 → 这一击强制致死
+        private List<StateKill> stateKills;   // 状态裁决：指定实体进入指定状态 → 连续击杀并持续监控
+        private List<AttributeOverride> attributeOverrides; // 属性覆盖：指定实体类型的属性按倍率改写
+
+        public List<LethalHit> getLethalHits() { return lethalHits; }
+        public void setLethalHits(List<LethalHit> lethalHits) { this.lethalHits = lethalHits; }
+        public List<StateKill> getStateKills() { return stateKills; }
+        public void setStateKills(List<StateKill> stateKills) { this.stateKills = stateKills; }
+        public List<AttributeOverride> getAttributeOverrides() { return attributeOverrides; }
+        public void setAttributeOverrides(List<AttributeOverride> attributeOverrides) { this.attributeOverrides = attributeOverrides; }
+    }
+
+    /**
+     * 命中裁决：attacker 命中 victim 时，把这一击的伤害改写成致死量。
+     *
+     * attackerFlag 用来区分"同一实体的不同形态/招式"——例如咒术回战的茈，
+     * 只有残血大招那一发才带 NBT explode=true，普通茈没有。
+     */
+    public static class LethalHit {
+        /** 默认致死伤害量：远高于任何血量与减伤，确保一击必死 */
+        public static final double DEFAULT_DAMAGE = 1000000.0;
+
+        private String attacker;      // 攻击者实体类型，如 jujutsucraft:purple（可只写实体名）
+        private String attackerFlag;  // 可选：攻击者 persistentData 里必须为 true 的布尔键
+        private String victim;        // 受害者实体类型
+        private Double damage;        // 致死伤害量，默认 DEFAULT_DAMAGE
+
+        public String getAttacker() { return attacker; }
+        public String getAttackerFlag() { return attackerFlag; }
+        public String getVictim() { return victim; }
+        public double getDamage() { return damage == null ? DEFAULT_DAMAGE : damage; }
+
+        public void setAttacker(String attacker) { this.attacker = attacker; }
+        public void setAttackerFlag(String attackerFlag) { this.attackerFlag = attackerFlag; }
+        public void setVictim(String victim) { this.victim = victim; }
+        public void setDamage(Double damage) { this.damage = damage; }
+    }
+
+    /**
+     * 状态裁决：type 实体只要满足 nbt 探针（实体序列化 NBT 里的键值），
+     * 就连续击杀 kills 次；只要它还活着，之后的每一轮轮询都会再杀一次。
+     *
+     * 探针值支持布尔与字符串：布尔比对 NBT 布尔键，其它比对字符串键。
+     */
+    public static class StateKill {
+        public static final int DEFAULT_KILLS = 3;
+        public static final int DEFAULT_INTERVAL_TICKS = 10;
+
+        private String type;              // 实体类型，如 jujutsucraft:sukuna_fushiguro
+        private Map<String, Object> nbt;  // 状态探针：序列化 NBT 里必须匹配的键值
+        private Integer kills;            // 每次触发的连杀次数
+        private Integer intervalTicks;    // 轮询间隔（tick）
+
+        public String getType() { return type; }
+        public Map<String, Object> getNbt() { return nbt; }
+        public int getKills() { return kills == null ? DEFAULT_KILLS : Math.max(1, kills); }
+        public int getIntervalTicks() {
+            return intervalTicks == null ? DEFAULT_INTERVAL_TICKS : Math.max(1, intervalTicks);
+        }
+
+        public void setType(String type) { this.type = type; }
+        public void setNbt(Map<String, Object> nbt) { this.nbt = nbt; }
+        public void setKills(Integer kills) { this.kills = kills; }
+        public void setIntervalTicks(Integer intervalTicks) { this.intervalTicks = intervalTicks; }
+    }
+
+    /**
+     * 属性覆盖：把指定实体类型的属性按倍率改写（剧本用来给单个实体加厚/削弱）。
+     *
+     * 只在实体"新加入世界"时应用一次；存档加载的实体跳过，避免倍率被反复叠乘。
+     * 未写的项不生效（倍率默认 1.0）。
+     */
+    public static class AttributeOverride {
+        private String type;               // 实体类型，如 jujutsucraft:eight_handled_sword_...
+        private Double healthMultiplier;   // 最大生命倍率
+        private Double armorMultiplier;    // 护甲倍率
+        private Double attackMultiplier;   // 攻击倍率
+
+        public String getType() { return type; }
+        public double getHealthMultiplier() { return healthMultiplier == null ? 1.0 : healthMultiplier; }
+        public double getArmorMultiplier() { return armorMultiplier == null ? 1.0 : armorMultiplier; }
+        public double getAttackMultiplier() { return attackMultiplier == null ? 1.0 : attackMultiplier; }
+
+        /** 三项都没写 = 空规则，直接跳过 */
+        public boolean isEmpty() {
+            return healthMultiplier == null && armorMultiplier == null && attackMultiplier == null;
+        }
+
+        public void setType(String type) { this.type = type; }
+        public void setHealthMultiplier(Double healthMultiplier) { this.healthMultiplier = healthMultiplier; }
+        public void setArmorMultiplier(Double armorMultiplier) { this.armorMultiplier = armorMultiplier; }
+        public void setAttackMultiplier(Double attackMultiplier) { this.attackMultiplier = attackMultiplier; }
     }
 }

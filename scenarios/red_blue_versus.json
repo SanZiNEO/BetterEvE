@@ -53,6 +53,15 @@
     "versusHealthBar": true,
     "versusHealthBarSubCount": 2,
     "versusHealthBarStyle": "plain",
-    "versusHealthBarHealthText": true
+    "versusHealthBarHealthText": true,
+    "summon": {
+      "inheritFaction": true,
+      "inheritLevel": true
+    },
+    "projectile": {
+      "enabled": true,
+      "inheritFaction": true,
+      "inheritLevel": true
+    }
   }
 }

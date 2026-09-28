@@ -29,6 +29,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.CompoundTagArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -45,6 +46,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.dimension.LevelStem;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Score;
 import net.minecraft.world.scores.Scoreboard;
@@ -164,63 +166,60 @@ public class BetterEvECommands {
                     .then(Commands.argument("factionId", StringArgumentType.word())
                         .suggests(FACTION_ID_SUGGESTIONS)
                         .then(Commands.argument("level", IntegerArgumentType.integer(0, 500))
-                            .then(Commands.argument("x", DoubleArgumentType.doubleArg())
-                                .then(Commands.argument("y", DoubleArgumentType.doubleArg())
-                                    .then(Commands.argument("z", DoubleArgumentType.doubleArg())
-                                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
-                                            .executes(BetterEvECommands::executeSpawnEntitiesAtPosition)
-                                            // keepAlive：单生物防清除标记。必须注册在 routeId 之前——
-                                            // routeId 是 word 参数，会把末尾的 true/false 吞掉，放在它后面等于静默失效。
-                                            .then(Commands.argument("keepAlive", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                            // 与原生 /summon 一致：坐标用 Vec3Argument，支持 ~（相对执行位置）与 ^（局部坐标）
+                            .then(Commands.argument("pos", Vec3Argument.vec3())
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
+                                    .executes(BetterEvECommands::executeSpawnEntitiesAtPosition)
+                                    // keepAlive：单生物防清除标记。必须注册在 routeId 之前——
+                                    // routeId 是 word 参数，会把末尾的 true/false 吞掉，放在它后面等于静默失效。
+                                    .then(Commands.argument("keepAlive", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                        .executes(BetterEvECommands::executeSpawnWithKeepAlive)
+                                        // showHealthBar 必须排在 routeId 前面：两者都是"裸 token"时，
+                                        // routeId(word) 会把 true/false 抢走（实测 ... 1 true true 会解析成 route="true"）
+                                        .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                            .executes(BetterEvECommands::executeSpawnWithKeepAlive)
+                                            .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
                                                 .executes(BetterEvECommands::executeSpawnWithKeepAlive)
-                                                // showHealthBar 必须排在 routeId 前面：两者都是"裸 token"时，
-                                                // routeId(word) 会把 true/false 抢走（实测 ... 1 true true 会解析成 route="true"）
-                                                .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
-                                                    .executes(BetterEvECommands::executeSpawnWithKeepAlive)
-                                                    .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
-                                                        .executes(BetterEvECommands::executeSpawnWithKeepAlive)
-                                                    )
-                                                )
-                                                .then(Commands.argument("routeId", StringArgumentType.word())
-                                                    .suggests(ROUTE_ID_SUGGESTIONS)
-                                                    .executes(BetterEvECommands::executeSpawnWithKeepAlive)
-                                                    .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
-                                                        .executes(BetterEvECommands::executeSpawnWithKeepAlive)
-                                                        .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
-                                                            .executes(BetterEvECommands::executeSpawnWithKeepAlive)
-                                                        )
-                                                    )
-                                                    .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
-                                                        .executes(BetterEvECommands::executeSpawnWithKeepAlive)
-                                                    )
-                                                )
-                                                .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
-                                                    .executes(BetterEvECommands::executeSpawnWithKeepAlive)
-                                                )
                                             )
-                                            .then(Commands.argument("routeId", StringArgumentType.word())
-                                                .suggests(ROUTE_ID_SUGGESTIONS)
-                                                .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRoute)
-                                                .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
-                                                    .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndHealthBar)
-                                                    .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
-                                                        .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndHealthBarAndNBT)
-                                                    )
-                                                )
-                                                .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
-                                                    .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndNBT)
-                                                )
-                                            )
+                                        )
+                                        .then(Commands.argument("routeId", StringArgumentType.word())
+                                            .suggests(ROUTE_ID_SUGGESTIONS)
+                                            .executes(BetterEvECommands::executeSpawnWithKeepAlive)
                                             .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
-                                                .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithHealthBar)
+                                                .executes(BetterEvECommands::executeSpawnWithKeepAlive)
                                                 .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
-                                                    .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithHealthBarAndNBT)
+                                                    .executes(BetterEvECommands::executeSpawnWithKeepAlive)
                                                 )
                                             )
                                             .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
-                                                .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithNBT)
+                                                .executes(BetterEvECommands::executeSpawnWithKeepAlive)
                                             )
                                         )
+                                        .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                            .executes(BetterEvECommands::executeSpawnWithKeepAlive)
+                                        )
+                                    )
+                                    .then(Commands.argument("routeId", StringArgumentType.word())
+                                        .suggests(ROUTE_ID_SUGGESTIONS)
+                                        .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRoute)
+                                        .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                            .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndHealthBar)
+                                            .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                                .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndHealthBarAndNBT)
+                                            )
+                                        )
+                                        .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                            .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithRouteAndNBT)
+                                        )
+                                    )
+                                    .then(Commands.argument("showHealthBar", com.mojang.brigadier.arguments.BoolArgumentType.bool())
+                                        .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithHealthBar)
+                                        .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                            .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithHealthBarAndNBT)
+                                        )
+                                    )
+                                    .then(Commands.argument("nbt", CompoundTagArgument.compoundTag())
+                                        .executes(BetterEvECommands::executeSpawnEntitiesAtPositionWithNBT)
                                     )
                                 )
                             )
@@ -483,9 +482,15 @@ public class BetterEvECommands {
         ResourceLocation entityRL = ResourceLocationArgument.getId(context, "entityType");
         String factionId = StringArgumentType.getString(context, "factionId");
         int level = IntegerArgumentType.getInteger(context, "level");
-        double x = DoubleArgumentType.getDouble(context, "x");
-        double y = DoubleArgumentType.getDouble(context, "y");
-        double z = DoubleArgumentType.getDouble(context, "z");
+        // 与原生 /summon 一致：Vec3Argument.getVec3 会按执行位置把 ~ / ^ 解析成绝对坐标
+        Vec3 pos = Vec3Argument.getVec3(context, "pos");
+        if (!Level.isInSpawnableBounds(BlockPos.containing(pos))) {
+            context.getSource().sendFailure(Component.translatable("commands.summon.outOfWorld"));
+            return 0;
+        }
+        double x = pos.x;
+        double y = pos.y;
+        double z = pos.z;
         int count = IntegerArgumentType.getInteger(context, "count");
         
         ServerLevel serverLevel = context.getSource().getLevel();
@@ -947,7 +952,7 @@ public class BetterEvECommands {
     private static int executeScenarioLoad(CommandContext<CommandSourceStack> context) {
         String name = StringArgumentType.getString(context, "name");
         try {
-            ScenarioManager.load(name);
+            ScenarioManager.load(name, context.getSource().getPlayer());
             context.getSource().sendSuccess(() -> Component.literal("已加载剧本: " + name), true);
         } catch (Exception e) {
             context.getSource().sendFailure(Component.literal("加载剧本失败: " + e.getMessage()));

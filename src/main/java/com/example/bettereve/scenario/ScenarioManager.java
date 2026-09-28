@@ -5,7 +5,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import com.example.bettereve.waypoint.WaypointManager;
+import com.example.bettereve.phase.CommandExecutor;
 import com.example.bettereve.phase.PhaseManager;
+import net.minecraft.server.level.ServerPlayer;
 import com.example.bettereve.faction.FactionRegistry;
 import com.example.bettereve.faction.FactionRelationManager;
 
@@ -21,6 +23,18 @@ public class ScenarioManager {
      * 加载并激活指定剧本。
      */
     public static void load(String name) throws ScenarioLoadException {
+        load(name, null);
+    }
+
+    /**
+     * 加载并激活指定剧本，并记录执行剧本指令的玩家。
+     * 剧本指令由 {@link CommandExecutor} 执行，执行者取玩家 source，
+     * 剧本里的 `~` 才和玩家自己敲指令一样相对玩家，而不是相对世界原点。
+     */
+    public static void load(String name, ServerPlayer sourcePlayer) throws ScenarioLoadException {
+        if (sourcePlayer != null) {
+            CommandExecutor.setSourcePlayer(sourcePlayer);
+        }
         Scenario scenario = ScenarioIO.readScenario(name);
         activeScenario = scenario;
         activeScenarioName = name;

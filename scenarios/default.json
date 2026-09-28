@@ -131,6 +131,15 @@
     "targetingRange": 64,
     "targetingFocusRange": 10,
     "targetingFocusInterval": 20,
-    "hudEnabled": true
+    "hudEnabled": true,
+    "summon": {
+      "inheritFaction": true,
+      "inheritLevel": true
+    },
+    "projectile": {
+      "enabled": true,
+      "inheritFaction": true,
+      "inheritLevel": true
+    }
   }
 }
