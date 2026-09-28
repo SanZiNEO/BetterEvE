@@ -229,7 +229,7 @@ public class PhaseManager {
     /**
      * faction_wiped 扫描（每 {@link #FACTION_WIPE_SCAN_INTERVAL} tick 一次；阶段没配就零开销）。
      *
-     * 语义（plans/external/03_MULTI_MATCH_SCENARIO.md）：
+     * 语义（plans/complete/03_MULTI_MATCH_SCENARIO.md）：
      * - 只有本阶段内"从 0 涨到有"的阵营，归零时才算被消灭 —— 上一场清场后的空阵营不会立刻触发，
      *   必须等本阶段的召唤落地（0 → 有）之后才算数
      * - 用存活实体数（含召唤物与玩家）而不是死亡计数：被误杀 / 被 despawn / 数量算错都不会提前触发

@@ -167,7 +167,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 - `timeout`（秒，可选）：进入本阶段后满 N 秒该触发器仍未触发 → 也切到它的 `targetPhase`；**每个触发器各自计时**，互不干扰（`timer` 做不到这点，见下方警告）
 - ⚠️ **一个阶段只应写一个 `timer` 触发器**：`timerTicks` 是阶段级单一计数器，且自增写在触发器循环体内 —— 写 N 个 timer 会让计数每 tick 加 N，触发时间变成 1/N
 
-`faction_wiped` 语义（多场次剧本用，见 `plans/external/03_MULTI_MATCH_SCENARIO.md`）：
+`faction_wiped` 语义（多场次剧本用，见 `plans/complete/03_MULTI_MATCH_SCENARIO.md`）：
 
 - 统计**存活实体数**（含召唤物与玩家，只看已加载的实体），不是死亡计数 —— 被误杀 / despawn / 数量算错都不会提前触发
 - **本阶段召唤过才算**：阵营必须在本阶段内出现过（0 → 有），归零时才判"被消灭"；上一场清场后的空阵营不会立刻触发，要等本阶段的召唤落地
