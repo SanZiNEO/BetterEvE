@@ -472,6 +472,13 @@ p2 清场，3 秒后回 p1（日志 `phase p2 -> p1 winner=none reason=timer ela
 `player_death` 需要真实玩家（`{ "type": "player_death", "player": "Steve", "targetPhase": "..." }`），
 在客户端里用第二个账号进服后 `/kill Steve` 验证。
 
+**`delay`（命中后延迟切换）**：把 t1 的触发器改成
+`{ "type": "faction_wiped", "factionId": "blue", "threshold": 1, "delay": 3, "winner": "red", "targetPhase": "t2" }`，
+杀 2 只蓝僵尸后观察：
+- 阶段**不会立刻切**（1 秒后 `phase list` 仍是 t1）
+- 日志先出现 `[触发器] faction_wiped 命中，3 秒后切换到 t2`，约 3 秒后才出现 `phase t1 -> t2 winner=red reason=wiped elapsed=3s`（`elapsed` 含延迟）
+- 延迟期间该阶段的 `timer` / `timeout` 不生效；期间用 `/bettereve phase switch` 手动切走 → 预定取消，之后不会再多切一次
+
 ---
 
 ## 常见问题

@@ -156,18 +156,21 @@ public class PhaseManager {
         if (current == null || current.getTriggers() == null) return;
 
         // 1. timer 触发器（阶段级单一计数器，一个阶段只应写一个）
-        for (Scenario.TriggerDef trigger : current.getTriggers()) {
-            if (!"timer".equals(trigger.getType())) continue;
-            if (trigger.getTargetPhase() == null) continue;
-            if (trigger.getThreshold() > 0) {
-                timerTicks++;
-                if (timerTicks % 100 == 0) {
-                    LOGGER.debug("Timer tick: phase={}, timerTicks={}/{}", currentPhaseId, timerTicks, trigger.getThreshold() * 20);
-                }
-                if (timerTicks >= trigger.getThreshold() * 20) {
-                    timerTicks = 0;
-                    switchToInternal(trigger.getTargetPhase(), "timer", "none");
-                    return;
+        //    已有"待切换"时冻结：延迟期间不再计时，免得抢在预定切换之前切走
+        if (!TriggerEngine.isSwitchPending()) {
+            for (Scenario.TriggerDef trigger : current.getTriggers()) {
+                if (!"timer".equals(trigger.getType())) continue;
+                if (trigger.getTargetPhase() == null) continue;
+                if (trigger.getThreshold() > 0) {
+                    timerTicks++;
+                    if (timerTicks % 100 == 0) {
+                        LOGGER.debug("Timer tick: phase={}, timerTicks={}/{}", currentPhaseId, timerTicks, trigger.getThreshold() * 20);
+                    }
+                    if (timerTicks >= trigger.getThreshold() * 20) {
+                        timerTicks = 0;
+                        switchToInternal(trigger.getTargetPhase(), "timer", "none");
+                        return;
+                    }
                 }
             }
         }
@@ -177,6 +180,7 @@ public class PhaseManager {
         String phaseBefore = currentPhaseId;
         TriggerEngine.tick(current, serverTicks);
         if (!phaseBefore.equals(currentPhaseId)) return;
+        if (TriggerEngine.isSwitchPending()) return;   // 已预定切换：冻结 timeout
 
         // 3. 触发器级 timeout：各自计时，进本阶段满 N 秒仍未触发 → 切到该触发器的 targetPhase
         int elapsedSeconds = (serverTicks - phaseStartTick) / 20;

@@ -252,12 +252,14 @@ public class Scenario {
      * - score / command_check / all_of / any_of
      * - entity_death_count：旧名，等价 entity_death + factionId + count（仍解析，已废弃）
      *
-     * 通用字段：targetPhase（必填）/ timeout（秒，可选）/ winner（可选，日志胜者覆盖）
+     * 通用字段：targetPhase（必填）/ timeout（秒，可选）/ delay（秒，可选，命中后延迟再切）/
+     * winner（可选，日志胜者覆盖）
      */
     public static class TriggerDef {
         private String type;
         private String targetPhase;
         private int timeout;          // 秒；0 = 无超时
+        private int delay;            // 秒；命中后延迟 N 秒再切（0 = 立即），留给播报/死亡动画/运镜
         private String winner;        // 切阶段日志的胜者覆盖（red/blue/none）；不写由模组推断
 
         // ---- 目标定位（entity_death / player_death / entity_state / entity_health / zone_*）----
@@ -298,6 +300,8 @@ public class Scenario {
         public void setTargetPhase(String targetPhase) { this.targetPhase = targetPhase; }
         public int getTimeout() { return timeout; }
         public void setTimeout(int timeout) { this.timeout = timeout; }
+        public int getDelay() { return delay; }
+        public void setDelay(int delay) { this.delay = delay; }
         public String getWinner() { return winner; }
         public void setWinner(String winner) { this.winner = winner; }
         public String getEntityType() { return entityType; }

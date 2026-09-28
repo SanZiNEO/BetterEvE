@@ -51,6 +51,25 @@ public final class TriggerEngine {
 
     /** 每个触发器的运行状态；进阶段整体清空（key = 剧本里的 TriggerDef 实例） */
     private static final Map<Scenario.TriggerDef, TriggerState> states = new HashMap<>();
+    /** 已命中、等 delay 到点的切换（延迟期间冻结本阶段的条件评估与 timeout/timer） */
+    private static PendingSwitch pending = null;
+
+    /** 预定中的切换（触发器带 delay 时先记在这里，到点再切） */
+    private static final class PendingSwitch {
+        final String fromPhase;
+        final Scenario.TriggerDef trigger;
+        final String reason;
+        final String winner;
+        final int dueTick;
+
+        PendingSwitch(String fromPhase, Scenario.TriggerDef trigger, String reason, String winner, int dueTick) {
+            this.fromPhase = fromPhase;
+            this.trigger = trigger;
+            this.reason = reason;
+            this.winner = winner;
+            this.dueTick = dueTick;
+        }
+    }
     /** 服务端累计击杀数（按阵营）—— score 触发器用，剧本加载/记分板清零时复位 */
     private static final Map<String, Integer> killCounts = new HashMap<>();
     /** 服务端累计水晶摧毁数（按阵营） */
@@ -84,6 +103,7 @@ public final class TriggerEngine {
     /** 进入新阶段：重建全部触发器状态（由 PhaseManager.switchToInternal 调用） */
     static void onPhaseEnter(Scenario.PhaseDef phase) {
         states.clear();
+        pending = null;
     }
 
     /** 剧本加载 / 记分板清零：清空累计比分 */
@@ -135,15 +155,34 @@ public final class TriggerEngine {
 
     // ==================== 轮询 ====================
 
-    /** 每 tick 由 PhaseManager 调用：轮询类条件到期即采样，命中即切阶段 */
+    /** 每 tick 由 PhaseManager 调用：先处理"待切换"，再评估本阶段条件 */
     static void tick(Scenario.PhaseDef phase, int serverTicks) {
+        if (pending != null) {
+            // 延迟期间阶段被别的途径切走（手动切换/重载）→ 丢弃预定
+            if (pending.fromPhase == null || !pending.fromPhase.equals(PhaseManager.getCurrentPhaseId())) {
+                pending = null;
+                return;
+            }
+            if (serverTicks >= pending.dueTick) {
+                PendingSwitch p = pending;
+                pending = null;
+                PhaseManager.fireTrigger(p.trigger, p.reason, p.winner);
+            }
+            return;   // 延迟期间冻结本阶段的条件评估
+        }
         tryFire(phase, serverTicks);
+    }
+
+    /** 是否有"已命中、等 delay 到点"的切换（PhaseManager 用它冻结 timer / timeout） */
+    static boolean isSwitchPending() {
+        return pending != null;
     }
 
     // ==================== 评估与切换 ====================
 
-    /** 按数组顺序评估顶层触发器，首个命中即切换；返回是否真的切了阶段 */
+    /** 按数组顺序评估顶层触发器，首个命中即切换（带 delay 则先预定）；返回是否命中 */
     private static boolean tryFire(Scenario.PhaseDef phase, int serverTicks) {
+        if (pending != null) return false;   // 已有待切换：冻结评估，等它到点
         List<Scenario.TriggerDef> triggers = phase == null ? null : phase.getTriggers();
         if (triggers == null) return false;
         for (Scenario.TriggerDef trigger : triggers) {
@@ -151,7 +190,16 @@ public final class TriggerEngine {
             boolean satisfied = evaluate(trigger, serverTicks);
             if (!satisfied) continue;
             String reason = "faction_wiped".equals(trigger.getType()) ? "wiped" : trigger.getType();
-            PhaseManager.fireTrigger(trigger, reason, winnerFor(trigger, reason));
+            String winner = winnerFor(trigger, reason);
+            int delaySeconds = Math.max(0, trigger.getDelay());
+            if (delaySeconds > 0) {
+                // 命中但先不切：留给播报 / 死亡动画 / 运镜收尾的时间
+                pending = new PendingSwitch(PhaseManager.getCurrentPhaseId(), trigger, reason, winner,
+                        serverTicks + delaySeconds * 20);
+                LOGGER.info("[触发器] {} 命中，{} 秒后切换到 {}", trigger.getType(), delaySeconds, trigger.getTargetPhase());
+            } else {
+                PhaseManager.fireTrigger(trigger, reason, winner);
+            }
             return true;
         }
         return false;
