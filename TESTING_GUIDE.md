@@ -113,6 +113,13 @@
 
 ⚠️ 一个阶段只应写一个 `timer` 触发器——计数器自增在触发器循环体内，写多个会成倍加速。
 
+每次切换阶段日志会打一行固定格式（外部数据台按此行记比分，见 `CONFIGURATION.md`「阶段切换日志」）：
+
+```
+[bettereve] phase - -> match_start winner=none reason=load elapsed=0s
+[bettereve] phase blue_victory -> match_start winner=none reason=timer elapsed=12s
+```
+
 ### 7. 兵线（Waypoint + Route）
 
 ```
@@ -234,6 +241,58 @@
 召唤两只不同阵营的 Warden，观察是否互打
 预期：不同阵营敌对 → 可以互打（原版 Warden 不打 Warden）
 
+### 15. 多场次剧本（`faction_wiped` / `timeout` / 切阶段日志）
+
+新建探针剧本 `config/bettereve/scenarios/zz_wipe_probe.json`：
+
+```json
+{
+  "id": "zz_wipe_probe",
+  "name": "多场次探针",
+  "factions": [
+    { "id": "red",  "name": "红队", "color": "#FF0000" },
+    { "id": "blue", "name": "蓝队", "color": "#0000FF" }
+  ],
+  "phases": [
+    { "id": "p1",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "bettereve spawn minecraft:zombie red 1 0 60 0 1" },
+        { "delay": 1, "command": "bettereve spawn minecraft:zombie blue 1 5 60 0 1" }
+      ],
+      "triggers": [
+        { "type": "faction_wiped", "factionId": "blue", "timeout": 30, "targetPhase": "p2" },
+        { "type": "faction_wiped", "factionId": "red",  "timeout": 30, "targetPhase": "p2" }
+      ] },
+    { "id": "p2",
+      "commands": [ { "delay": 0, "command": "kill @e[type=!minecraft:player]" } ],
+      "triggers": [ { "type": "timer", "threshold": 3, "targetPhase": "p1" } ] }
+  ]
+}
+```
+
+```
+/bettereve scenario load zz_wipe_probe
+```
+预期：日志 `[bettereve] phase - -> p1 winner=none reason=load elapsed=0s`；p1 在 (0,60,0)/(5,60,0) 各生成一只僵尸
+
+**wiped（分胜负）**：只杀蓝队那只，保留红队：
+
+```
+/kill @e[type=minecraft:zombie,nbt={ForgeData:{"BetterEvE:FactionID":"blue"}}]
+```
+预期（≤0.5 秒内）：日志 `[bettereve] phase p1 -> p2 winner=red reason=wiped elapsed=Ns`；
+p2 清场，3 秒后回 p1（日志 `phase p2 -> p1 winner=none reason=timer elapsed=3s`）
+
+**timeout（僵局兜底）**：进 p1 后什么都不杀，等 30 秒
+预期：日志 `[bettereve] phase p1 -> p2 winner=none reason=timeout elapsed=30s`
+
+**边界**：
+
+- 进 p1 后阵营还没召唤（空场）→ 不触发（不会一进阶段就切走）
+- 同一 tick 内红蓝全灭 → 只切一次（首个命中即跳出），winner=`none`
+- 玩家加入某阵营也算该阵营的存活实体 → 该阵营不会判"被消灭"
+
 ---
 
 ## 常见问题
@@ -246,7 +305,7 @@
 | `scenario list` 为空 | 剧本文件不在 | 确认 `config/bettereve/scenarios/` 下有 json |
 | 生物不动 | 剧本没有 `routes` | 用含 `routes` 的剧本 + `/bettereve waypoint visualize` 确认区域 |
 | 生物不互打 | 关系未定义 | `relations` 里补 `hostile`——**未定义 = 不敌对** |
-| 阶段不切换 | 触发器类型未接线 | 只能用 `crystal_destroyed` 和 `timer`，详见 `CONFIGURATION.md`「已知未接线」 |
+| 阶段不切换 | 触发器类型未接线 | 可用 `crystal_destroyed` / `timer` / `faction_wiped`，其余详见 `CONFIGURATION.md`「已知未接线」 |
 | 水晶不生成 | 模板 id 写错 | `/bettereve crystal spawn <模板id>` 需与剧本 `crystals[].id` 一致 |
 
 ---
@@ -256,6 +315,7 @@
 以下功能写了也不会生效，详见 `CONFIGURATION.md`「已知未接线」：
 
 - `phases[].phaseType`（`point` / `loop` / `branch`）
+- `phases[].announce`（会 post 成事件但无订阅者，播报写进 `commands`）/ `phases[].resetAfter`
 - `triggers[].type`：`base_destroyed` / `entity_death_count` / `custom`
 - `waypoints[].lane` / `waypoints[].order`
 - `/bettereve scenario info`

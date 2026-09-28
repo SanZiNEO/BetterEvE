@@ -246,13 +246,18 @@ public class Scenario {
 
 
     public static class TriggerDef {
-        // 生效取值："crystal_destroyed"（按 targetId 匹配水晶模板）| "timer"（threshold = 秒）
+        // 生效取值：
+        // - "crystal_destroyed"：targetId 匹配水晶模板
+        // - "timer"：threshold = 秒（阶段级单一计数器，一个阶段只应写一个）
+        // - "faction_wiped"：factionId 阵营存活实体数归零（本阶段召唤过之后才算，见 PhaseManager）
+        // timeout（秒，可选）：进入本阶段后 N 秒仍未触发 → 也切到 targetPhase，每个触发器各自计时
         // 另有 base_destroyed / entity_death_count / custom 三个分支仍在 switch 中，
         // 但全项目无调用点，写了无效。详见 CONFIGURATION.md「已知未接线」。
         private String type;
         private String factionId;
         private String targetId;
         private int threshold;
+        private int timeout;
         private String targetPhase;
         public String getType() { return type; }
         public void setType(String type) { this.type = type; }
@@ -262,6 +267,8 @@ public class Scenario {
         public void setTargetId(String targetId) { this.targetId = targetId; }
         public int getThreshold() { return threshold; }
         public void setThreshold(int threshold) { this.threshold = threshold; }
+        public int getTimeout() { return timeout; }
+        public void setTimeout(int timeout) { this.timeout = timeout; }
         public String getTargetPhase() { return targetPhase; }
         public void setTargetPhase(String targetPhase) { this.targetPhase = targetPhase; }
     }

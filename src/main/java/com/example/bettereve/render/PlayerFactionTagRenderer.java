@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.client.event.RenderNameTagEvent;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -16,7 +17,7 @@ import net.minecraftforge.fml.common.Mod;
  * 玩家头顶阵营颜色标记渲染器。
  * 在玩家名称标签旁显示阵营颜色圆点和名称。
  */
-@Mod.EventBusSubscriber(modid = "bettereve")
+@Mod.EventBusSubscriber(modid = "bettereve", value = Dist.CLIENT)
 public class PlayerFactionTagRenderer {
 
     @SubscribeEvent

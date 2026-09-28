@@ -8,8 +8,25 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 
 | 用途 | 路径 | 说明 |
 |---|---|---|
-| 预设剧本 | `scenarios/*.json`（项目根目录） | 游戏外编辑 |
-| 运行时剧本 | `config/bettereve/scenarios/*.json` | 首次加载时自动从预设复制 |
+| 预设剧本 | `scenarios/*.json`（项目根目录） | 随仓库分发，只读种子；**外部工具不要写这里** |
+| 运行时剧本 | `config/bettereve/scenarios/*.json` | 工作副本：游戏加载、外部编辑器（douququ 面板）都读/写这里 |
+
+同步规则（`JsonScenarioStorage.syncPresetToRuntime`）：
+
+- 运行时副本**缺失**（首次加载该剧本）→ 从预设复制一份
+- 预设文件**比运行时副本更新**（mtime 更晚）→ 覆盖运行时副本（仓库里改了预设，重新加载即生效）
+- 其余情况**一律以运行时副本为准** —— 直接写运行时目录的改动（面板调参）不会被预设覆盖
+
+## schema 稳定性约定（外部编辑器协作）
+
+外部工具（douququ 面板）直接读写运行时剧本 JSON，约定如下：
+
+- **加字段**：随时可以，两边都不用改。游戏用默认 Gson 解析，**未知键一律忽略**（面板自己的 `douququ` 块靠这条活着）；面板存原始 JSON，不认识的键原样保留。
+  - 反例警告：不要开 `FAIL_ON_UNKNOWN_PROPERTIES`、不要换 Jackson（默认严格模式）—— 会让带外部键的剧本加载直接失败。
+- **删字段 / 改语义**：先在本文件标「已废弃但仍解析」并保留代码解析（参照 `waypoints[].lane` / `order`），不要直接删。
+  直接删会让面板对应表单**静默失配**（表单还在，写了不生效）。
+- **写目录**：面板只写运行时目录，不写预设目录。
+- **回写**：游戏目前不回写剧本文件（`ScenarioIO.writeScenario` 无调用点）；将来若加回写路径，必须基于原始 JSON 做合并，不能 Gson 序列化整份重写，否则面板的未知键（如 `douququ`）会丢。
 
 ## 剧本结构
 
@@ -119,11 +136,11 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 ### phases — 游戏阶段
 
 - `id` / `description`
-- `announce` — 播报（`message` / `duration`）
+- `announce` — 播报（`message` / `duration`）⚠️ 未接线：只会 post 成事件、全项目无订阅者，见文末「已知未接线」
 - `commands[]` — 指令（`delay` 延迟秒 / `command`，多指令用 `&&` 分隔，OP 权限执行）
 - `triggers[]` — 阶段切换触发器（见下）
 - `spawnBases` — 生成水晶（`templateId` + `positions[]`）
-- `resetAfter` — 延迟后重置
+- `resetAfter` — 延迟后重置 ⚠️ 未接线（字段被解析，无代码读取）
 - ⚠️ `phaseType` 字段会被解析，但**没有任何代码读取**（写了无效）
 
 剧本加载后自动进入 `phases[0]`。切换阶段会清空上一阶段尚未执行的延迟指令。
@@ -134,18 +151,42 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 |---|---|---|---|
 | `crystal_destroyed` | 指定水晶被摧毁 | `targetId` = 水晶模板 id | ✅ 可用 |
 | `timer` | 进入本阶段后 N 秒 | `threshold` = 秒 | ✅ 可用 |
+| `faction_wiped` | 指定阵营存活实体数归零 | `factionId` = 阵营 id | ✅ 可用 |
 
 ```json
 "triggers": [
   { "type": "crystal_destroyed", "targetId": "red_base",  "targetPhase": "blue_victory" },
-  { "type": "timer", "threshold": 12, "targetPhase": "match_start" }
+  { "type": "timer", "threshold": 12, "targetPhase": "match_start" },
+  { "type": "faction_wiped", "factionId": "blue", "timeout": 240, "targetPhase": "match_2" }
 ]
 ```
 
 - `targetPhase` 必填，缺失则该触发器不会生效
 - 触发器按数组顺序检查，**首个命中即切换并跳出**，后面的不再检查
 - 同一阶段重复切换到当前阶段会被幂等忽略
+- `timeout`（秒，可选）：进入本阶段后满 N 秒该触发器仍未触发 → 也切到它的 `targetPhase`；**每个触发器各自计时**，互不干扰（`timer` 做不到这点，见下方警告）
 - ⚠️ **一个阶段只应写一个 `timer` 触发器**：`timerTicks` 是阶段级单一计数器，且自增写在触发器循环体内 —— 写 N 个 timer 会让计数每 tick 加 N，触发时间变成 1/N
+
+`faction_wiped` 语义（多场次剧本用，见 `plans/external/03_MULTI_MATCH_SCENARIO.md`）：
+
+- 统计**存活实体数**（含召唤物与玩家，只看已加载的实体），不是死亡计数 —— 被误杀 / despawn / 数量算错都不会提前触发
+- **本阶段召唤过才算**：阵营必须在本阶段内出现过（0 → 有），归零时才判"被消灭"；上一场清场后的空阵营不会立刻触发，要等本阶段的召唤落地
+- 每 5 tick 扫描一次；同一 tick 内死多个也只切一次（首个命中即跳出）
+- 归零那一刻打结构化日志并算胜者（见下）
+
+#### 阶段切换日志（外部数据台用）
+
+每次阶段切换打一行固定格式日志（INFO）：
+
+```
+[bettereve] phase match_1 -> match_2 winner=red reason=wiped elapsed=87s
+[bettereve] phase match_3 -> match_4 winner=none reason=timeout elapsed=240s
+```
+
+- `winner`：`red` / `blue` / `none`。只有 `faction_wiped` 能算出具体阵营（恰好一个阵营还有存活实体 → 它；双灭 / 多阵营并存 / 无存活 → `none`）；超时未分胜负记 `none`
+- `reason`：`wiped` / `timeout` / `timer` / `crystal_destroyed` / `manual`（`/bettereve phase switch`）/ `load`（剧本首次进入阶段）
+- `elapsed`：停留在上一阶段的整数秒；首次加载记 `- -> <阶段>`，0s
+- 格式固定（空格分隔、键名固定、一行），外部工具按 `phase (\S+) -> (\S+) winner=(\w+) reason=(\w+) elapsed=(\d+)s` 抓取
 
 其余 `type` 值写了无效，见文末「已知未接线」。
 
@@ -180,6 +221,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `hideHealthBar` | false | 召唤物是否隐藏血条（默认 false = 显示，便于观察继承效果） |
 | `countsForScore` | false | 召唤物击杀是否计分 |
 | `healthBarOverrides` | 无 | 按实体类型覆盖血条，优先级最高 |
+| `factionOverrides` | 无 | 按实体类型强制阵营，优先级最高（先于一切继承逻辑）；治模组内部清空归属的实体（如茈） |
 | `levelTable` | 无 | 召唤物专用等级表名（不写 = 走阵营表） |
 
 ```json
@@ -187,7 +229,8 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
   "inheritFaction": true,
   "inheritLevel": true,
   "countsForScore": false,
-  "healthBarOverrides": { "jujutsucraft:projectile_slash": false }
+  "healthBarOverrides": { "jujutsucraft:projectile_slash": false },
+  "factionOverrides": { "jujutsucraft:purple": "gojo" }
 }
 ```
 
@@ -219,6 +262,41 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `arc` | 360.0 | 张角（度）：360 整圆、180 半圆、≤0 退化为直线 |
 | `width` | `radius × 2` | 矩形宽（X 方向） |
 | `depth` | `radius × 2` | 矩形深（Z 方向） |
+
+#### options.rules — 剧本裁决规则
+
+把「剧本特例」从代码里抽出来：代码只提供规则种类与执行器（`ScenarioRuleHandler`），具体针对哪个实体、什么状态、杀几次全部写剧本。没写 `rules` 段时全部零开销。
+
+| 子段 | 字段 | 说明 |
+|---|---|---|
+| `lethalHits[]` | `attacker` / `victim` | 实体类型（`modid:name` 或只写实体名）：attacker 打到 victim 时把这一击改写成致死量 |
+| | `attackerFlag` | 可选：攻击者 persistentData 里必须为 `true` 的布尔键（区分同一实体的不同形态/招式） |
+| | `damage` | 致死伤害量，默认 `1000000` |
+| `stateKills[]` | `type` | 实体类型 |
+| | `nbt` | 状态探针：实体序列化 NBT 里必须匹配的键值（布尔比对布尔键，其余比对字符串键） |
+| | `kills` | 每次触发的连杀次数，默认 3 |
+| | `intervalTicks` | 轮询间隔（tick），默认 10 |
+| `attributeOverrides[]` | `type` | 实体类型 |
+| | `healthMultiplier` / `armorMultiplier` / `attackMultiplier` | 属性倍率；只在实体**新加入世界**时应用一次（存档加载的实体跳过），未写的项不动 |
+
+三个子段都是「第一条命中即生效」；`lethalHits` 依次按 攻击者类型 → 受害者类型 → 攻击者标记 过滤。
+
+```json
+"rules": {
+  "lethalHits": [
+    { "attacker": "jujutsucraft:purple", "attackerFlag": "explode",
+      "victim": "jujutsucraft:sukuna_fushiguro", "damage": 1000000.0 }
+  ],
+  "stateKills": [
+    { "type": "jujutsucraft:sukuna_fushiguro", "nbt": { "Dataperfect_mode": true },
+      "kills": 3, "intervalTicks": 5 }
+  ],
+  "attributeOverrides": [
+    { "type": "jujutsucraft:eight_handled_sword_divergent_sila_divine_general_mahoraga",
+      "healthMultiplier": 4.0 }
+  ]
+}
+```
 
 ### keepAliveZone — 保活区域
 
@@ -296,6 +374,8 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `triggers[].type` | `entity_death_count` | 分支存在，从未接线 |
 | `triggers[].type` | `custom` | 分支存在，从未接线 |
 | `waypoints[].lane` / `waypoints[].order` | — | 旧版路线字段，被 `routes[]` 取代 |
+| `phases[].announce` | `message` / `duration` | 会 post 成 `PhaseBroadcastEvent`，但全项目无订阅者；播报请写进 `commands`（`title` / `say`） |
+| `phases[].resetAfter` | — | 字段被解析，无代码读取 |
 | `/bettereve scenario info` | — | 处理函数 `executeScenarioInfo` 存在，但未注册到指令树 |
 
 ## 旧全局配置去向对照

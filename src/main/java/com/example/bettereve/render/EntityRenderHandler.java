@@ -3,10 +3,11 @@ package com.example.bettereve.render;
 import com.example.bettereve.Bettereve;
 import com.example.bettereve.faction.ClientEntityMapping;
 import net.minecraftforge.client.event.RenderNameTagEvent;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class EntityRenderHandler {
     
     /**
