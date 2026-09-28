@@ -103,15 +103,11 @@ public final class ScenarioRules {
         return interval;
     }
 
-    /** 实体类型匹配：支持 modid:name 与只写实体名两种写法 */
+    /** 实体类型匹配：支持 modid:name 与只写实体名两种写法（规则必须写类型，没写视为不匹配） */
     private static boolean matchesType(Entity entity, String type) {
         if (type == null || type.isEmpty()) {
             return false;
         }
-        ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
-        if (key == null) {
-            return false;
-        }
-        return type.equals(key.toString()) || type.equals(key.getPath());
+        return com.example.bettereve.phase.TriggerMatcher.matchesType(entity, type);
     }
 }

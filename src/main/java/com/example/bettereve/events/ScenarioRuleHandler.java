@@ -1,9 +1,9 @@
 package com.example.bettereve.events;
 
 import com.example.bettereve.Bettereve;
+import com.example.bettereve.phase.TriggerMatcher;
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioRules;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -157,29 +157,12 @@ public class ScenarioRuleHandler {
         }
     }
 
-    /** 状态探针：把实体序列化成 NBT，逐项比对规则里写的键值 */
+    /** 状态探针：把实体序列化成 NBT，逐项比对规则里写的键值（规则必须写探针，空探针视为不匹配） */
     private static boolean matchesState(LivingEntity entity, Scenario.StateKill rule) {
         Map<String, Object> probe = rule.getNbt();
         if (probe == null || probe.isEmpty()) {
             return false;
         }
-        try {
-            CompoundTag tag = entity.saveWithoutId(new CompoundTag());
-            for (Map.Entry<String, Object> entry : probe.entrySet()) {
-                Object expected = entry.getValue();
-                if (expected instanceof Boolean bool) {
-                    if (tag.getBoolean(entry.getKey()) != bool) {
-                        return false;
-                    }
-                } else if (!String.valueOf(expected).equals(tag.getString(entry.getKey()))) {
-                    return false;
-                }
-            }
-            return true;
-        } catch (Throwable t) {
-            // 轮询循环里不能把异常抛进 tick：记一次上下文后跳过这只实体
-            LOGGER.error("[状态裁决] 读取实体状态失败 entity={} type={}", entity.getUUID(), entity.getType(), t);
-            return false;
-        }
+        return TriggerMatcher.matchesNbt(entity, probe);
     }
 }

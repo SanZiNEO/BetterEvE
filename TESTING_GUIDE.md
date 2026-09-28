@@ -293,6 +293,185 @@ p2 清场，3 秒后回 p1（日志 `phase p2 -> p1 winner=none reason=timer ela
 - 同一 tick 内红蓝全灭 → 只切一次（首个命中即跳出），winner=`none`
 - 玩家加入某阵营也算该阵营的存活实体 → 该阵营不会判"被消灭"
 
+### 16. 阶段触发器全条件（探针剧本）
+
+新建探针剧本 `config/bettereve/scenarios/zz_trig_probe.json`（每个阶段测一个条件，用 `/bettereve phase switch tN` 逐个进）：
+
+```json
+{
+  "id": "zz_trig_probe",
+  "name": "触发器探针",
+  "keepAliveZone": { "x1": -40, "z1": -40, "x2": 40, "z2": 40 },
+  "factions": [
+    { "id": "red",  "name": "红队", "color": "#FF0000" },
+    { "id": "blue", "name": "蓝队", "color": "#0000FF" }
+  ],
+  "relations": [
+    { "from": "red",  "to": "blue", "type": "hostile" },
+    { "from": "blue", "to": "red",  "type": "hostile" }
+  ],
+  "crystals": [
+    { "id": "probe_crystal", "factionId": "blue", "x": 8, "y": 60, "z": 8,
+      "health": 40, "attackDamage": 0, "armor": 0, "attackRange": 1.0,
+      "attackCooldown": 10.0, "sizeKey": "1x1", "modelScale": 1.0, "showHealthBar": false }
+  ],
+  "phases": [
+    { "id": "t1",
+      "commands": [
+        { "delay": 0, "command": "gamerule doMobSpawning false" },
+        { "delay": 0, "command": "gamerule doDaylightCycle false" },
+        { "delay": 0, "command": "time set midnight" },
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 0, "command": "fill -5 58 -5 10 64 5 minecraft:air" },
+        { "delay": 0, "command": "fill -5 59 -5 10 59 5 minecraft:stone" },
+        { "delay": 1, "command": "bettereve spawn minecraft:zombie blue 1 0 60 0 3" }
+      ],
+      "triggers": [
+        { "type": "faction_wiped", "factionId": "blue", "threshold": 1, "winner": "red", "targetPhase": "t2" }
+      ] },
+
+    { "id": "t2",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "summon minecraft:zombie 0 60 0 {CustomName:'\"probe_boss\"',NoAI:1b}" }
+      ],
+      "triggers": [
+        { "type": "entity_death", "name": "probe_boss", "winner": "blue", "targetPhase": "t3" }
+      ] },
+
+    { "id": "t3",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "summon minecraft:zombie 0 60 0 {NoAI:1b}" },
+        { "delay": 1, "command": "summon minecraft:zombie 3 60 0 {NoAI:1b}" }
+      ],
+      "triggers": [
+        { "type": "entity_death", "entityType": "zombie", "nbt": { "NoAI": true }, "count": 2, "targetPhase": "t4" }
+      ] },
+
+    { "id": "t4",
+      "commands": [ { "delay": 0, "command": "kill @e[type=!minecraft:player]" } ],
+      "triggers": [
+        { "type": "entity_state", "entityType": "zombie", "nbt": { "NoAI": true }, "targetPhase": "t5" }
+      ] },
+
+    { "id": "t5",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "summon minecraft:zombie 0 60 0 {NoAI:1b}" }
+      ],
+      "triggers": [
+        { "type": "entity_health", "entityType": "zombie", "ratio": 0.5, "winner": "red", "targetPhase": "t6" }
+      ] },
+
+    { "id": "t6",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "summon minecraft:zombie 20 60 0 {NoAI:1b}" }
+      ],
+      "triggers": [
+        { "type": "zone_enter", "entityType": "zombie", "zone": { "x1": -5, "z1": -5, "x2": 5, "z2": 5 }, "targetPhase": "t7" }
+      ] },
+
+    { "id": "t7",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "summon minecraft:zombie 0 60 0 {NoAI:1b}" }
+      ],
+      "triggers": [
+        { "type": "zone_leave", "entityType": "zombie", "zone": { "x1": -5, "z1": -5, "x2": 5, "z2": 5 }, "targetPhase": "t8" }
+      ] },
+
+    { "id": "t8",
+      "commands": [ { "delay": 0, "command": "kill @e[type=!minecraft:player]" } ],
+      "triggers": [
+        { "type": "command_check", "command": "execute if entity @e[type=minecraft:zombie]", "winner": "blue", "targetPhase": "t9" }
+      ] },
+
+    { "id": "t9",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "bettereve spawn minecraft:zombie red 1 -3 60 0 1" },
+        { "delay": 1, "command": "summon minecraft:zombie 3 60 0 {ForgeData:{\"BetterEvE:FactionID\":\"blue\"},Health:1.0f}" },
+        { "delay": 1, "command": "summon minecraft:zombie 6 60 0 {ForgeData:{\"BetterEvE:FactionID\":\"blue\"},Health:1.0f}" }
+      ],
+      "triggers": [
+        { "type": "score", "factionId": "red", "kind": "kills", "threshold": 2, "targetPhase": "t10" }
+      ] },
+
+    { "id": "t10",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "bettereve spawn minecraft:zombie red 1 -3 60 0 1" },
+        { "delay": 1, "command": "bettereve spawn minecraft:zombie blue 1 3 60 0 1" }
+      ],
+      "triggers": [
+        { "type": "all_of",
+          "triggers": [
+            { "type": "faction_wiped", "factionId": "red" },
+            { "type": "faction_wiped", "factionId": "blue" }
+          ],
+          "winner": "none", "targetPhase": "t11" }
+      ] },
+
+    { "id": "t11",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 0, "command": "bettereve spawn minecraft:zombie red 1 0 60 0 4",
+          "layout": { "formation": "grid", "spacing": 3 } }
+      ],
+      "triggers": [ { "type": "timer", "threshold": 3, "targetPhase": "t12" } ] },
+
+    { "id": "t12",
+      "commands": [ { "delay": 0, "command": "kill @e[type=!minecraft:player]" } ],
+      "triggers": [
+        { "type": "faction_wiped", "factionId": "red", "timeout": 5, "targetPhase": "t13" }
+      ] },
+
+    { "id": "t13",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "bettereve crystal spawn probe_crystal" },
+        { "delay": 1, "command": "bettereve spawn minecraft:zombie red 1 -3 60 0 1" }
+      ],
+      "triggers": [
+        { "type": "crystal_destroyed", "targetId": "probe_crystal", "winner": "red", "targetPhase": "t14" }
+      ] },
+
+    { "id": "t14",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 0, "command": "say probe done" }
+      ] }
+  ]
+}
+```
+
+逐个进阶段（`/bettereve phase switch tN`）并按表操作，日志里应出现对应行：
+
+| 阶段 | 操作 | 期望日志 |
+|---|---|---|
+| t1 | 生成 3 只蓝僵尸后杀 2 只（`kill @e[type=minecraft:zombie,limit=2]`） | `phase t1 -> t2 winner=red reason=wiped`（`threshold` + `winner` 覆盖） |
+| t2 | `/kill @e[type=minecraft:zombie]` | `reason=entity_death`（按 `name` 匹配） |
+| t3 | 杀 1 只（不切）→ 再杀 1 只 | `reason=entity_death`（按 `nbt` + `count: 2`） |
+| t4 | `/summon minecraft:zombie 0 60 0 {NoAI:1b}` | `reason=entity_state` |
+| t5 | `/damage @e[type=minecraft:zombie,limit=1] 12` | `reason=entity_health`（20 血降到 8，`ratio 0.5`） |
+| t6 | `/tp @e[type=minecraft:zombie,limit=1] 0 60 0` | `reason=zone_enter` |
+| t7 | 等 1 秒（记基线）→ `/tp @e[type=minecraft:zombie,limit=1] 20 60 0` | `reason=zone_leave` |
+| t8 | `/summon minecraft:zombie 0 60 0 {NoAI:1b}` | `reason=command_check` |
+| t9 | 等红僵尸把两只 1 血蓝僵尸打死（约 5-10 秒） | `reason=score` |
+| t10 | 先杀红（不切）→ 再杀蓝 | `reason=all_of` |
+| t11 | 无需操作（3 秒后自动切） | 日志里 spawn 那行带 `Formation: grid`（`CommandDef.layout` 覆盖），随后 `reason=timer` |
+| t12 | 等 5 秒（红队一直空场，永不触发） | `reason=timeout` |
+| t13 | `/damage @e[type=bettereve:crystal_entity_1x1,limit=1] 999 minecraft:player_attack by @e[type=minecraft:zombie,limit=1]` | `reason=crystal_destroyed` |
+
+> ⚠️ 服务器测试（无玩家）注意：chunk 不做实体 tick 时僵尸不会移动/不会打架。
+> 想在没有玩家时测 `score` 这类需要生物 AI 的条件，先用 `/forceload add -32 -32 32 32` 强制加载竞技场；
+> 客户端测试（有玩家）不受影响。
+
+`player_death` 需要真实玩家（`{ "type": "player_death", "player": "Steve", "targetPhase": "..." }`），
+在客户端里用第二个账号进服后 `/kill Steve` 验证。
+
 ---
 
 ## 常见问题

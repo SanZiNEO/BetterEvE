@@ -147,32 +147,93 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 
 #### triggers — 触发器
 
-| `type` | 语义 | 用到的字段 | 状态 |
+所有触发器通用字段：
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `type` | ✅ | 条件类型（见下表） |
+| `targetPhase` | ✅ | 命中后切到的阶段 id；缺失则该触发器不生效 |
+| `timeout` | — | 秒；进入本阶段后满 N 秒该触发器仍未触发 → 也切到 `targetPhase`，**每个触发器各自计时** |
+| `winner` | — | 切阶段日志里的胜者（`red` / `blue` / `none`）；不写由模组推断（只有 `faction_wiped` 能自动算，其余记 `none`） |
+| `intervalTicks` | — | 轮询类条件的采样间隔（tick）；不写按类型默认（faction 5 / 其余 10 / command 20） |
+
+条件类型总表：
+
+| `type` | 语义 | 关键字段 | 判定 |
 |---|---|---|---|
-| `crystal_destroyed` | 指定水晶被摧毁 | `targetId` = 水晶模板 id | ✅ 可用 |
-| `timer` | 进入本阶段后 N 秒 | `threshold` = 秒 | ✅ 可用 |
-| `faction_wiped` | 指定阵营存活实体数归零 | `factionId` = 阵营 id | ✅ 可用 |
+| `timer` | 进入本阶段后 N 秒 | `threshold` = 秒 | 计时 |
+| `crystal_destroyed` | 指定水晶被摧毁 | `targetId` = 水晶模板 id | 事件 |
+| `faction_wiped` | 阵营存活数从 >N 降到 ≤N | `factionId`、`threshold`（默认 0 = 全灭） | 轮询 5 tick |
+| `entity_death` | 指定生物死亡（累计 N 只） | `entityType` / `name` / `nbt` / `factionId` / `count`（默认 1） | 事件 |
+| `player_death` | 指定玩家死亡 | `player` = 玩家名（不写 = 任意玩家）、`count` | 事件 |
+| `entity_state` | 指定生物进入某 NBT 状态 | `entityType` / `name` / `factionId` / `nbt`（**必填**） | 轮询 10 tick |
+| `entity_health` | 指定生物/水晶血量低于门槛 | 目标过滤 + `ratio`（0~1，按最大生命）或 `below`（绝对值）；水晶用 `targetId` | 轮询 10 tick |
+| `zone_enter` | 匹配生物进入区域（区域内 0 → 有） | `zone`（x1/z1/x2/z2）或 `waypointId` + 目标过滤 | 轮询 10 tick |
+| `zone_leave` | 匹配生物全部离开区域（有 → 0） | 同上 | 轮询 10 tick |
+| `score` | 阵营累计比分达到门槛 | `factionId`、`kind`（`kills` / `crystals`，默认 kills）、`threshold` | 轮询 10 tick |
+| `command_check` | 只读指令返回值 ≥1 | `command`（`execute if/unless …`） | 轮询 20 tick |
+| `all_of` | 全部子条件都满足 | `triggers[]`（子条件**不写** `targetPhase`） | 递归 |
+| `any_of` | 任一子条件满足 | 同上 | 递归 |
+| `entity_death_count` | ⚠️ 已废弃（旧名）：等价 `entity_death` + `factionId` + `count` | `factionId`、`threshold`/`count` | 事件 |
+
+目标过滤（`entity_death` / `entity_state` / `entity_health` / `zone_*` / `player_death` 共用）：
+
+| 字段 | 说明 |
+|---|---|
+| `entityType` | `modid:name` 或只写实体名（`zombie`）；不写 = 任意实体 |
+| `name` | 自定义名（比较前去掉颜色代码）；不写 = 任意名字 |
+| `factionId` | 只匹配该阵营；不写 = 任意阵营 |
+| `nbt` | NBT 探针：实体序列化 NBT 逐键比对（布尔比对布尔键，其余比对字符串键） |
+| `player` | 仅 `player_death`：玩家名 |
+
+示例：
 
 ```json
 "triggers": [
-  { "type": "crystal_destroyed", "targetId": "red_base",  "targetPhase": "blue_victory" },
+  { "type": "crystal_destroyed", "targetId": "red_base", "targetPhase": "blue_victory" },
   { "type": "timer", "threshold": 12, "targetPhase": "match_start" },
-  { "type": "faction_wiped", "factionId": "blue", "timeout": 240, "targetPhase": "match_2" }
+  { "type": "faction_wiped", "factionId": "blue", "timeout": 240, "targetPhase": "match_2" },
+  { "type": "entity_death", "entityType": "jujutsucraft:sukuna_fushiguro",
+    "nbt": { "Dataperfect_mode": true }, "winner": "red", "targetPhase": "match_2" },
+  { "type": "entity_health", "entityType": "minecraft:ender_dragon", "ratio": 0.3, "targetPhase": "phase_2" },
+  { "type": "zone_leave", "factionId": "red",
+    "zone": { "x1": -101, "z1": -101, "x2": 101, "z2": 101 }, "winner": "blue", "targetPhase": "out_of_bounds" },
+  { "type": "score", "factionId": "red", "kind": "kills", "threshold": 3, "targetPhase": "done" },
+  { "type": "all_of",
+    "triggers": [ { "type": "faction_wiped", "factionId": "red" },
+                  { "type": "faction_wiped", "factionId": "blue" } ],
+    "targetPhase": "double_ko" }
 ]
 ```
 
-- `targetPhase` 必填，缺失则该触发器不会生效
+通用约定：
+
 - 触发器按数组顺序检查，**首个命中即切换并跳出**，后面的不再检查
 - 同一阶段重复切换到当前阶段会被幂等忽略
-- `timeout`（秒，可选）：进入本阶段后满 N 秒该触发器仍未触发 → 也切到它的 `targetPhase`；**每个触发器各自计时**，互不干扰（`timer` 做不到这点，见下方警告）
+- 进阶段重置全部触发器状态：计数器清零、锁定复位、采样基线重记
+- 事件类条件（`crystal_destroyed` / `entity_death` / `player_death`）**到达即判**；轮询类条件按各自间隔采样，未到期复用上次结果
+- 除 `entity_health` 外，命中过的条件在本阶段内**锁定**（不因状态回退而复位）—— 组合条件（`all_of` / `any_of`）靠这条工作
+- **水晶不算"生物"**：`faction_wiped` 只数生物（含玩家与召唤物）；水晶相关条件用 `crystal_destroyed` 或 `entity_health` + `targetId`
+- 未识别的 `type` 静默忽略（老版本模组读新剧本不会炸，只是不触发）
 - ⚠️ **一个阶段只应写一个 `timer` 触发器**：`timerTicks` 是阶段级单一计数器，且自增写在触发器循环体内 —— 写 N 个 timer 会让计数每 tick 加 N，触发时间变成 1/N
 
 `faction_wiped` 语义（多场次剧本用，见 `plans/complete/03_MULTI_MATCH_SCENARIO.md`）：
 
-- 统计**存活实体数**（含召唤物与玩家，只看已加载的实体），不是死亡计数 —— 被误杀 / despawn / 数量算错都不会提前触发
-- **本阶段召唤过才算**：阵营必须在本阶段内出现过（0 → 有），归零时才判"被消灭"；上一场清场后的空阵营不会立刻触发，要等本阶段的召唤落地
-- 每 5 tick 扫描一次；同一 tick 内死多个也只切一次（首个命中即跳出）
-- 归零那一刻打结构化日志并算胜者（见下）
+- 统计**存活实体数**（含召唤物与玩家，**不含水晶**，只看已加载的实体），不是死亡计数 —— 被误杀 / despawn / 数量算错都不会提前触发
+- **本阶段召唤过才算**：阵营必须在本阶段内出现过（0 → 有）才"武装"；上一场清场后的空阵营不会立刻触发，要等本阶段的召唤落地
+- `threshold` 不写 = 0：存活数**从 >0 降到 0** 那一刻命中；写了 N 就是**从 >N 降到 ≤N** 那一刻命中
+- 命中那一刻打结构化日志并算胜者（见下）
+
+`score` 的比分来源（服务端累计，与 HUD 记分板同规则）：
+
+- `kills`：击杀数（召唤物不计分、同阵营不计分）
+- `crystals`：摧毁水晶数
+- 复位时机：加载剧本时清零；`/bettereve scoreboard clear [阵营]` 也会清零
+
+`command_check` 使用约束：
+
+- 只写**只读**判定指令（`execute if …` / `execute unless …` 这类），返回值 ≥1 视为命中
+- 默认每 20 tick 跑一次（可用 `intervalTicks` 调）；不要写会改变世界的指令
 
 #### 阶段切换日志（外部数据台用）
 
@@ -184,11 +245,11 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 ```
 
 - `winner`：`red` / `blue` / `none`。只有 `faction_wiped` 能算出具体阵营（恰好一个阵营还有存活实体 → 它；双灭 / 多阵营并存 / 无存活 → `none`）；超时未分胜负记 `none`
-- `reason`：`wiped` / `timeout` / `timer` / `crystal_destroyed` / `manual`（`/bettereve phase switch`）/ `load`（剧本首次进入阶段）
+- `reason`：`wiped`（`faction_wiped`）/ `timeout` / `timer` / `manual`（`/bettereve phase switch`）/ `load`（剧本首次进入阶段）/ 其余触发器类型**原样记**（`crystal_destroyed`、`entity_death`、`player_death`、`entity_state`、`entity_health`、`zone_enter`、`zone_leave`、`score`、`command_check`）
 - `elapsed`：停留在上一阶段的整数秒；首次加载记 `- -> <阶段>`，0s
 - 格式固定（空格分隔、键名固定、一行），外部工具按 `phase (\S+) -> (\S+) winner=(\w+) reason=(\w+) elapsed=(\d+)s` 抓取
 
-其余 `type` 值写了无效，见文末「已知未接线」。
+未列出的 `type`（`base_destroyed` / `custom`）写了无效，见文末「已知未接线」。
 
 ### options — 全局选项
 
@@ -370,9 +431,8 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | 位置 | 内容 | 原因 |
 |---|---|---|
 | `phases[].phaseType` | `point` / `loop` / `branch` | 字段被解析，无代码读取 |
-| `triggers[].type` | `base_destroyed` | 旧名残留（`crystal_destroyed` 的前身），switch 分支还在但无调用点 |
-| `triggers[].type` | `entity_death_count` | 分支存在，从未接线 |
-| `triggers[].type` | `custom` | 分支存在，从未接线 |
+| `triggers[].type` | `base_destroyed` | 旧名残留（`crystal_destroyed` 的前身），无调用点 |
+| `triggers[].type` | `custom` | 从未接线 |
 | `waypoints[].lane` / `waypoints[].order` | — | 旧版路线字段，被 `routes[]` 取代 |
 | `phases[].announce` | `message` / `duration` | 会 post 成 `PhaseBroadcastEvent`，但全项目无订阅者；播报请写进 `commands`（`title` / `say`） |
 | `phases[].resetAfter` | — | 字段被解析，无代码读取 |

@@ -3,6 +3,7 @@ package com.example.bettereve.crystal;
 import com.example.bettereve.entity.CrystalEntity;
 import com.example.bettereve.entity.CrystalEntityType;
 import com.example.bettereve.phase.PhaseManager;
+import com.example.bettereve.phase.TriggerEngine;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
@@ -84,7 +85,7 @@ public class CrystalSystem {
                     100, 0.5, 0.5, 0.5, 0.1);
             
             String crystalDefId = crystal.getCrystalDefId();
-            PhaseManager.checkTriggers("crystal_destroyed", attackerFaction, crystalDefId.isEmpty() ? null : crystalDefId, 0);
+            TriggerEngine.onCrystalDestroyed(attackerFaction, crystalDefId.isEmpty() ? null : crystalDefId);
             
         } else if (SummonRule.countsForScoreboard(victim)) {
             // 召唤物不计分：被击杀的若是召唤物则跳过累加。
@@ -92,6 +93,7 @@ public class CrystalSystem {
             String victimFaction = FactionHelper.getEntityFactionId(victim);
             if (!attackerFaction.equals(victimFaction)) {
                 NetworkManager.sendEntityKillToAll(attackerFaction);
+                TriggerEngine.onEntityKill(attackerFaction);   // score 触发器用（服务端累计比分）
             }
         } else {
             // 诊断：多部件生物按"整体结算"，这里能看出是哪一部分、被谁打死的。

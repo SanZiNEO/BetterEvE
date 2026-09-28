@@ -21,8 +21,14 @@ import java.util.List;
 public class CommandExecutor {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandExecutor.class);
 
-    // 延迟指令队列：targetTick -> List<command>
-    private static final java.util.Map<Integer, java.util.List<String>> pendingCommands = new java.util.HashMap<>();
+    // 延迟指令队列：targetTick -> 待执行指令（含各自的阵型覆盖）
+    private static final java.util.Map<Integer, java.util.List<PendingCommand>> pendingCommands = new java.util.HashMap<>();
+
+    /** 一条待执行的剧本指令 */
+    private record PendingCommand(String command, Scenario.SpawnLayout layout) {}
+
+    /** 正在执行的剧本指令的阵型覆盖（只有 bettereve spawn 读它）；null = 用剧本级 options.spawnLayout */
+    private static Scenario.SpawnLayout commandLayout = null;
 
     // 剧本指令的执行者 = 加载剧本的那个玩家（原版语义：谁敲的谁执行）。
     // 服务端 source 的世界位置在世界原点，`~` 会解析到原点而不是玩家；
@@ -35,7 +41,7 @@ public class CommandExecutor {
     }
 
     /** 每次执行现取玩家 source：位置、朝向、维度都是当下的（玩家一直在动）。 */
-    private static CommandSourceStack source(MinecraftServer server) {
+    static CommandSourceStack commandSource(MinecraftServer server) {
         if (sourcePlayerId != null) {
             ServerPlayer player = server.getPlayerList().getPlayer(sourcePlayerId);
             if (player != null) {
@@ -62,9 +68,9 @@ public class CommandExecutor {
             if (cmd.getDelay() > 0) {
                 int targetTick = server.getTickCount() + cmd.getDelay() * 20;
                 pendingCommands.computeIfAbsent(targetTick, k -> new java.util.ArrayList<>())
-                    .add(cmd.getCommand());
+                    .add(new PendingCommand(cmd.getCommand(), cmd.getLayout()));
             } else {
-                executeCommandChain(server, cmd.getCommand());
+                executeCommandChain(server, cmd.getCommand(), cmd.getLayout());
             }
         }
     }
@@ -78,10 +84,10 @@ public class CommandExecutor {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
         int currentTick = server.getTickCount();
-        java.util.List<String> due = pendingCommands.remove(currentTick);
+        java.util.List<PendingCommand> due = pendingCommands.remove(currentTick);
         if (due != null) {
-            for (String command : due) {
-                executeCommandChain(server, command);
+            for (PendingCommand pending : due) {
+                executeCommandChain(server, pending.command(), pending.layout());
             }
         }
     }
@@ -95,17 +101,30 @@ public class CommandExecutor {
 
     /**
      * 执行一条指令，支持 && 链式拆分。
+     * layout 是这条剧本指令自带的阵型覆盖：只在执行期间可见（bettereve spawn 读它），
+     * 执行完立刻还原，不污染后续指令或手动敲的指令。
      */
-    private static void executeCommandChain(MinecraftServer server, String command) {
+    private static void executeCommandChain(MinecraftServer server, String command, Scenario.SpawnLayout layout) {
         String[] parts = command.split("\\s*&&\\s*");
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (trimmed.isEmpty()) continue;
-            try {
-                server.getCommands().performPrefixedCommand(source(server), trimmed);
-            } catch (Exception e) {
-                LOGGER.error("Failed to execute command: {}", trimmed, e);
+        Scenario.SpawnLayout previous = commandLayout;
+        commandLayout = layout;
+        try {
+            for (String part : parts) {
+                String trimmed = part.trim();
+                if (trimmed.isEmpty()) continue;
+                try {
+                    server.getCommands().performPrefixedCommand(commandSource(server), trimmed);
+                } catch (Exception e) {
+                    LOGGER.error("Failed to execute command: {}", trimmed, e);
+                }
             }
+        } finally {
+            commandLayout = previous;
         }
+    }
+
+    /** 当前正在执行的剧本指令的阵型覆盖（bettereve spawn 读取）；null = 没有覆盖 */
+    public static Scenario.SpawnLayout currentCommandLayout() {
+        return commandLayout;
     }
 }

@@ -245,32 +245,93 @@ public class Scenario {
     }
 
 
+    /**
+     * 阶段切换触发器。生效取值与字段语义见 CONFIGURATION.md「triggers — 触发器」：
+     * - crystal_destroyed（targetId）/ timer（threshold 秒）/ faction_wiped（factionId + threshold）
+     * - entity_death / player_death / entity_state / entity_health / zone_enter / zone_leave
+     * - score / command_check / all_of / any_of
+     * - entity_death_count：旧名，等价 entity_death + factionId + count（仍解析，已废弃）
+     *
+     * 通用字段：targetPhase（必填）/ timeout（秒，可选）/ winner（可选，日志胜者覆盖）
+     */
     public static class TriggerDef {
-        // 生效取值：
-        // - "crystal_destroyed"：targetId 匹配水晶模板
-        // - "timer"：threshold = 秒（阶段级单一计数器，一个阶段只应写一个）
-        // - "faction_wiped"：factionId 阵营存活实体数归零（本阶段召唤过之后才算，见 PhaseManager）
-        // timeout（秒，可选）：进入本阶段后 N 秒仍未触发 → 也切到 targetPhase，每个触发器各自计时
-        // 另有 base_destroyed / entity_death_count / custom 三个分支仍在 switch 中，
-        // 但全项目无调用点，写了无效。详见 CONFIGURATION.md「已知未接线」。
         private String type;
-        private String factionId;
-        private String targetId;
-        private int threshold;
-        private int timeout;
         private String targetPhase;
+        private int timeout;          // 秒；0 = 无超时
+        private String winner;        // 切阶段日志的胜者覆盖（red/blue/none）；不写由模组推断
+
+        // ---- 目标定位（entity_death / player_death / entity_state / entity_health / zone_*）----
+        private String entityType;    // modid:name 或只写实体名；不写 = 任意实体
+        private String name;          // 自定义名（比较前去颜色代码）；不写 = 任意名字
+        private String factionId;     // 阵营过滤；faction_wiped 必写，entity_death_count 旧用法也用它
+        private Map<String, Object> nbt;  // NBT 探针：布尔比对布尔键，其余比对字符串键
+        private String player;        // player_death：玩家名；不写 = 任意玩家
+        private String targetId;      // crystal_destroyed：水晶模板 id；entity_health 也用它指向水晶
+
+        // ---- 数量 / 阈值 ----
+        private int threshold;        // timer=秒；faction_wiped=存活数上限（默认 0）；score=分数门槛；entity_death_count=死亡数
+        private int count;            // entity_death / player_death：本阶段累计命中多少次才切（默认 1）
+
+        // ---- 血量（entity_health）----
+        private Double ratio;         // 0~1，按目标当前最大生命算；与 below 二选一
+        private Double below;         // 绝对血量；targetId 写了则按水晶模板 id 找水晶
+
+        // ---- 区域（zone_enter / zone_leave）----
+        private KeepAliveZone zone;   // 矩形区域（与 keepAliveZone 同格式，Y 轴无限高）
+        private String waypointId;    // 或引用剧本 waypoints[] 的 id
+
+        // ---- 计分（score）----
+        private String kind;          // kills / crystals，默认 kills
+
+        // ---- 逃生门（command_check）----
+        private String command;       // 只读指令（execute if/unless 类）；返回值 ≥1 即命中
+
+        // ---- 组合（all_of / any_of）----
+        private List<TriggerDef> triggers;
+
+        // ---- 轮询间隔覆盖（tick）；不写按类型默认（faction 5 / 其余 10 / command 20）----
+        private Integer intervalTicks;
+
         public String getType() { return type; }
         public void setType(String type) { this.type = type; }
+        public String getTargetPhase() { return targetPhase; }
+        public void setTargetPhase(String targetPhase) { this.targetPhase = targetPhase; }
+        public int getTimeout() { return timeout; }
+        public void setTimeout(int timeout) { this.timeout = timeout; }
+        public String getWinner() { return winner; }
+        public void setWinner(String winner) { this.winner = winner; }
+        public String getEntityType() { return entityType; }
+        public void setEntityType(String entityType) { this.entityType = entityType; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
         public String getFactionId() { return factionId; }
         public void setFactionId(String factionId) { this.factionId = factionId; }
         public String getTargetId() { return targetId; }
         public void setTargetId(String targetId) { this.targetId = targetId; }
+        public Map<String, Object> getNbt() { return nbt; }
+        public void setNbt(Map<String, Object> nbt) { this.nbt = nbt; }
+        public String getPlayer() { return player; }
+        public void setPlayer(String player) { this.player = player; }
         public int getThreshold() { return threshold; }
         public void setThreshold(int threshold) { this.threshold = threshold; }
-        public int getTimeout() { return timeout; }
-        public void setTimeout(int timeout) { this.timeout = timeout; }
-        public String getTargetPhase() { return targetPhase; }
-        public void setTargetPhase(String targetPhase) { this.targetPhase = targetPhase; }
+        public int getCount() { return count; }
+        public void setCount(int count) { this.count = count; }
+        public Double getRatio() { return ratio; }
+        public void setRatio(Double ratio) { this.ratio = ratio; }
+        public Double getBelow() { return below; }
+        public void setBelow(Double below) { this.below = below; }
+        public KeepAliveZone getZone() { return zone; }
+        public void setZone(KeepAliveZone zone) { this.zone = zone; }
+        public String getWaypointId() { return waypointId; }
+        public void setWaypointId(String waypointId) { this.waypointId = waypointId; }
+        public String getKind() { return kind; }
+        public void setKind(String kind) { this.kind = kind; }
+        public String getCommand() { return command; }
+        public void setCommand(String command) { this.command = command; }
+        public List<TriggerDef> getTriggers() { return triggers; }
+        public void setTriggers(List<TriggerDef> triggers) { this.triggers = triggers; }
+        public Integer getIntervalTicks() { return intervalTicks; }
+        public void setIntervalTicks(Integer intervalTicks) { this.intervalTicks = intervalTicks; }
     }
     public static class AnnounceDef {
         private String message;
@@ -284,10 +345,14 @@ public class Scenario {
     public static class CommandDef {
         private int delay;
         private String command;
+        /** 可选：只对该条指令生效的召唤阵型覆盖（目前只有 bettereve spawn 读取）；不写 = 走剧本级 options.spawnLayout */
+        private SpawnLayout layout;
         public int getDelay() { return delay; }
         public void setDelay(int delay) { this.delay = delay; }
         public String getCommand() { return command; }
         public void setCommand(String command) { this.command = command; }
+        public SpawnLayout getLayout() { return layout; }
+        public void setLayout(SpawnLayout layout) { this.layout = layout; }
     }
 
     public static class SpawnBasesDef {

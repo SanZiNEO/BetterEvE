@@ -9,7 +9,9 @@ import com.example.bettereve.faction.FactionRegistry;
 import com.example.bettereve.mixin.MobAccessor;
 import com.example.bettereve.network.FactionSyncHandler;
 import com.example.bettereve.network.CrystalDeathPacket;
+import com.example.bettereve.phase.CommandExecutor;
 import com.example.bettereve.phase.PhaseManager;
+import com.example.bettereve.phase.TriggerEngine;
 import com.example.bettereve.scenario.KeepAliveMarker;
 import com.example.bettereve.scenario.Scenario;
 import com.example.bettereve.scenario.ScenarioIO;
@@ -674,10 +676,16 @@ public class BetterEvECommands {
      * 因此必须发包通知所有客户端归零，服务器侧的 SavedData 与 HUD 无关。
      */
     /**
-     * 取当前剧本的召唤阵型配置。
-     * 未加载剧本、或剧本未写 options.spawnLayout 时，返回代码内默认值（圆形）。
+     * 取当前指令生效的召唤阵型配置，优先级：
+     * 1. 剧本指令自带的 layout（CommandDef.layout，只在该指令执行期间可见）
+     * 2. 剧本级 options.spawnLayout
+     * 3. 代码内默认值（圆形）
      */
     private static Scenario.SpawnLayout resolveSpawnLayout() {
+        Scenario.SpawnLayout commandOverride = CommandExecutor.currentCommandLayout();
+        if (commandOverride != null) {
+            return commandOverride;
+        }
         Scenario scenario = ScenarioManager.getActiveScenario();
         if (scenario != null && scenario.getOptions() != null && scenario.getOptions().getSpawnLayout() != null) {
             return scenario.getOptions().getSpawnLayout();
@@ -688,6 +696,7 @@ public class BetterEvECommands {
     private static int clearAllScoreboards(CommandContext<CommandSourceStack> context) {
         // factionId = null → 清除全部阵营的死亡分与击败数
         com.example.bettereve.network.NetworkManager.clearCrystalDeathCounter(null);
+        TriggerEngine.resetScore();   // score 触发器的服务端累计比分一并清零
 
         context.getSource().sendSuccess(() ->
             Component.literal("已清除所有阵营的计分板数据（得分与击败数）"),
@@ -716,6 +725,7 @@ public class BetterEvECommands {
         }
 
         com.example.bettereve.network.NetworkManager.clearCrystalDeathCounter(targetFaction.getId());
+        TriggerEngine.resetScoreFor(targetFaction.getId());   // score 触发器的服务端累计比分一并清零
 
         context.getSource().sendSuccess(() ->
             Component.literal("已清除阵营 " + factionName + " 的计分板数据（得分与击败数）"),
