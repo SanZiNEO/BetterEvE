@@ -37,8 +37,8 @@ import java.util.Set;
  * 通用约定：
  * - 按数组顺序评估顶层触发器，**首个命中即切换并跳出**
  * - 进阶段重建全部状态（计数器清零、锁定复位、采样基线重记）
- * - 水晶不算"存活实体"：faction_wiped 只数生物（含玩家与召唤物）；
- *   水晶相关条件用 crystal_destroyed 或 entity_health + targetId
+ * - 水晶不算；faction_wiped 数的是「在场」生物（含玩家与召唤物），
+ *   口径见 countsAsFactionEntityPresent；水晶相关条件用 crystal_destroyed 或 entity_health + targetId
  * - 未识别的 type 静默忽略（老模组读新剧本不会炸）
  */
 public final class TriggerEngine {
@@ -299,8 +299,8 @@ public final class TriggerEngine {
     // ==================== 各条件的判定 ====================
 
     /**
-     * faction_wiped：存活数从 >threshold 降到 ≤threshold 的那一刻命中。
-     * 本阶段召唤过（存活数 0 → 有）才武装 —— 上一场清场后的空阵营不会立刻触发。
+     * faction_wiped：在场数从 >threshold 降到 ≤threshold 的那一刻命中（倒地/死亡动画中的生物仍算在场）。
+     * 本阶段召唤过（在场数 0 → 有）才武装 —— 上一场清场后的空阵营不会立刻触发。
      */
     private static boolean pollFactionWiped(Scenario.TriggerDef trigger, TriggerState st) {
         String factionId = trigger.getFactionId();
@@ -309,9 +309,9 @@ public final class TriggerEngine {
             return false;
         }
         int threshold = trigger.getThreshold();
-        int now = countFactionAlive(factionId);
+        int now = countFactionPresent(factionId);
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("[触发器] faction_wiped({}) 采样：存活={} 上次={} 武装={} 锁定={} 门槛={}",
+            LOGGER.debug("[触发器] faction_wiped({}) 采样：在场={} 上次={} 武装={} 锁定={} 门槛={}",
                     factionId, now, st.lastCount, st.armed, st.latched, threshold);
         }
         if (st.lastCount < 0) {
@@ -499,16 +499,30 @@ public final class TriggerEngine {
 
     // ==================== 实体统计 ====================
 
-    /** 阵营存活实体数：生物（含玩家与召唤物），不含水晶 */
-    private static int countFactionAlive(String factionId) {
-        return countEntities(e -> e instanceof LivingEntity living && living.isAlive()
-                && !(e instanceof CrystalEntity)
+    /** 阵营「在场」实体数 —— faction_wiped 的计数口径，见 countsAsFactionEntityPresent */
+    private static int countFactionPresent(String factionId) {
+        return countEntities(e -> countsAsFactionEntityPresent(e)
                 && factionId.equals(FactionHelper.getEntityFactionId(e)));
     }
 
-    /** 唯一存活阵营 id：恰好一个阵营还有存活实体才算胜者；双灭 / 多阵营并存 / 都没有 → none */
+    /**
+     * wipe 判定的「在场」口径：
+     * - 玩家：按存活算（死在死亡界面上不算 —— 否则 wipe 会被一直挡住）；
+     * - 其它生物：只要还没被移除就算在场。正在播死亡动画的尸体、倒地等复活的生物
+     *   （如突变怪物的僵尸突变体：死亡后倒地 7 秒再站起来）都算在场，
+     *   死亡流程真正走完（实体被移除）才从计数里消失 —— 这样"死了又活"不会误判 wipe。
+     * - 水晶：不算。
+     */
+    private static boolean countsAsFactionEntityPresent(Entity entity) {
+        if (entity instanceof CrystalEntity || !(entity instanceof LivingEntity living)) {
+            return false;
+        }
+        return entity instanceof Player ? living.isAlive() : !entity.isRemoved();
+    }
+
+    /** 唯一在场阵营 id：恰好一个阵营还有在场实体才算胜者；双灭 / 多阵营并存 / 都没有 → none */
     private static String survivingFaction() {
-        Map<String, Integer> counts = factionAliveCounts();
+        Map<String, Integer> counts = factionPresentCounts();
         String survivor = null;
         for (Faction faction : FactionRegistry.getAllFactions()) {
             if (counts.getOrDefault(faction.getId(), 0) > 0) {
@@ -519,15 +533,14 @@ public final class TriggerEngine {
         return survivor != null ? survivor : "none";
     }
 
-    /** 一次遍历统计全部阵营的存活实体数（survivingFaction 用） */
-    private static Map<String, Integer> factionAliveCounts() {
+    /** 一次遍历统计全部阵营的在场实体数（survivingFaction 用） */
+    private static Map<String, Integer> factionPresentCounts() {
         Map<String, Integer> counts = new HashMap<>();
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return counts;
         for (ServerLevel level : server.getAllLevels()) {
             for (Entity entity : level.getEntities().getAll()) {
-                if (!(entity instanceof LivingEntity living) || !living.isAlive()) continue;
-                if (entity instanceof CrystalEntity) continue;
+                if (!countsAsFactionEntityPresent(entity)) continue;
                 String factionId = FactionHelper.getEntityFactionId(entity);
                 if (factionId.isEmpty()) continue;
                 counts.merge(factionId, 1, Integer::sum);

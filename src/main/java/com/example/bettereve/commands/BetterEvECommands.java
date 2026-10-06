@@ -167,7 +167,9 @@ public class BetterEvECommands {
                     .suggests(ENTITY_TYPE_SUGGESTIONS)
                     .then(Commands.argument("factionId", StringArgumentType.word())
                         .suggests(FACTION_ID_SUGGESTIONS)
-                        .then(Commands.argument("level", IntegerArgumentType.integer(0, 500))
+                        .then(Commands.argument("level", IntegerArgumentType.integer(0, 100000))
+                            // 上限放宽到 100000：面板逐条等级要能写大值；
+                            // 实际等级仍会被剧本等级表的 maxLevel 夹住（EntityLevelSystem.setEntityLevel）
                             // 与原生 /summon 一致：坐标用 Vec3Argument，支持 ~（相对执行位置）与 ^（局部坐标）
                             .then(Commands.argument("pos", Vec3Argument.vec3())
                                 .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))

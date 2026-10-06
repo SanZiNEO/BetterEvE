@@ -281,7 +281,7 @@
 ```
 /kill @e[type=minecraft:zombie,nbt={ForgeData:{"BetterEvE:FactionID":"blue"}}]
 ```
-预期（≤0.5 秒内）：日志 `[bettereve] phase p1 -> p2 winner=red reason=wiped elapsed=Ns`；
+预期（约 1~1.5 秒内 —— 尸体 20 tick 后移除，触发器每 5 tick 采样一次）：日志 `[bettereve] phase p1 -> p2 winner=red reason=wiped elapsed=Ns`；
 p2 清场，3 秒后回 p1（日志 `phase p2 -> p1 winner=none reason=timer elapsed=3s`）
 
 **timeout（僵局兜底）**：进 p1 后什么都不杀，等 30 秒
@@ -292,6 +292,49 @@ p2 清场，3 秒后回 p1（日志 `phase p2 -> p1 winner=none reason=timer ela
 - 进 p1 后阵营还没召唤（空场）→ 不触发（不会一进阶段就切走）
 - 同一 tick 内红蓝全灭 → 只切一次（首个命中即跳出），winner=`none`
 - 玩家加入某阵营也算该阵营的存活实体 → 该阵营不会判"被消灭"
+
+**复活生物（不会误判 wipe）**：新建探针剧本 `config/bettereve/scenarios/zz_revive_probe.json`：
+
+```json
+{
+  "id": "zz_revive_probe",
+  "name": "复活判定探针",
+  "keepAliveZone": { "x1": -40, "z1": -40, "x2": 40, "z2": 40 },
+  "factions": [
+    { "id": "red",  "name": "红队", "color": "#FF0000" },
+    { "id": "blue", "name": "蓝队", "color": "#0000FF" }
+  ],
+  "relations": [
+    { "from": "red", "to": "blue", "type": "hostile" },
+    { "from": "blue", "to": "red", "type": "hostile" }
+  ],
+  "phases": [
+    { "id": "p1",
+      "commands": [
+        { "delay": 0, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 1, "command": "kill @e[type=!minecraft:player]" },
+        { "delay": 3, "command": "bettereve spawn mutantmonsters:mutant_zombie blue 0 ~-5 ~ ~ 1 true" }
+      ],
+      "triggers": [
+        { "type": "faction_wiped", "factionId": "blue", "targetPhase": "p2", "timeout": 180 }
+      ] },
+    { "id": "p2",
+      "commands": [ { "delay": 0, "command": "kill @e[type=!minecraft:player]" } ] }
+  ]
+}
+```
+
+```
+/bettereve scenario load zz_revive_probe
+```
+然后对僵尸突变体连打 4 次：
+
+```
+/damage @e[type=mutantmonsters:mutant_zombie,limit=1] 1000
+```
+预期：前 3 次倒地约 7 秒后原地复活（37.5 血），**期间日志里不应出现 `phase p1 -> p2`**；
+第 4 次（命数耗尽）走 5 秒消散、实体移除后才出现
+`[bettereve] phase p1 -> p2 winner=none reason=wiped elapsed=Ns`（红方没召唤，winner=none 是预期）
 
 ### 16. 阶段触发器全条件（探针剧本）
 

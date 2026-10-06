@@ -164,7 +164,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 |---|---|---|---|
 | `timer` | 进入本阶段后 N 秒 | `threshold` = 秒 | 计时 |
 | `crystal_destroyed` | 指定水晶被摧毁 | `targetId` = 水晶模板 id | 事件 |
-| `faction_wiped` | 阵营存活数从 >N 降到 ≤N | `factionId`、`threshold`（默认 0 = 全灭） | 轮询 5 tick |
+| `faction_wiped` | 阵营在场数从 >N 降到 ≤N（倒地/死亡动画中的生物仍算在场） | `factionId`、`threshold`（默认 0 = 全灭） | 轮询 5 tick |
 | `entity_death` | 指定生物死亡（累计 N 只） | `entityType` / `name` / `nbt` / `factionId` / `count`（默认 1） | 事件 |
 | `player_death` | 指定玩家死亡 | `player` = 玩家名（不写 = 任意玩家）、`count` | 事件 |
 | `entity_state` | 指定生物进入某 NBT 状态 | `entityType` / `name` / `factionId` / `nbt`（**必填**） | 轮询 10 tick |
@@ -223,9 +223,9 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 
 `faction_wiped` 语义（多场次剧本用，见 `plans/complete/03_MULTI_MATCH_SCENARIO.md`）：
 
-- 统计**存活实体数**（含召唤物与玩家，**不含水晶**，只看已加载的实体），不是死亡计数 —— 被误杀 / despawn / 数量算错都不会提前触发
+- 统计**在场实体数**（只看已加载的实体）：**玩家按存活算**；**其它生物只要还在世界里（没被移除）就算在场** —— 正在播死亡动画的尸体、倒地等待复活的生物（如突变怪物的僵尸突变体）都算，死亡流程真正走完才从计数里消失（普通生物约 1 秒后）；**不含水晶**，不是死亡计数
 - **本阶段召唤过才算**：阵营必须在本阶段内出现过（0 → 有）才"武装"；上一场清场后的空阵营不会立刻触发，要等本阶段的召唤落地
-- `threshold` 不写 = 0：存活数**从 >0 降到 0** 那一刻命中；写了 N 就是**从 >N 降到 ≤N** 那一刻命中
+- `threshold` 不写 = 0：在场数**从 >0 降到 0** 那一刻命中；写了 N 就是**从 >N 降到 ≤N** 那一刻命中
 - 命中那一刻打结构化日志并算胜者（见下）
 
 `score` 的比分来源（服务端累计，与 HUD 记分板同规则）：
@@ -248,7 +248,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 [bettereve] phase match_3 -> match_4 winner=none reason=timeout elapsed=240s
 ```
 
-- `winner`：`red` / `blue` / `none`。只有 `faction_wiped` 能算出具体阵营（恰好一个阵营还有存活实体 → 它；双灭 / 多阵营并存 / 无存活 → `none`）；超时未分胜负记 `none`
+- `winner`：`red` / `blue` / `none`。只有 `faction_wiped` 能算出具体阵营（恰好一个阵营还有在场实体 → 它；双灭 / 多阵营并存 / 无在场 → `none`）；超时未分胜负记 `none`
 - `reason`：`wiped`（`faction_wiped`）/ `timeout` / `timer` / `manual`（`/bettereve phase switch`）/ `load`（剧本首次进入阶段）/ 其余触发器类型**原样记**（`crystal_destroyed`、`entity_death`、`player_death`、`entity_state`、`entity_health`、`zone_enter`、`zone_leave`、`score`、`command_check`）
 - `elapsed`：停留在上一阶段的整数秒；首次加载记 `- -> <阶段>`，0s
 - 格式固定（空格分隔、键名固定、一行），外部工具按 `phase (\S+) -> (\S+) winner=(\w+) reason=(\w+) elapsed=(\d+)s` 抓取
@@ -416,7 +416,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `/bettereve waypoint visualize` | 切换路径点粒子柱可视化 |
 | `/bettereve crystal create <factionId> <x> <y> <z> <health> <attackDamage> <armor> <attackRange> <attackCycle> <size> <modelScale> [showHealthBar] [crystalId]` | 现场创建水晶 |
 | `/bettereve crystal spawn <crystalId>` | 按剧本模板生成水晶 |
-| `/bettereve spawn <entityType> <factionId> <level> <x> <y> <z> <count> [keepAlive] [routeId] [showHealthBar] [nbt]` | 按阵型批量生成生物；坐标与原生 `/summon` 一致，支持 `~`（相对执行位置）与 `^`（局部坐标）；`keepAlive: true` = 该生物不被原版 despawn 清除（不依赖 `keepAliveZone`） |
+| `/bettereve spawn <entityType> <factionId> <level> <x> <y> <z> <count> [keepAlive] [routeId] [showHealthBar] [nbt]` | 按阵型批量生成生物；坐标与原生 `/summon` 一致，支持 `~`（相对执行位置）与 `^`（局部坐标）；`keepAlive: true` = 该生物不被原版 despawn 清除（不依赖 `keepAliveZone`）；`level` 0~100000（实际会被剧本等级表的 `maxLevel` 夹住） |
 
 ### 计分与血条
 
