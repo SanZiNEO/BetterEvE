@@ -1,5 +1,6 @@
 package com.example.bettereve.commands;
 
+import com.example.bettereve.capture.ProbeRequests;
 import com.example.bettereve.crystal.CrystalSystem;
 import com.example.bettereve.crystal.CrystalDeathCounter;
 import com.example.bettereve.entitylv.EntityLevelSystem;
@@ -255,7 +256,29 @@ public class BetterEvECommands {
                     .executes(BetterEvECommands::executeGetHealthBarScale)
                 )
             )
+            .then(Commands.literal("modeldump")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("probe")
+                    .then(Commands.argument("entity", ResourceLocationArgument.id())
+                        .suggests(ENTITY_TYPE_SUGGESTIONS)
+                        .executes(BetterEvECommands::executeModelDumpProbe)
+                    )
+                )
+            )
         );
+    }
+
+    /** `/bettereve modeldump probe <entity>` —— 把请求排进队列，由客户端 tick 执行。 */
+    private static int executeModelDumpProbe(CommandContext<CommandSourceStack> context) {
+        ResourceLocation id = ResourceLocationArgument.getId(context, "entity");
+        if (!ForgeRegistries.ENTITY_TYPES.containsKey(id)) {
+            context.getSource().sendFailure(Component.literal("未知实体类型: " + id));
+            return 0;
+        }
+        ProbeRequests.request(id);
+        context.getSource().sendSuccess(
+                () -> Component.literal("已请求探针: " + id + "（结果见客户端聊天栏 / bettereve-dump/probe/）"), false);
+        return 1;
     }
 
     private static final SuggestionProvider<CommandSourceStack> FACTION_ID_SUGGESTIONS = (context, builder) -> {
