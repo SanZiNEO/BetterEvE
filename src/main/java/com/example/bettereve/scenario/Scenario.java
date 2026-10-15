@@ -250,7 +250,6 @@ public class Scenario {
      * - crystal_destroyed（targetId）/ timer（threshold 秒）/ faction_wiped（factionId + threshold）
      * - entity_death / player_death / entity_state / entity_health / zone_enter / zone_leave
      * - score / command_check / all_of / any_of
-     * - entity_death_count：旧名，等价 entity_death + factionId + count（仍解析，已废弃）
      *
      * 通用字段：targetPhase（必填）/ timeout（秒，可选）/ delay（秒，可选，命中后延迟再切）/
      * winner（可选，日志胜者覆盖）
@@ -265,13 +264,13 @@ public class Scenario {
         // ---- 目标定位（entity_death / player_death / entity_state / entity_health / zone_*）----
         private String entityType;    // modid:name 或只写实体名；不写 = 任意实体
         private String name;          // 自定义名（比较前去颜色代码）；不写 = 任意名字
-        private String factionId;     // 阵营过滤；faction_wiped 必写，entity_death_count 旧用法也用它
+        private String factionId;     // 阵营过滤；faction_wiped 必写，entity_death 也用它
         private Map<String, Object> nbt;  // NBT 探针：布尔比对布尔键，其余比对字符串键
         private String player;        // player_death：玩家名；不写 = 任意玩家
         private String targetId;      // crystal_destroyed：水晶模板 id；entity_health 也用它指向水晶
 
         // ---- 数量 / 阈值 ----
-        private int threshold;        // timer=秒；faction_wiped=存活数上限（默认 0）；score=分数门槛；entity_death_count=死亡数
+        private int threshold;        // timer=秒；faction_wiped=存活数上限（默认 0）；score=分数门槛
         private int count;            // entity_death / player_death：本阶段累计命中多少次才切（默认 1）
 
         // ---- 血量（entity_health）----

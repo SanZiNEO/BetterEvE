@@ -221,7 +221,6 @@ public final class TriggerEngine {
             // ---- 事件类：看锁定标记 ----
             case "crystal_destroyed":
             case "entity_death":
-            case "entity_death_count":   // 旧名，等价 entity_death + factionId + count
             case "player_death":
                 return st.latched;
 
@@ -459,7 +458,7 @@ public final class TriggerEngine {
             }
             return;
         }
-        if (("entity_death".equals(type) || "entity_death_count".equals(type))
+        if ("entity_death".equals(type)
                 && !(victim instanceof CrystalEntity)     // 水晶用 crystal_destroyed
                 && TriggerMatcher.matches(victim, trigger)) {
             bumpDeath(trigger);
@@ -475,11 +474,9 @@ public final class TriggerEngine {
         }
     }
 
-    /** 死亡类条件的门槛：count 优先；兼容旧 entity_death_count 的 threshold；都没有 = 1 */
+    /** 死亡类条件的门槛：`count`，不写 = 1 */
     private static int requiredDeaths(Scenario.TriggerDef trigger) {
-        if (trigger.getCount() > 0) return trigger.getCount();
-        if ("entity_death_count".equals(trigger.getType()) && trigger.getThreshold() > 0) return trigger.getThreshold();
-        return 1;
+        return trigger.getCount() > 0 ? trigger.getCount() : 1;
     }
 
     /** 递归标记 crystal_destroyed 条件（组合条件里的子条件也要标记） */

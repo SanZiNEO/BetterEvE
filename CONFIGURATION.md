@@ -175,7 +175,6 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `command_check` | 只读指令返回值 ≥1 | `command`（`execute if/unless …`） | 轮询 20 tick |
 | `all_of` | 全部子条件都满足 | `triggers[]`（子条件**不写** `targetPhase`） | 递归 |
 | `any_of` | 任一子条件满足 | 同上 | 递归 |
-| `entity_death_count` | ⚠️ 已废弃（旧名）：等价 `entity_death` + `factionId` + `count` | `factionId`、`threshold`/`count` | 事件 |
 
 目标过滤（`entity_death` / `entity_state` / `entity_health` / `zone_*` / `player_death` 共用）：
 

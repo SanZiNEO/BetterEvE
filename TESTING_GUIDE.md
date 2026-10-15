@@ -234,6 +234,11 @@
 让非玩家实体（如骷髅）攻击末影龙
 预期：能造成伤害（原版只有玩家能伤龙）
 
+**本轮修复（阶段判定）**：原判定写了 `getId() == 7`，而 `7` 其实是 `SITTING_ATTACKING`、`DYING` 的真实 id 是 `9`
+⇒ 旧代码「坐地喷火阶段全免伤、`DYING` 阶段反而不免」。现改为与 `EnderDragonPhase.DYING` **对象本身**比较。
+回归：龙坐地喷火时用 `/data get entity @e[type=minecraft:ender_dragon,limit=1] Health` 读血量应**会掉**（旧代码不掉）；
+`DYING` 阶段（死亡动画）不掉血。**别只看血条**（有插值，容易误判）。
+
 ### 14. WardenMixin
 
 ```
@@ -241,6 +246,9 @@
 ```
 召唤两只不同阵营的 Warden，观察是否互打
 预期：不同阵营敌对 → 可以互打（原版 Warden 不打 Warden）
+
+> 放行条件是「**双方阵营敌对**」：两只都无阵营时与原版一致（不互殴）。
+> 只放行「同类排除」这一处；**不做**监守者的脑记忆（`WardenEntitySensor` / 记忆侧）那条。
 
 ### 15. 多场次剧本（`faction_wiped` / `timeout` / 切阶段日志）
 
@@ -523,6 +531,53 @@ p2 清场，3 秒后回 p1（日志 `phase p2 -> p1 winner=none reason=timer ela
 - 日志先出现 `[触发器] faction_wiped 命中，3 秒后切换到 t2`，约 3 秒后才出现 `phase t1 -> t2 winner=red reason=wiped elapsed=3s`（`elapsed` 含延迟）
 - 延迟期间该阶段的 `timer` / `timeout` 不生效；期间用 `/bettereve phase switch` 手动切走 → 预定取消，之后不会再多切一次
 
+### 17. 日光燃烧开关（`options.sunBurn`）
+
+```
+/bettereve scenario load default          ← default 剧本没有 options.sunBurn 段
+/time set day
+/summon minecraft:zombie                  ← 再各放一只骷髅 / 幻翼
+```
+预期：**一分钟不烧**（默认就不烧：没写这一段也不烧，**没加载剧本也不烧**）。
+- 换到 `enabled: true` 的剧本（或临时在剧本 `options` 里写 `"sunBurn": { "enabled": true }` 后重新加载）→ 白天立刻恢复燃烧。
+- 例外表：写 `"sunBurn": { "except": ["minecraft:zombie"] }` → **僵尸照烧、骷髅不烧**。
+- 只关「日光点燃」这一条路：把僵尸放进**岩浆** → 照烧（证明没动别的火源；火焰 / 闪电同样照旧）。
+- 已经在烧的生物最多 8 秒自己烧完（不做事后全场扫描）。
+
+### 18. BOSS 伤害（凋灵 / 末影龙 / 监守者）
+
+本轮三处 mixin 都只放行「**阵营敌对**」的攻击者 —— 前提是双方都带阵营且关系判为敌对；
+无剧本 / 双方无阵营时行为与原版一致。判读统一用 `/data get entity @e[type=...,limit=1] Health`
+（血条有插值和 HUD 缩放，容易误判）。
+
+**凋灵（`WitherBossMixin`）** —— 只放行原版「同 MobType 免伤」那一处：
+```
+/summon minecraft:wither ~ ~ ~6
+/data get entity @e[type=minecraft:wither,limit=1] Health          # H0（默认 300.0）
+/bettereve spawn minecraft:zombie red 1 ~ ~ ~3 5                   # 亡灵（MobType=UNDEAD）
+（等 10 秒）
+/data get entity @e[type=minecraft:wither,limit=1] Health          # 阵营敌对 → 预期 < H0
+```
+对照（不装剧本 / 双方无阵营）→ 亡灵打凋灵**仍 0 伤害**（原版行为不变）。
+原版其余门槛照旧：生成期无敌、半血后免疫箭、凋灵互殴免疫、凋零系伤害免疫。
+
+**末影龙 / 监守者** —— 分别见 §13 / §14。
+
+> 确认 mixin 活着：开一次游戏后 `grep "Mixing" run/logs/debug.log`，
+> 应能看到 `WitherBossMixin … into net.minecraft.world.entity.boss.wither.WitherBoss`（以及 §13 的 `EnderDragonMixin`）。
+
+### 19. 投掷物同阵营穿透（`ProjectileCollisionMixin`）
+
+```
+/bettereve scenario load default
+/bettereve spawn minecraft:skeleton red 1 0 60 0 1     # 红队骷髅
+/bettereve spawn minecraft:zombie  red  1 0 60 6 1     # 红队僵尸站在箭道上
+```
+预期：红骷髅射出的箭**整根忽略红队僵尸** —— 不受伤、不挡箭、不反弹、不消耗，继续飞向敌人。
+- 判据与伤害层同一口径：`FactionHelper.isEntitiesHostile == false` 就拦（同阵营，或剧本未定义敌对关系）。
+- **无阵营的箭不拦**（保持原版行为，绝不动 vanilla）。
+- 客户端读不到服务端写进 NBT 的阵营时这里不拦（观感差异，伤害仍以服务端为准）。
+
 ---
 
 ## 常见问题
@@ -546,6 +601,6 @@ p2 清场，3 秒后回 p1（日志 `phase p2 -> p1 winner=none reason=timer ela
 
 - `phases[].phaseType`（`point` / `loop` / `branch`）
 - `phases[].announce`（会 post 成事件但无订阅者，播报写进 `commands`）/ `phases[].resetAfter`
-- `triggers[].type`：`base_destroyed` / `entity_death_count` / `custom`
+- `triggers[].type`：`base_destroyed` / `custom`
 - `waypoints[].lane` / `waypoints[].order`
 - `/bettereve scenario info`
