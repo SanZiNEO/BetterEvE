@@ -78,6 +78,15 @@ public class TargetingHandler {
             return;
         }
 
+        // 末影龙：**不装我们的目标选择器**（用户口径 2026-10-15）。两条理由：
+        //   1) 装了也是死代码 —— EnderDragon.aiStep() 不调 super.aiStep()，
+        //      而 Mob.serverAiStep（唯一会 tick 目标/行为选择器的地方）因此永不执行；
+        //   2) 就算把 target 设上，它的攻击也全由阶段驱动、找目标只认 Player（15 个 phase 里没有 getTarget/setTarget）。
+        // 详见 plans/2026-10-15-末影龙不主动攻击的原因.md。让它自己飞，只保证"它能被别的生物打"。
+        if (mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon) {
+            return;
+        }
+
         // 检查是否已添加过我们的自定义目标选择器，如果是则返回，避免重复添加
         boolean hasCustomGoal = mob.targetSelector.getAvailableGoals().stream()
                 .anyMatch(goalEntry -> goalEntry.getGoal() instanceof FactionHostileTargetGoal);
