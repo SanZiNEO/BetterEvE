@@ -10,7 +10,8 @@ import java.util.List;
  * 日光燃烧开关的配置读取入口（写法对齐 {@code faction.SummonRule}）。
  *
  * 配置来源：当前剧本的 {@code options.sunBurn} 段；
- * 没写该段、或没加载剧本 → 一律原版行为（照常被日光点燃）。
+ * **没写该段、或根本没加载剧本 → 一律防护开**（不被日光点燃）；
+ * 只有剧本明确写 {@code enabled: true} 才走原版（会烧）。
  *
  * 被 {@code mixin/MobSunBurnMixin} 调用：它注入 {@code Mob.isSunBurnTick()} 的 HEAD。
  */
@@ -35,10 +36,13 @@ public final class SunBurnRule {
      */
     public static boolean suppresses(Entity entity) {
         Scenario.SunBurnConfig cfg = config();
-        if (cfg == null || cfg.isEnabled()) {
-            return false;                  // 没配 / 开关开着 → 原版行为
+        if (cfg == null) {
+            return true;                   // 没加载剧本 / 剧本没写这一段 → 按默认：防护开（不烧）
         }
-        return !isExcepted(cfg, entity);    // 开关关着：除例外名单外，全部压掉
+        if (cfg.isEnabled()) {
+            return false;                  // 剧本明确要烧 → 走原版
+        }
+        return !isExcepted(cfg, entity);    // 防护开：除例外名单外，全部压掉
     }
 
     /**

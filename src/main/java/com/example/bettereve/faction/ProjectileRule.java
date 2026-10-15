@@ -48,9 +48,15 @@ public final class ProjectileRule {
      * Projectile 子类（含 AbstractArrow）已经由 instanceof 覆盖，这里只处理
      * 模组自己实现、不继承 Projectile 的远程实体。
      *
-     * 关键词来自整合包实测（咒术回战 bullet_knife / slash、各类 bullet 系），
-     * 只作为后备判据：走到这里说明该实体已经能解析出 owner，
-     * 归属关系是确定的，类型判断只为排除"被误当投射物的 Mob"。
+     * 关键词来自整合包实测（逐个核过 JujutsuCraft ver50.1 的实体清单）：
+     *   bullet_knife（AbstractArrow 子类）、projectile_slash / entity_slash /
+     *   entity_attack_slash（PathfinderMob，"解"与"世界斩"共用）、bullet_* 系、needle 等。
+     * 只作为后备判据：走到这里说明该实体已经能解析出归属，
+     * 类型判断只为排除"被误当投掷物的普通生物"。
+     *
+     * 注意：本判据同时决定等级表的优先级（见 EntityLevelSystem.getEntityLevelConfig 的
+     * ② 分支：命中即先查 options.projectile.levelTable），所以关键词表要跟注释一致 ——
+     * slash 曾经漏在这张表外，导致 projectile_slash 拿不到投掷物等级表。
      */
     public static boolean isProjectileLike(Entity entity) {
         String name = entity.getType().toString().toLowerCase();
@@ -59,8 +65,9 @@ public final class ProjectileRule {
                 || name.contains("bottle") || name.contains("potion") || name.contains("bullet")
                 || name.contains("_shot") || name.contains("shulker_bullet") || name.contains("llama_spit")
                 || name.contains("knife") || name.contains("dagger") || name.contains("blade")
-                || name.contains("spear") || name.contains("rock") || name.contains("shard")
-                || name.contains("needle") || name.contains("spit") || name.contains("nail")
-                || name.contains("kunai") || name.contains("shuriken") || name.contains("missile");
+                || name.contains("slash") || name.contains("spear") || name.contains("rock")
+                || name.contains("shard") || name.contains("needle") || name.contains("spit")
+                || name.contains("nail") || name.contains("kunai") || name.contains("shuriken")
+                || name.contains("missile");
     }
 }

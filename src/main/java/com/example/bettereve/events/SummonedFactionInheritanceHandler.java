@@ -43,14 +43,14 @@ import java.util.UUID;
  *   3. OwnableEntity.getOwner()            标准可驯服/从者体系
  *   4. OwnableEntity.getOwnerUUID() 反查     owner 未加载到本维度时
  *   5. NBT 召唤者痕迹                       ★ 跨模组主通道（实测 JujutsuCraft 等）
- *   6. getTarget() 是 Mob 且 tickCount≤1    目标反推（Alex's Mobs 尖叫者那类）
+ *
+ * 已删除的旧规则："getTarget() 就是召唤者"的目标反推。反编译实测（Alex's Mobs 的
+ * 愚人节海熊、咒术回战的攻击实体）表明出生带的目标是**被打者**而不是召唤者，
+ * 按它继承会把阵营写反。详见 resolveSummoner() 末尾的说明。
  */
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class SummonedFactionInheritanceHandler {
     private static final Logger LOGGER = LogManager.getLogger("BetterEvE/SummonedInheritance");
-
-    /** 目标即召唤者的时间窗口：只有刚生成的生物才算 */
-    private static final int TARGET_INFERENCE_MAX_TICK = 1;
 
     /** 多部件生物父链上溯的最大深度（防环状链接死循环） */
     private static final int MAX_PARENT_CHAIN_DEPTH = 32;
@@ -272,21 +272,20 @@ public class SummonedFactionInheritanceHandler {
             }
         }
 
-        // 规则 6：目标即召唤者 —— 仅限刚生成的生物。
+        // 到此为止，没有任何证据 → 本轮判不出来（挂起到 tick 末再试）。
         //
-        // 这条判据是整条链里覆盖最广的一条：很多模组生成"攻击实体/召唤物"时
-        // 既不写 owner 也不实现接口，唯一留下的痕迹就是"出生当刻已被设了目标"
-        // （宿傩的 projectile_slash 就是这类，模组内部完全不写归属）。
-        //
-        // 刻意保持宽松：这类实体必须继承施法者的阵营与等级加成，
-        // 否则 100 级角色甩出的攻击手段只有初始血量与伤害，观感上说不通。
-        // "出生带目标"这一特征自然生成生物几乎不可能满足（自然生成不带目标）。
-        if (mob.tickCount <= TARGET_INFERENCE_MAX_TICK && mob.getTarget() instanceof Mob targetMob) {
-            if (targetMob != mob) {
-                return new SummonerRef(targetMob, targetMob.getUUID(), SummonedMarker.REASON_TARGET);
-            }
-        }
-
+        // 这里曾经有一条"规则 6：getTarget() 就是召唤者"的反推，已删除。
+        // 反编译证据（Alex's Mobs 1.22.9 / JujutsuCraft ver50.1）：
+        //   - "出生当刻已被设了目标"的唯一实例是 Alex's Mobs 的愚人节海熊
+        //     （ServerEvents.java:825-826：bear.setTarget(玩家) → addFreshEntity(bear)），
+        //     目标是**被打者**，不是召唤者；
+        //   - 咒术回战生成攻击实体时根本不设目标（在 procedures/ 里检索 setTarget 调用，
+        //     命中的全是 AI/选敌过程、且都在实体自己的 tick 里跑；projectile_slash 的
+        //     生成点一个都不设目标），它的归属写在 OWNER_UUID 上，由规则 5 覆盖。
+        // 也就是说，按"目标"继承拿到的是**被打者的阵营**：实体打不到自己的目标、
+        // 反而能打召唤者一侧的人。本 handler 的铁律是"证据不存在时什么都不做"，
+        // 目标反推不满足这条，故删。判不出归属的攻击实体保持无阵营（混乱生物），
+        // 需要时由剧本 options.summon.factionOverrides 直接钉阵营。
         return null;
     }
 

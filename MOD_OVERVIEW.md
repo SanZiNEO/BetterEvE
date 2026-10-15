@@ -44,8 +44,16 @@ BetterEvE 是一个 Minecraft Forge 1.20.1 阵营 PvP/PvE Mod，专注于构建�
 - 召唤物、投掷物自动继承召唤者的阵营，无需模组适配
 - 痕迹驱动：`TraceableEntity.getOwner` → `OwnableEntity` → owner UUID 反查 → NBT 召唤者痕迹（跨模组主通道）
 - 零反射、不做附近实体扫描（避免混战中误判归属）
-- 加入世界时判定一次，未命中则挂起到服务器 tick 末再判一次（部分模组在 `spawn()` 之后才写召唤者 NBT）
+- 加入世界时判定一次，未命中则挂起到服务器 tick 末再判（部分模组在 `spawn()` 之后才写召唤者 NBT）；投掷物最多重判 3 轮
+- 已有阵营绝不覆盖（剧本 `factionOverrides` 永远优先）；存档 / 区块加载的实体不重复继承（避免箭伤倍率叠乘）
 - 可按剧本 `options.summon` 开关、按实体类型覆盖血条显示
+
+### 投掷物同阵营拦截
+- 一句话口径：攻击实体与目标**不敌对**（同阵营 / 剧本未定义敌对）时拦，判据统一为 `FactionHelper.isEntitiesHostile`
+- `Projectile` 家族拦在命中判定层（`canHitEntity`）：友军直接穿过去，不受伤、不挡箭、不反弹、不消耗
+- 非 `Projectile` 的攻击实体（`jujutsucraft:projectile_slash` 这类 Mob）拦在伤害层（`LivingAttackEvent`）：
+  它们的命中判定写在模组自己代码里，vanilla 没有可挂的谓词
+- 投掷物自身还没继承到阵营时，按发射者的阵营判（归属链回退）；两边都判不出阵营则不拦（保持原版行为）
 
 ### 实体等级系统
 - 等级参数写在剧本顶层命名表 `levelTables`，阵营用 `factions[].levelTable` 引用，不写则该阵营无等级
@@ -63,7 +71,8 @@ BetterEvE 是一个 Minecraft Forge 1.20.1 阵营 PvP/PvE Mod，专注于构建�
 - 用于直播地图无自然生成的场景
 
 ### 日光燃烧开关（options.sunBurn）
-- 一键关掉「骷髅 / 僵尸 / 幻翼被日光点燃」，可给例外名单（写实体 id，支持 `modid:*` 前缀）
+- **默认就不烧**（没写这一段也是，**没加载剧本也是**）：骷髅 / 僵尸 / 幻翼白天不着火；写 `enabled: true` 才走原版
+- 可给例外名单（写实体 id，支持 `modid:*` 前缀），例如只让僵尸不烧、骷髅照烧
 - 掐在源头：注入 `Mob.isSunBurnTick()` 的 HEAD —— 原版只有这三类的 `aiStep()` 会调它，一处覆盖全部
 - 连带跳过原版那套「光照 + 可见天 + 随机数」判定，**比原版更省**；岩浆 / 火焰 / 闪电照旧
 - 取代 `protect-mobs-from-daylight` 那类模组（并进来之后可以卸掉）
@@ -71,7 +80,7 @@ BetterEvE 是一个 Minecraft Forge 1.20.1 阵营 PvP/PvE Mod，专注于构建�
 ## 技术说明
 
 - 所有反射调用已移除
-- 无 `@Overwrite` / `@Redirect` Mixin（全部使用 `@Inject` + Mixin Accessor）
+- 无 `@Overwrite` Mixin（全部用 `@Inject` + Mixin Accessor；唯一一处 `@Redirect` 在 `WitherBossMixin`，用来放行凋灵 `hurt()` 里"同 MobType 免伤"那一处判定）
 - Mixin 0.8.5 兼容（Forge 1.20.1 内置版本）
 - 使用 Gson 处理 JSON（Forge 捆绑）
 - 构建：ForgeGradle 6.x + JDK 17

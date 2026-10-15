@@ -3,6 +3,7 @@ package com.example.bettereve.mixin;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.boss.EnderDragonPart;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -38,8 +39,10 @@ public abstract class EnderDragonMixin {
     private void onHurt(EnderDragonPart part, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
         EnderDragon dragon = (EnderDragon)(Object)this;
         
-        // 保留原版阶段检查：DYING 阶段免疫
-        if (dragon.getPhaseManager().getCurrentPhase().getPhase().getId() == 7) {
+        // 保留原版阶段检查：DYING 阶段免疫。
+        // 原版 EnderDragon.hurt 里比的是 phase 对象本身；这里对齐该写法，不用 magic number：
+        // DYING 的 id 是 9（EnderDragonPhase 按声明顺序 0..10），7 是 SITTING_ATTACKING（坐地喷火）。
+        if (dragon.getPhaseManager().getCurrentPhase().getPhase() == EnderDragonPhase.DYING) {
             cir.setReturnValue(false);
             return;
         }
@@ -64,14 +67,14 @@ public abstract class EnderDragonMixin {
         // 原版死亡阶段逻辑
         if (dragon.isDeadOrDying() && !dragon.getPhaseManager().getCurrentPhase().isSitting()) {
             dragon.setHealth(1.0F);
-            dragon.getPhaseManager().setPhase(net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase.DYING);
+            dragon.getPhaseManager().setPhase(EnderDragonPhase.DYING);
         }
         
         // 原版坐地阶段伤害累加逻辑
         if (dragon.getPhaseManager().getCurrentPhase().isSitting()) {
             float sittingDamage = this.sittingDamageReceived + currentHealth - dragon.getHealth();
             if (sittingDamage > 0.25F * dragon.getMaxHealth()) {
-                dragon.getPhaseManager().setPhase(net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase.TAKEOFF);
+                dragon.getPhaseManager().setPhase(EnderDragonPhase.TAKEOFF);
             }
         }
         

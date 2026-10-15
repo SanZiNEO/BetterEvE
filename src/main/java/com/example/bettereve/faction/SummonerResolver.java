@@ -72,34 +72,6 @@ public final class SummonerResolver {
     }
 
     /**
-     * 只要 owner 实体（不要 UUID 反查与 NBT 痕迹），供"投掷物即时继承"这类
-     * 需要在生成当刻就判定、且不应依赖延迟解析的场景使用。
-     */
-    @Nullable
-    public static Entity resolveDirectOwner(Entity entity) {
-        if (entity == null) {
-            return null;
-        }
-        if (entity instanceof TraceableEntity traceable) {
-            Entity owner = traceable.getOwner();
-            if (owner != null) {
-                return owner;
-            }
-        }
-        if (entity instanceof OwnableEntity ownable) {
-            Entity owner = ownable.getOwner();
-            if (owner != null) {
-                return owner;
-            }
-            UUID ownerUuid = ownable.getOwnerUUID();
-            if (ownerUuid != null && entity.level() instanceof ServerLevel serverLevel) {
-                return serverLevel.getEntity(ownerUuid);
-            }
-        }
-        return null;
-    }
-
-    /**
      * 多部件生物的父链上溯：沿 ParentUUID 逐节找到主体（尾 → 身 → 头）。
      * 带深度上限防止环状链接死循环。
      */

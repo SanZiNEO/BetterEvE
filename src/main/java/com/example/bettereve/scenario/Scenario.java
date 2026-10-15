@@ -476,8 +476,11 @@ public class Scenario {
      * <p>只压「日光点燃」这一条路：岩浆 / 火焰 / 闪电 / {@code /ignite} 照旧。
      */
     public static class SunBurnConfig {
-        /** 默认 true = 原版行为（会被日光点燃） */
-        public static final boolean DEFAULT_ENABLED = true;
+        /**
+         * 默认 **false** = 没写这一段就不被日光点燃（**防护默认开着**）；写 {@code true} 才走原版（会烧）。
+         * 这样老剧本 / 预设剧本 / 新导出的剧本都不用改就一致。
+         */
+        public static final boolean DEFAULT_ENABLED = false;
 
         private Boolean enabled;
         /** 例外：这些实体**照旧**被日光点燃。写实体 id；末尾带 {@code *} 表示按前缀匹配（如 {@code somemod:*}） */

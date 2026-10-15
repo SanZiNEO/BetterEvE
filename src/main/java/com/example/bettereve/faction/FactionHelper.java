@@ -147,4 +147,35 @@ public class FactionHelper {
 
         return FactionRelationManager.isHostile(factionId1, factionId2);
     }
+
+    /**
+     * 取实体用于"攻击归属"的有效阵营。
+     *
+     * 常规情况就是实体自己的阵营；唯一的例外是**攻击实体**（Projectile 家族，或名字像
+     * 投掷物的实体）自己还没有阵营、但能解析出主人 —— 说明阵营继承没赶上（模组在
+     * spawn 之后才写归属、或写得太晚）。这时按主人的阵营算，否则这次攻击会被当成
+     * "无阵营的混乱生物"打到友军身上（例如宿傩的解打中宿傩一侧的人）。
+     *
+     * 只读不写：判定不改变实体状态，实体该不该有阵营仍由继承逻辑负责。
+     * 用它的地方只有伤害层的敌我判定（见 CrystalSystem.onLivingAttack）。
+     */
+    public static String getEffectiveFactionId(Entity entity) {
+        if (entity == null) {
+            return "";
+        }
+
+        String own = getEntityFactionId(entity);
+        if (!own.isEmpty()) {
+            return own;
+        }
+
+        // 只对攻击实体做归属回退：普通生物/玩家按自己的阵营算，不往上找主人
+        if (!(entity instanceof net.minecraft.world.entity.projectile.Projectile)
+                && !ProjectileRule.isProjectileLike(entity)) {
+            return own;
+        }
+
+        Entity owner = SummonerResolver.resolve(entity);
+        return owner == null ? own : getEntityFactionId(owner);
+    }
 }

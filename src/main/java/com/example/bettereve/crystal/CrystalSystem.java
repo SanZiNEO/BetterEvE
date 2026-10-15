@@ -7,6 +7,7 @@ import com.example.bettereve.phase.TriggerEngine;
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionHelper;
 import com.example.bettereve.faction.FactionRegistry;
+import com.example.bettereve.faction.FactionRelationManager;
 import com.example.bettereve.faction.SummonRule;
 import com.example.bettereve.network.NetworkManager;
 import net.minecraft.core.BlockPos;
@@ -42,9 +43,16 @@ public class CrystalSystem {
 
         // 检查攻击者和受害者是否都是生物
         if (attacker instanceof LivingEntity && victim instanceof LivingEntity) {
-            // 检查是否是同阵营的
-            if (FactionHelper.isEntitiesHostile((LivingEntity) attacker, (LivingEntity) victim) == false) {
-                // 同阵营的生物不会攻击彼此，取消攻击事件
+            // 攻击者一侧取"有效阵营"：投掷物自己还没继承到阵营时，回退到发射者的阵营
+            // （见 FactionHelper.getEffectiveFactionId）。这一层是非 Projectile 攻击实体
+            // （projectile_slash 这类 Mob）唯一的通用拦截点 —— 它们的命中判定写在模组自己
+            // 的代码里（实测咒术回战 RangeAttackProcedure 直接调 victim.hurt(DamageSource(type, self), dmg)），
+            // vanilla 没有 canHitEntity 那样的谓词可以挂。
+            String attackerFaction = FactionHelper.getEffectiveFactionId(attacker);
+            String victimFaction = FactionHelper.getEntityFactionId(victim);
+
+            // 同阵营的生物不会攻击彼此，取消攻击事件
+            if (FactionRelationManager.isHostile(attackerFaction, victimFaction) == false) {
                 event.setCanceled(true);
             }
         }

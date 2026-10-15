@@ -18,6 +18,7 @@ import java.util.UUID;
  * - {@code BetterEvE:SummonedAt}        标记时的 gameTime（调试用）
  *
  * 判定来源取值：OWNER / OWNER_UUID / TARGET / CONTEXT / MANUAL
+ * （TARGET 为历史值：目标反推规则已删除，只在旧存档里还会读到）
  */
 public final class SummonedMarker {
 
@@ -33,7 +34,7 @@ public final class SummonedMarker {
     public static final String REASON_OWNER_UUID = "OWNER_UUID";
     /** 由 NBT 召唤者痕迹判定（跨模组主通道，如咒术回战的 OWNER_UUID 键） */
     public static final String REASON_OWNER_NBT = "OWNER_NBT";
-    /** 由"目标即召唤者"反推判定 */
+    /** 由"目标即召唤者"反推判定（**历史值，已不再产生**：该规则已删除，见 SummonedFactionInheritanceHandler 的说明） */
     public static final String REASON_TARGET = "TARGET";
     /** 由召唤者上下文（生成动作捕获）判定 */
     public static final String REASON_CONTEXT = "CONTEXT";

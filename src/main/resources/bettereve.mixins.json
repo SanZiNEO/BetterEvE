@@ -10,6 +10,7 @@
     "WardenMixin",
     "ProjectileCollisionMixin",
     "EnderDragonMixin",
+    "WitherBossMixin",
     "MobAttackDistanceMixin",
     "SensingMixin",
     "MobSunBurnMixin"
