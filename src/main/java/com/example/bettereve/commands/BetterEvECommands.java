@@ -173,7 +173,8 @@ public class BetterEvECommands {
                             // 实际等级仍会被剧本等级表的 maxLevel 夹住（EntityLevelSystem.setEntityLevel）
                             // 与原生 /summon 一致：坐标用 Vec3Argument，支持 ~（相对执行位置）与 ^（局部坐标）
                             .then(Commands.argument("pos", Vec3Argument.vec3())
-                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 100))
+                                // 上限不设：只有下界。一条指令要几只就几只，卡不卡由使用者按场景控制
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1))
                                     .executes(BetterEvECommands::executeSpawnEntitiesAtPosition)
                                     // keepAlive：单生物防清除标记。必须注册在 routeId 之前——
                                     // routeId 是 word 参数，会把末尾的 true/false 吞掉，放在它后面等于静默失效。
