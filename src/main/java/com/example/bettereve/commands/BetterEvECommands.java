@@ -533,6 +533,7 @@ public class BetterEvECommands {
         // 剧本可用 options.spawnLayout 覆盖；count=1 时全部阵型退化为原点。
         List<SpawnFormation.Offset> offsets = SpawnFormation.compute(count, resolveSpawnLayout());
 
+        int spawned = 0;
         for (int i = 0; i < count; i++) {
             try {
                 if (entityType != null) {
@@ -589,7 +590,9 @@ public class BetterEvECommands {
                         mobAccessor.invokePopulateDefaultEquipmentSlots(serverLevel.random, difficulty);
                         mobAccessor.invokePopulateDefaultEquipmentEnchantments(serverLevel.random, difficulty);
                         
-                        // 调用 finalizeSpawn 以确保生物正确初始化
+                        // 直接调用 finalizeSpawn，不走 Forge 的 MobSpawnEvent.FinalizeSpawn 事件：
+                        // 走事件会让 hook 该事件的模组有机会取消生成（实测会把 COMMAND 生成的怪也拦掉，
+                        // 变成"生成被拦截"）。原版调用点才会被 Forge 重定向到事件，mod 自己调不会。
                         mob.finalizeSpawn(serverLevel, difficulty, MobSpawnType.COMMAND, null, null);
 
                         // keepAlive：原版 persistence（整条 despawn 流程直接跳过）+ 模组标记
@@ -667,7 +670,11 @@ public class BetterEvECommands {
                         // 并且不会尝试继承其他阵营
                         LOGGER.debug("Entity {} will be spawned with faction {}, position {},{},{}", mob.getName(), factionId, x+i, y, z);
                         
-                        serverLevel.addFreshEntity(mob);
+                        if (!serverLevel.addFreshEntity(mob)) {
+                            context.getSource().sendFailure(Component.literal("生成被拦截（实体未加入世界）: " + entityRL));
+                            continue;
+                        }
+                        spawned++;
                         
                         // 同步血条可见性到所有客户端
                         com.example.bettereve.network.NetworkManager.syncEntityHealthBarVisibilityToAll(mob, showHealthBar);
@@ -690,7 +697,7 @@ public class BetterEvECommands {
         String posString = String.format("%.1f, %.1f, %.1f", x, y, z);
         String routeMsg = (routeId == null || routeId.isEmpty()) ? "Auto" : routeId;
         String formationMsg = count > 1 ? resolveSpawnLayout().getFormation().name().toLowerCase() : "point";
-        String message = "Successfully spawned " + count + " " + entityRL + " (Faction: " + factionId + ", Level: " + level + ", Health Bar: " + (showHealthBar ? "Visible" : "Hidden") + ", Route: " + routeMsg + ", Formation: " + formationMsg + ") at (" + posString + ")";
+        String message = "Successfully spawned " + spawned + " " + entityRL + " (Faction: " + factionId + ", Level: " + level + ", Health Bar: " + (showHealthBar ? "Visible" : "Hidden") + ", Route: " + routeMsg + ", Formation: " + formationMsg + ") at (" + posString + ")";
         context.getSource().sendSuccess(() -> Component.literal(message), true);
         return 1;
     }

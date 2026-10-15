@@ -62,6 +62,12 @@ BetterEvE 是一个 Minecraft Forge 1.20.1 阵营 PvP/PvE Mod，专注于构建�
 - 剧本声明一个矩形区域，区域内生物禁止自然 despawn、chunk 常驻（运行时 ticket，不写盘）
 - 用于直播地图无自然生成的场景
 
+### 日光燃烧开关（options.sunBurn）
+- 一键关掉「骷髅 / 僵尸 / 幻翼被日光点燃」，可给例外名单（写实体 id，支持 `modid:*` 前缀）
+- 掐在源头：注入 `Mob.isSunBurnTick()` 的 HEAD —— 原版只有这三类的 `aiStep()` 会调它，一处覆盖全部
+- 连带跳过原版那套「光照 + 可见天 + 随机数」判定，**比原版更省**；岩浆 / 火焰 / 闪电照旧
+- 取代 `protect-mobs-from-daylight` 那类模组（并进来之后可以卸掉）
+
 ## 技术说明
 
 - 所有反射调用已移除

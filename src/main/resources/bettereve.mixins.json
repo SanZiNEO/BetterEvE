@@ -11,7 +11,8 @@
     "ProjectileCollisionMixin",
     "EnderDragonMixin",
     "MobAttackDistanceMixin",
-    "SensingMixin"
+    "SensingMixin",
+    "MobSunBurnMixin"
   ],
   "client": [
     "LevelRendererMixin"

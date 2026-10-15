@@ -275,6 +275,7 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `summon` | 见下 | 召唤物机制 |
 | `projectile` | 见下 | 投掷物机制 |
 | `spawnLayout` | 见下 | 指令召唤阵型 |
+| `sunBurn` | 见下 | 日光燃烧开关（防骷髅 / 僵尸 / 幻翼被日光点燃） |
 
 #### options.summon — 召唤物机制
 
@@ -327,6 +328,29 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | `arc` | 360.0 | 张角（度）：360 整圆、180 半圆、≤0 退化为直线 |
 | `width` | `radius × 2` | 矩形宽（X 方向） |
 | `depth` | `radius × 2` | 矩形深（Z 方向） |
+
+#### options.sunBurn — 日光燃烧开关
+
+防骷髅 / 僵尸 / 幻翼被**日光点燃**（不碰岩浆、火焰、闪电）。没写这一段 = 原版行为。
+
+| 字段 | 默认 | 说明 |
+|---|---|---|
+| `enabled` | `true` | `false` = 谁都不被日光点燃；`true` = 原版 |
+| `except` | 无 | 例外名单：这些实体**照旧**被日光点燃。写实体 id；末尾带 `*` 表示按前缀匹配（如 `somemod:*`） |
+
+```json
+"options": {
+  "sunBurn": {
+    "enabled": false,
+    "except": ["minecraft:zombie"]
+  }
+}
+```
+
+实现：`mixin/MobSunBurnMixin` 注入 `Mob.isSunBurnTick()` 的 HEAD，命中就返回 false ——
+原版只有 `AbstractSkeleton` / `Zombie` / `Phantom` 的 `aiStep()` 会调它（`AbstractSkeleton:95` / `Zombie:214` / `Phantom:130`），
+所以**一处覆盖全部三类**；而且连带跳过原版那套「算光照 + 取 BlockPos + canSeeSky + 摇随机数」的判定，**比原版更省**。
+已经在烧的生物最多 8 秒自己烧完（不做事后全场扫描）。
 
 #### options.rules — 剧本裁决规则
 
@@ -453,4 +477,5 @@ BetterEvE 的全部配置已迁移到**剧本系统**：一个剧本 JSON 文件
 | 渲染配置（血条显示等） | 剧本 `options.overheadHealthBar` / `healthBarScale` / `healthBarLevelText` / `healthBarHealthText` / `versusHealthBar*` |
 | 召唤物机制配置 | 剧本 `options.summon` |
 | 指令召唤阵型配置 | 剧本 `options.spawnLayout` |
+| 日光燃烧（原由 `protect-mobs-from-daylight` 模组负责） | 剧本 `options.sunBurn`（那个模组可以卸了） |
 | `crystal_clearRadius` / `counter_countEntityType` / `global_levelEnabled` | 已移除（无代码读取） |

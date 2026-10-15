@@ -425,6 +425,8 @@ public class Scenario {
         private SpawnLayout spawnLayout;
         // ==================== 剧本裁决规则（代码提供能力，剧本写具体实例） ====================
         private Rules rules;
+        // ==================== 日光燃烧开关（防骷髅 / 僵尸 / 幻翼被日光点燃） ====================
+        private SunBurnConfig sunBurn;
 
         public String getPlayersDefaultFaction() { return playersDefaultFaction; }
         public void setPlayersDefaultFaction(String playersDefaultFaction) { this.playersDefaultFaction = playersDefaultFaction; }
@@ -460,6 +462,36 @@ public class Scenario {
         public void setSpawnLayout(SpawnLayout spawnLayout) { this.spawnLayout = spawnLayout; }
         public Rules getRules() { return rules; }
         public void setRules(Rules rules) { this.rules = rules; }
+        public SunBurnConfig getSunBurn() { return sunBurn; }
+        public void setSunBurn(SunBurnConfig sunBurn) { this.sunBurn = sunBurn; }
+    }
+
+    /**
+     * 日光燃烧开关。剧本未写 {@code sunBurn} 段时 = 原版行为（照常被日光点燃）。
+     *
+     * <p>实现见 {@code mixin/MobSunBurnMixin}：注入 {@code Mob.isSunBurnTick()} 的 HEAD，
+     * 命中本段配置且不在 {@code except} 名单里时直接返回 false —— 比原版更省
+     * （跳过光照 / 可见天 / 随机数那套判定），而不是多花。
+     *
+     * <p>只压「日光点燃」这一条路：岩浆 / 火焰 / 闪电 / {@code /ignite} 照旧。
+     */
+    public static class SunBurnConfig {
+        /** 默认 true = 原版行为（会被日光点燃） */
+        public static final boolean DEFAULT_ENABLED = true;
+
+        private Boolean enabled;
+        /** 例外：这些实体**照旧**被日光点燃。写实体 id；末尾带 {@code *} 表示按前缀匹配（如 {@code somemod:*}） */
+        private List<String> except;
+
+        public boolean isEnabled() {
+            return enabled == null ? DEFAULT_ENABLED : enabled;
+        }
+
+        public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+
+        public List<String> getExcept() { return except; }
+
+        public void setExcept(List<String> except) { this.except = except; }
     }
 
     /**
