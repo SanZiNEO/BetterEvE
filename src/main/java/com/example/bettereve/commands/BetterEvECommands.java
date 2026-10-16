@@ -606,8 +606,16 @@ public class BetterEvECommands {
                         if (mob.getType() == EntityType.WARDEN) {
                             net.minecraft.world.entity.monster.warden.Warden warden = (net.minecraft.world.entity.monster.warden.Warden) mob;
                             
-                            // 设置最大愤怒值，确保 Warden 进入完全愤怒状态
-                            warden.increaseAngerAt(context.getSource().getEntity(), 150, true);
+                            // 这里不再手动灌怒气：怒气由 WardenMixin#onGetActiveAnger 维持 ——
+                            // 只要「当前目标是敌对阵营实体」，怒气读数就恒为 150（原版上限，
+                            // AngerManagement.MAX_ANGER），而 FIGHT 活动的闸门
+                            // StopAttackingIfTargetInvalid 读的是「对当前目标的怒气」
+                            // （getAngerLevel() → getActiveAnger() → angerManagement.getActiveAnger(getTarget())），
+                            // 所以不用（也不能）靠一次性写入撑住：
+                            // 原版怒气每 20 tick 衰减 1，写在 ANGRY 阈值 80 上刚好一秒后就掉到 79，
+                            // 目标随即被 StopAttackingIfTargetInvalid 摘掉，而且之后没人再点火。
+                            // 原先那行 increaseAngerAt(命令执行者, 150, true) 同理没用：怒气是按实体记账的，
+                            // 记在执行者头上不参与「对目标」的判定。
                             
                             // 查找敌对目标
                             if (warden.getTarget() == null) {
@@ -634,13 +642,12 @@ public class BetterEvECommands {
                                     }
                                     
                                     if (nearestTarget != null) {
-                                        // 同时设置传统目标和 Brain 系统的 ATTACK_TARGET
+                                        // setAttackTarget 是官方设目标方法：erase ROAR_TARGET、
+                                        // set ATTACK_TARGET、清 CANT_REACH_WALK_TARGET_SINCE、
+                                        // 设 sonic boom 冷却。它写的就是 getTarget() 读的那个脑记忆，
+                                        // 所以后面不用再补一次 setMemory(ATTACK_TARGET, ...)（同一份写入）。
+                                        // 怒气也不再手动灌：目标是敌对阵营时由 WardenMixin 顶到上限。
                                         warden.setAttackTarget(nearestTarget);
-                                        warden.getBrain().setMemory(
-                                            net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, 
-                                            nearestTarget
-                                        );
-                                        warden.increaseAngerAt(nearestTarget, 80, false);
                                     }
                                 }
                             }
@@ -652,18 +659,12 @@ public class BetterEvECommands {
                                 3000L
                             );
                             
-                            if (warden.getTarget() != null) {
-                                warden.getBrain().setMemory(
-                                    net.minecraft.world.entity.ai.memory.MemoryModuleType.ROAR_TARGET, 
-                                    warden.getTarget()
-                                );
-                                // 确保 Warden 对目标有足够的记忆
-                                warden.getBrain().setMemoryWithExpiry(
-                                    net.minecraft.world.entity.ai.memory.MemoryModuleType.NEAREST_ATTACKABLE, 
-                                    warden.getTarget(), 
-                                    6000L
-                                );
-                            }
+                            // 原来这里还有两处死写入，已删：
+                            // 1) ROAR_TARGET：Roar 活动的启动条件要求 ATTACK_TARGET 为空（上面刚设了目标），
+                            //    而且 Warden.setAttackTarget 本身就会 erase ROAR_TARGET，写进去也留不住；
+                            // 2) NEAREST_ATTACKABLE：监守者 AI 里只有 Sniffing.stop() 读它（嗅探结束时涨怒气），
+                            //    对「攻击」没有作用；它本来就是原版 WardenEntitySensor 每 20 tick 重算的记忆，
+                            //    手写一个 6000 tick 的过期值会在 20 tick 内被传感器覆盖掉。
                         }
                         
                         // 重要：在将实体添加到世界之前，确保阵营设置正确

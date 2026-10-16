@@ -207,19 +207,44 @@ public class EntityLevelSystem {
     public static boolean isLevelSystemEnabled(Entity entity) {
         return getEntityLevelConfig(entity) != null;
     }
+
+    /**
+     * 等级表的「攻击倍率」：{@code 1 + attackBonus/100 × level^attackExp}。
+     *
+     * <p><b>给谁用</b>：伤害数值写死在原版代码里、走不到属性加成的那两类 BOSS 专用攻击 ——
+     * 监守者音爆（{@link com.example.bettereve.mixin.SonicBoomMixin}）与凋灵头颅
+     * （{@link com.example.bettereve.mixin.WitherSkullMixin}）。那两处的 {@code 10.0F} /
+     * {@code 8.0F} 是字面量，等级表只能以倍率的形式在伤害产生点乘上去。
+     * 普通近战不走这里 —— 那条路是 {@link #applySpawnLevel} 直接把倍率写进
+     * {@code ATTACK_DAMAGE} 属性。
+     *
+     * <p>倍率公式与上限夹子跟 {@code applySpawnLevel} 里那条完全同源（那处也改成调本方法），
+     * 所以近战与这两处特殊攻击的倍率永远同值。
+     *
+     * <p>无实体 / 无等级 / 无等级表 → {@code 1.0}（原版数值原样，等于没接）。
+     */
+    public static double getAttackMultiplier(Entity entity) {
+        if (entity == null) return 1.0;
+        int level = getEntityLevel(entity);
+        if (level <= 0) return 1.0;
+        Scenario.EntityLevelConfig cfg = getEntityLevelConfig(entity);
+        if (cfg == null) return 1.0;
+        double attackMultiplier = 1 + (cfg.getAttackBonus() / 100) * Math.pow(level, cfg.getAttackExponent());
+        double maxAttack = hasCustomNbtAttributes() ? Double.MAX_VALUE : 200.0;
+        return Math.min(attackMultiplier, maxAttack);
+    }
+
     public static void applySpawnLevel(LivingEntity entity, int level) {
         if (level <= 0) return;
 
-        boolean hasNbtAttributes = hasCustomNbtAttributes(entity);
+        boolean hasNbtAttributes = hasCustomNbtAttributes();
 
         Scenario.EntityLevelConfig cfg = getEntityLevelConfig(entity);
         if (cfg == null) return;
         double healthBonus = cfg.getHealthBonus() / 100;
-        double attackBonus = cfg.getAttackBonus() / 100;
         double armorBonus = cfg.getArmorBonus() / 100;
         double knockbackBonus = cfg.getKnockbackBonus() / 100;
         double healthExp = cfg.getHealthExponent();
-        double attackExp = cfg.getAttackExponent();
         double armorExp = cfg.getArmorExponent();
         double knockbackExp = cfg.getKnockbackExponent();
 
@@ -240,11 +265,10 @@ public class EntityLevelSystem {
             }
         }
 
-        // 攻击力
+        // 攻击力（倍率公式与 getAttackMultiplier 共用一处 —— 那处同时给"伤害写死在原版代码里"的
+        // BOSS 专用攻击用，两边必须永远同值）
         if (entity.getAttribute(Attributes.ATTACK_DAMAGE) != null) {
-            double attackMultiplier = 1 + attackBonus * Math.pow(level, attackExp);
-            double maxAttack = hasNbtAttributes ? Double.MAX_VALUE : 200.0;
-            double finalAttack = Math.min(attackMultiplier, maxAttack);
+            double finalAttack = getAttackMultiplier(entity);
             double baseDamage = entity.getAttribute(Attributes.ATTACK_DAMAGE).getBaseValue();
             double newDamage = baseDamage * finalAttack;
             entity.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(newDamage);
@@ -315,7 +339,7 @@ public class EntityLevelSystem {
     /**
      * 检查实体是否有自定义NBT属性
      */
-    private static boolean hasCustomNbtAttributes(LivingEntity entity) {
+    private static boolean hasCustomNbtAttributes() {
         // 对于通过 BetterEvE 命令召唤的实体，默认允许突破属性上限
         // 因为我们需要支持高等级生物的超高属性
         return true;

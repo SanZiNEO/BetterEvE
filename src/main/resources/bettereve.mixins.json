@@ -8,9 +8,11 @@
     "AccessorRangedAttribute",
     "MobAccessor",
     "WardenMixin",
+    "SonicBoomMixin",
     "ProjectileCollisionMixin",
     "EnderDragonMixin",
     "WitherBossMixin",
+    "WitherSkullMixin",
     "MobAttackDistanceMixin",
     "SensingMixin",
     "MobSunBurnMixin"
