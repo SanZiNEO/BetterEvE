@@ -14,8 +14,8 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.fml.common.Mod;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,7 +27,7 @@ import java.util.UUID;
 public class EntityLevelSystem {
     private static final Map<UUID, Integer> entityLevels = new HashMap<>();
     private static final String NBT_LEVEL_KEY = "BetterEvE_Level";
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/Level");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/Level");
     private static final Set<String> WARNED_MISSING_TABLES = new HashSet<>();
 
     /**

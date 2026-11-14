@@ -9,6 +9,8 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLPaths;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -22,6 +24,8 @@ import java.nio.file.StandardOpenOption;
  */
 @Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class ModelDumpClientTick {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ModelDumpClientTick.class);
 
     private ModelDumpClientTick() {
     }
@@ -44,7 +48,7 @@ public final class ModelDumpClientTick {
                 result = "EXCEPTION: " + t;
             }
             String line = id + " -> " + result;
-            System.out.println("[modeldump-probe] " + line);
+            LOGGER.info("[modeldump-probe] " + line);
             if (mc.player != null) {
                 mc.player.displayClientMessage(Component.literal("[modeldump] " + line), false);
             }

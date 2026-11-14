@@ -5,8 +5,8 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.network.NetworkEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Supplier;
 
@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  * 替代原先在 CrystalDeathPacket 中复用的清除标志位方案。
  */
 public class ClearDeathCountPacket {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/ClearDeathCountPacket");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/ClearDeathCountPacket");
     
     private final String factionId; // null = 清除全部
 

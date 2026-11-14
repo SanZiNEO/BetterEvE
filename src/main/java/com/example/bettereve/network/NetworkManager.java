@@ -9,14 +9,14 @@ import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 public class NetworkManager {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/NetworkManager");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/NetworkManager");
     
     // 网络协议版本
     private static final String PROTOCOL_VERSION = "1";

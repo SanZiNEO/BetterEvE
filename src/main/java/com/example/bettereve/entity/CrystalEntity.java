@@ -35,6 +35,8 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.EnumSet;
@@ -67,7 +69,9 @@ import java.util.List;
  * 注意：基地实体不可移动，只能在原地攻击
  */
 public class CrystalEntity extends Mob {
-    
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CrystalEntity.class);
+
     // 动画状态枚举
     public enum AnimationState {
         STANDBY,    // 待机状态
@@ -454,8 +458,7 @@ public class CrystalEntity extends Mob {
             // 播放攻击音效
             this.playSound(this.getAttackSound(), 1.0F, 1.0F);
         } catch (Exception e) {
-            System.err.println("CrystalEntity attackTarget error: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.error("CrystalEntity attackTarget error: " + e.getMessage(), e);
         }
     }
 

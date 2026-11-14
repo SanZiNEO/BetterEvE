@@ -6,8 +6,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,7 +19,7 @@ import java.util.function.Supplier;
  * 保持轻量化和高效
  */
 public class FactionSyncPacket {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/FactionSyncPacket");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/FactionSyncPacket");
     
     // 同步模式
     public enum SyncMode {

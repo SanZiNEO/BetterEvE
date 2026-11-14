@@ -4,8 +4,8 @@ import com.example.bettereve.Bettereve;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +17,7 @@ import java.util.function.Supplier;
  * 负责在服务器和客户端之间同步实体的血条显示状态
  */
 public class HealthBarVisibilityPacket {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/HealthBarVisibilityPacket");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/HealthBarVisibilityPacket");
     
     // 支持多种同步模式
     private static final int MODE_CLEAR_CACHE = 0;
@@ -140,8 +140,7 @@ public class HealthBarVisibilityPacket {
                         break;
                 }
             } catch (Exception e) {
-                LOGGER.error("Error handling HealthBarVisibilityPacket: {}", e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Error handling HealthBarVisibilityPacket: {}", e.getMessage(), e);
             }
         });
         context.setPacketHandled(true);

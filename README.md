@@ -517,7 +517,15 @@ BetterEvE 的全部配置由剧本系统驱动：一个 JSON 文件定义一个�
 
 ## 测试
 
-测试前确认：
+单元测试：
+
+```bash
+./gradlew test
+```
+
+覆盖 Scenario 解析、SpawnFormation 阵型、Route 顺序、Waypoint 区域、FactionRegistry 等纯逻辑。
+
+游戏内测试前确认：
 
 1. 执行 `gradlew.bat runClient` 启动游戏
 2. 创建/进入世界（作弊开启）
@@ -731,7 +739,7 @@ BetterEvE/
 │   │   ├── java/com/example/bettereve/
 │   │   │   ├── ai/          # 目标选择器 + 寻路
 │   │   │   ├── capture/     # 模型捕获
-│   │   │   ├── commands/    # 指令
+│   │   │   ├── commands/    # 指令（按子命令拆分的注册器）
 │   │   │   ├── crystal/     # 水晶基地
 │   │   │   ├── entity/      # 自定义实体
 │   │   │   ├── entitylv/    # 等级系统

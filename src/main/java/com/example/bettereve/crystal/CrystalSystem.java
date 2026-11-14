@@ -26,6 +26,8 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -33,8 +35,8 @@ import java.util.List;
 public class CrystalSystem {
     private static final String CRYSTAL_NBT_KEY = "BetterEvE:CrystalFaction";
     private static final String CRYSTAL_HEALTH_NBT_KEY = "BetterEvE:CrystalHealth";
-    private static final org.apache.logging.log4j.Logger LOGGER =
-            org.apache.logging.log4j.LogManager.getLogger("BetterEvE/CrystalSystem");
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger("BetterEvE/CrystalSystem");
 
     @SubscribeEvent
     public static void onLivingAttack(LivingAttackEvent event) {
@@ -221,17 +223,16 @@ public class CrystalSystem {
                 CrystalCollisionRegistry.register(
                     crystalDefId != null ? crystalDefId : factionId,
                     factionId, pos.getX() + 0.5, pos.getZ() + 0.5, sz[0], sz[1]);
-                System.out.println("CrystalEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey +
+                LOGGER.info("CrystalEntity spawned successfully at " + pos + " for faction " + factionId + " with size " + sizeKey +
                     ", health bar: " + (showHealthBar ? "visible" : "hidden") +
                     ", death clear: " + (enableDeathClear ? "enabled" : "disabled") +
                     ", broadcast: " + (enableBroadcast ? "enabled" : "disabled") +
                     ", death count: " + (enableDeathCount ? "enabled" : "disabled"));
 
                 int[] size = CrystalEntityType.parseSizeKey(sizeKey);
-                System.out.println("Size details: width=" + size[0] + ", height=" + size[1]);
+                LOGGER.debug("Size details: width=" + size[0] + ", height=" + size[1]);
             } catch (Exception e) {
-                System.err.println("Failed to spawn CrystalEntity: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Failed to spawn CrystalEntity: " + e.getMessage(), e);
             }
         }
     }

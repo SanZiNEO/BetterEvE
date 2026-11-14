@@ -5,8 +5,8 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.network.NetworkEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Supplier;
 
@@ -16,7 +16,7 @@ import java.util.function.Supplier;
  * CLEAR_ALL / CLEAR_FACTION：清除计数
  */
 public class CrystalDeathPacket {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/CrystalDeathPacket");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/CrystalDeathPacket");
 
     public enum SyncMode {
         ADD_DEATH,

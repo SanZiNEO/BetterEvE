@@ -10,8 +10,8 @@ import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -33,7 +33,7 @@ import java.util.Set;
  */
 @Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ScenarioFactionOverrideHandler {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/FactionOverride");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/FactionOverride");
 
     /** 已警告过的无效阵营 id，避免每只实体刷一行 */
     private static final Set<String> WARNED_UNKNOWN_FACTIONS = new HashSet<>();

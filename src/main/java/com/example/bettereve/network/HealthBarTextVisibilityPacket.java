@@ -2,8 +2,8 @@ package com.example.bettereve.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,7 +19,7 @@ import java.util.function.Supplier;
  * 与 HealthBarVisibilityPacket（是否显示整个血条）相互独立，可单独控制。
  */
 public class HealthBarTextVisibilityPacket {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/HealthBarTextVisibilityPacket");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/HealthBarTextVisibilityPacket");
 
     private static final int MODE_CLEAR_CACHE = 0;
     private static final int MODE_SINGLE_ENTITY = 1;

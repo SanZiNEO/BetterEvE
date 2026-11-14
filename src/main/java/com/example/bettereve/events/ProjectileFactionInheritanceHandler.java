@@ -14,8 +14,8 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,7 @@ import java.util.List;
  */
 @Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ProjectileFactionInheritanceHandler {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/ProjectileFaction");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/ProjectileFaction");
 
     /**
      * 延迟判定的挂起队列（服务器主线程独占，无需加锁）。

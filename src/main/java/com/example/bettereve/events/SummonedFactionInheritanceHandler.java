@@ -16,8 +16,8 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +50,7 @@ import java.util.UUID;
  */
 @Mod.EventBusSubscriber(modid = "bettereve", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class SummonedFactionInheritanceHandler {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/SummonedInheritance");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/SummonedInheritance");
 
     /** 多部件生物父链上溯的最大深度（防环状链接死循环） */
     private static final int MAX_PARENT_CHAIN_DEPTH = 32;

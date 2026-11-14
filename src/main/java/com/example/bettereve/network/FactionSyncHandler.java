@@ -9,8 +9,8 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 阵营同步事件处理器
@@ -18,7 +18,7 @@ import org.apache.logging.log4j.Logger;
  */
 @Mod.EventBusSubscriber
 public class FactionSyncHandler {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/FactionSyncHandler");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/FactionSyncHandler");
     
     // 同步计数器（用于控制同步频率）
     private static int syncTickCounter = 0;

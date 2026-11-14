@@ -164,6 +164,10 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    // 纯逻辑单元测试（不启动游戏）
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -203,4 +207,9 @@ tasks.named('jar', Jar).configure {
 // 编译配置
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+// 单元测试使用 JUnit 5
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }

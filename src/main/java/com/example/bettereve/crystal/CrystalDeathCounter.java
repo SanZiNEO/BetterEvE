@@ -2,8 +2,8 @@ package com.example.bettereve.crystal;
 
 import com.example.bettereve.faction.Faction;
 import com.example.bettereve.faction.FactionRegistry;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 使用ConcurrentHashMap实现线程安全
  */
 public class CrystalDeathCounter {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/CrystalDeathCounter");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/CrystalDeathCounter");
     
     // 使用ConcurrentHashMap确保线程安全
     private static final ConcurrentHashMap<String, Integer> deathCounts = new ConcurrentHashMap<>();

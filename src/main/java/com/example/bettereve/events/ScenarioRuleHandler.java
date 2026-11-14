@@ -15,8 +15,8 @@ import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +36,7 @@ import java.util.Map;
  */
 @Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ScenarioRuleHandler {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/RuleEngine");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/RuleEngine");
 
     /** 状态裁决登记的被点名实体（服务器主线程独占，无需加锁） */
     private static final List<LivingEntity> TRACKED = new ArrayList<>();

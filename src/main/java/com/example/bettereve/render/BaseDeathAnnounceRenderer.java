@@ -14,8 +14,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.api.distmarker.Dist;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -40,7 +40,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 @Mod.EventBusSubscriber(modid = Bettereve.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class BaseDeathAnnounceRenderer {
-    private static final Logger LOGGER = LogManager.getLogger("BetterEvE/BaseDeathAnnounceRenderer");
+    private static final Logger LOGGER = LoggerFactory.getLogger("BetterEvE/BaseDeathAnnounceRenderer");
     
     // ========== 可配置参数 ==========
     
