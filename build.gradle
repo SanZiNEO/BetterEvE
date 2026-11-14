@@ -5,7 +5,6 @@ buildscript {
     }
     dependencies {
         classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
-        classpath 'com.guardsquare:proguard-gradle:7.4.2'
     }
 }
 
@@ -201,73 +200,7 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
-// ProGuard 混淆任务（手动执行：gradlew releaseJar）
-task obfuscateJar(type: proguard.gradle.ProGuardTask) {
-    group 'build'
-    description '使用 ProGuard 混淆 JAR 文件'
-    dependsOn tasks.jar
-
-    // 声明输入，避免改代码后误判 UP-TO-DATE 导致混淆产物不更新
-    inputs.file tasks.jar.archiveFile
-    inputs.file file('proguard-rules.pro')
-
-    def outputFile = file("${project.buildDir}/libs/${mod_id}-${mod_version}-release.jar")
-    
-    doFirst {
-        configuration files('proguard-rules.pro')
-        injars "${tasks.jar.archiveFile.get()}"
-        outjars "${outputFile}"
-        def libraryJars = [] as Set
-        // JDK 类库（JDK 9+ 没有 rt.jar，用 java.base.jmod）
-        def javaHome = System.getProperty('java.home')
-        def baseJmod = new File(javaHome, 'jmods/java.base.jmod')
-        if (baseJmod.exists()) {
-            libraryJars << baseJmod
-        }
-        def desktopJmod = new File(javaHome, 'jmods/java.desktop.jmod')
-        if (desktopJmod.exists()) {
-            libraryJars << desktopJmod
-        }
-        // 核心库必须用 srg 名版本：reobfJar 输出的模组 jar 引用 srg 名，
-        // 与 notch/mapped 名不匹配会导致覆写关系识别失败（覆写方法被误混淆、运行时崩溃）
-        def srgJar = new File(System.getProperty('user.home') + '/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.20.1-47.3.5/forge-1.20.1-47.3.5-srg.jar')
-        if (srgJar.exists()) {
-            libraryJars << srgJar
-        }
-        configurations.compileClasspath.files.each { if (it.name.endsWith('.jar') && !it.name.contains('forge') && !it.name.contains('minecraft')) libraryJars << it }
-        configurations.runtimeClasspath.files.each { if (it.name.endsWith('.jar') && !it.name.contains('forge') && !it.name.contains('minecraft')) libraryJars << it }
-        libraryjars libraryJars as List
-    }
-}
-
-// 发布构建任务（需手动执行：gradlew releaseJar）
-task releaseJar(type: Task) {
-    group 'build'
-    description '构建并混淆发布版本的 JAR 文件'
-    dependsOn tasks.jar
-    if (tasks.findByName('reobfJar')) {
-        dependsOn tasks.reobfJar
-    }
-    finalizedBy tasks.obfuscateJar
-    doFirst { project.ext.set('release', true) }
-}
-
-// 优化发布构建的资源处理
-tasks.named('processResources', ProcessResources).configure {
-    // 在发布构建时删除不必要的资源
-    if (project.hasProperty('release')) {
-        // 删除开发阶段的资源
-        exclude '**/*.md'
-        exclude '**/*.txt'
-        exclude '**/test/**'
-    }
-}
-
 // 编译配置
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    if (project.hasProperty('release')) {
-        options.compilerArgs.add('-g:none')
-        options.compilerArgs.add('-Xlint:none')
-    }
 }
