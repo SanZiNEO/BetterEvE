@@ -16,3 +16,4 @@ search_nbt_args.class
 /logs
 /.venv-assets
 __pycache__/
+/tools
